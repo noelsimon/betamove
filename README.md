@@ -1,52 +1,119 @@
-# Betamove — Website
+# BETAMOVE — Website
 
-Statische Website für Betamove (Kletterkurse & Kletterwissen). Reines HTML/CSS/JS,
-kein Build-Schritt, kein Framework — bewusst so gehalten, damit der Inhalt später
-leicht in WordPress übernommen werden kann (siehe unten).
+Statische Website für BETAMOVE (Kletterschule Leipzig: Kurse, Ausbildung, Bildungsurlaub,
+Wissensplattform). Reines HTML/CSS/JS, kein Build-Schritt, kein Framework — bewusst so gehalten,
+damit der Inhalt später leicht in WordPress übernommen werden kann (siehe unten).
 
-## Struktur
+Diese Fassung ersetzt eine frühere, kleinere Platzhalter-Version des Repos durch das
+tatsächliche, fertige Design (ursprünglich als Claude-Design-Canvas-Export geliefert) mit den
+echten Texten, Kursen, Preisen und Seiten der Seitenbetreiberin.
+
+## Seitenstruktur
+
+Marketing- und Infoseiten:
 
 ```
-index.html      Startseite
-kurse.html      Kursübersicht mit Preisen
-kontakt.html    Kontaktformular / Kursanmeldung
-css/style.css   Gesamtes Styling (Design-Tokens oben in der Datei)
-js/main.js      Mobiles Menü, Footer-Jahr
+index.html                      Startseite
+kurse.html                       Kursübersicht mit Suche/Filtern
+anmeldung.html                   Kursanmeldung (4-Schritte-Formular, sendet noch nirgends hin)
+ausbildung.html                  Ausbildungskonzept, Module, Jahrespakete
+bildungsurlaub.html              Bildungsurlaub: Wochenkurse, Anspruch nach Bundesland, FAQ
+bildungsurlaub-antrag.html       Antrag erstellen (4-Schritte-Formular mit Live-Briefvorschau)
+team.html                        Team
+ueber-uns.html                   Über BETAMOVE
+kontakt.html                     Kontaktformular + Newsletter-Anmeldung
+agb.html / impressum.html / datenschutz.html / widerruf.html   Rechtstexte
+```
+
+Wissensplattform (kostenlos nutzbar, Fortschritt nur im Browser via `localStorage`):
+
+```
+wissen.html                       Übersicht: Suche, Filter, Themenbereiche, Fortschritt
+wissen-thema-*.html                6 Themenseiten (sichern, fels, alpin, training, natur, freizeit)
+artikel-*.html                     6 Artikel (inkl. artikel-halle-an-den-fels.html als Langform)
+quiz-sichern.html / quiz-fels.html Zwei interaktive Quiz (rein im Browser ausgewertet)
+pruefung-sicherungsschein.html     Interaktive Online-Prüfung (8 Fragen)
+```
+
+Konto-Bereich (Design-Vorschau, siehe Hinweis unten):
+
+```
+login.html                        Anmelden / Konto erstellen (Formulare senden noch nirgends hin)
+konto.html                        Dashboard-Übersicht
+konto-weg.html                    Ausbildungsweg als Karte
+konto-qualifikationen.html        Qualifikationen im Detail
+konto-lernen.html                 Lernstand
+konto-profil.html                 Profildaten
+```
+
+Gemeinsame Dateien:
+
+```
+css/style.css     Gesamtes Styling (Design-Tokens, Farben, Buttons, Komponenten oben in der Datei)
+js/main.js        Mobiles Menü, aktive Nav-Markierung, Chat-Widget-Optik, Accordion-Helfer,
+                   kleine Lernfortschritts-Hilfsfunktion (bmProgress, nutzt nur localStorage)
+assets-min/       Bild- und Videodateien (siehe assets-min/README.md — Ordner ist absichtlich leer)
 .github/workflows/deploy-pages.yml   Deployment nach GitHub Pages
 ```
 
+Jede Seite bindet Header, Footer und den Chat-Widget-Baustein identisch als eigenständiges HTML
+ein (kein Template-System) — Änderungen an Navigation oder Footer müssen deshalb in jeder Datei
+einzeln nachgezogen werden. Das ist bewusst so gehalten (siehe "Kein Build-Schritt" oben).
+
 ## Vor der Veröffentlichung unbedingt anpassen
 
-1. **Formular-Endpunkt in `kontakt.html`**: aktuell `action="https://formspree.io/f/DEINE-FORM-ID"`.
-   Kostenloses Konto auf [formspree.io](https://formspree.io) anlegen, eigene Formular-ID
-   einsetzen. Ohne echten Endpunkt gehen Anmeldungen verloren.
-2. **Kontaktdaten** in Footer (`index.html`, `kurse.html`, `kontakt.html`): Platzhalter-E-Mail
-   und -Adresse ersetzen.
-3. **Preise, Kursinhalte, Statistiken** (`kurse.html`, `index.html`) sind Platzhalter — bitte
-   mit echten Zahlen ersetzen.
-4. **Datenschutzerklärung** verlinken/ergänzen (Pflicht bei einem Kontaktformular in Deutschland).
+1. **Formular-Endpunkt in `kontakt.html`**: aktuell `action="https://formspree.io/f/DEINE-FORM-ID"`
+   (zweimal: Kontaktformular und Newsletter-Anmeldung). Kostenloses Konto auf
+   [formspree.io](https://formspree.io) anlegen, eigene Formular-ID einsetzen. Ohne echten
+   Endpunkt gehen Nachrichten verloren.
+2. **Bilder und Video in `assets-min/`**: Beim Export aus Claude Design waren keine echten
+   Bilddateien dabei, nur die Pfade dazu. Die vollständige Liste der erwarteten Dateinamen
+   (Logo, Hero-Video, Kursbilder, Teamfotos, Ausbildungskonzept-Diagramm usw.) steht in
+   `assets-min/README.md`. Sobald die echten Dateien mit denselben Namen dort abgelegt werden,
+   funktioniert alles ohne Codeänderungen.
+3. **Drei Partnerlogos** auf der Startseite (Abschnitt „Unsere Kooperationen“) sind aktuell
+   gestrichelte Platzhalter-Boxen — sobald echte Partnerlogos vorliegen, die drei
+   `<div>`-Platzhalter in `index.html` durch `<img>`-Tags ersetzen.
+4. **Team-Platzhalter** in `team.html`: Noels und Annas persönliche Texte sowie die
+   „Lieblingsgebiet/Lieblingskurs“-Angaben sind noch mit `[z. B. …]`-Platzhaltern markiert und
+   sollten von den beiden selbst geschrieben werden.
+5. **Datenschutzerklärung/Formular-Text** nochmal von einer Person mit Rechtskenntnis prüfen
+   lassen (Pflicht bei Kontakt-/Anmeldeformularen in Deutschland).
 
 ## GitHub Pages aktivieren (einmalig, manuell)
 
-Der Workflow `.github/workflows/deploy-pages.yml` deployt automatisch bei jedem Push auf
-`main`. Damit das greift, muss einmalig in den Repo-Einstellungen aktiviert werden:
+Der Workflow `.github/workflows/deploy-pages.yml` deployt automatisch bei jedem Push auf `main`.
+Damit das greift, muss einmalig in den Repo-Einstellungen aktiviert werden:
 
-**Settings → Pages → Source → „GitHub Actions"**
+**Settings → Pages → Source → „GitHub Actions“**
 
-Das kann nur ein Mensch mit Repo-Zugriff anklicken — kein Automatisierungs-Tool kann das
-für dich erledigen.
+Das kann nur ein Mensch mit Repo-Zugriff anklicken — kein Automatisierungs-Tool kann das für dich
+erledigen.
 
 ## Wichtig: keine echten Nutzerdaten in diesem Repo speichern
 
-Git-Historie vergisst nichts. Anmeldungen/Kontaktdaten dürfen deshalb nie als Datei ins
-Repo committet werden — sie laufen ausschließlich über den externen Formular-Dienst
-(Formspree o. Ä.).
+Git-Historie vergisst nichts. Anmeldungen, Kontaktanfragen und alles, was Nutzer*innen über
+Formulare eingeben, darf deshalb nie als Datei ins Repo committet werden — diese Daten laufen
+ausschließlich über den externen Formular-Dienst (Formspree o. Ä.) bzw. später über Supabase.
 
-## Später: Konten, Quiz, Zertifikate, Kursbuchung
+## Konto, Quiz-Nachweise und Zertifikate: aktuell nur Design-Vorschau
 
-Für Nutzerkonten mit Login, Quiz-Fortschritt, digitalen Zertifikaten und Kursbuchung reicht
-eine statische Seite nicht mehr aus — dafür braucht es ein echtes Backend mit Datenbank.
-Geplanter Weg: WordPress + LearnDash/LifterLMS (Kurse, Quizze, Zertifikate) + WooCommerce
-(Buchung/Zahlung), selbst gehostet z. B. auf einem VPS mit Nginx + PHP-FPM + MariaDB. Die
-Inhalte aus diesem Repo (Text, Struktur, Design) lassen sich dann direkt als Vorlage für
-die WordPress-Seiten übernehmen.
+Die Seiten `login.html`, `konto*.html`, die Online-Prüfung sowie die Kommentarbereiche unter den
+Wissensartikeln zeigen bereits das fertige Design und teils funktionierende Interaktionen
+(Quiz/Prüfung werten clientseitig aus, Formulare validieren) — aber **es gibt noch kein echtes
+Backend dahinter**. Diese Seiten tragen deshalb einen kleinen Hinweis-Banner
+("Vorschau — … folgt mit Supabase-Anbindung"), und ihre Formulare (Login, Registrierung,
+Profil speichern, Kommentar schreiben) brechen den Submit bewusst ab, statt Daten irgendwohin zu
+schicken.
+
+**Geplanter Weg:** [Supabase](https://supabase.com) für Authentifizierung (Login/Registrierung)
+und Datenbank (Qualifikationen, Prüfungsnachweise, Kommentare, Profil, Lernfortschritt über
+Geräte hinweg). Sobald das steht, ersetzen die `alert(...)`-Platzhalter in den `<script>`-Blöcken
+der Konto-/Login-/Kommentar-Bereiche echte Supabase-Aufrufe, und der Vorschau-Banner kann
+entfernt werden. Die reinen Wissensplattform-Inhalte (Artikel, Quiz, Prüfungsfragen) funktionieren
+schon jetzt clientseitig und bräuchten für den anonymen Gebrauch kein Backend — nur das
+Konto-Andocken (Nachweise dauerhaft & geräteübergreifend speichern) fehlt noch.
+
+Für Kursbuchung/Bezahlung und die Kursverwaltung selbst (nicht Teil dieses Repos) bleibt
+zusätzlich ein weiterer Baustein offen, z. B. eine externe Buchungslösung oder ein eigenes
+kleines Backend — je nachdem, was die Betreiberin bevorzugt.

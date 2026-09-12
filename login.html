@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anmelden — BETAMOVE Konto</title>
+<meta name="description" content="Melde dich am BETAMOVE Lernkonto an oder erstelle ein neues Konto für Prüfungsnachweise und Qualifikationen.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .auth-tab { background: transparent; color: var(--color-accent-800); }
+  .auth-tab[data-active="true"] { background: var(--color-accent); color: #ffffff; }
+  .chip { cursor:pointer; font:inherit; font-size:14.5px; padding:9px 16px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="index.html" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildung</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+      <a href="wissen.html">Wissen</a>
+      <a href="kontakt.html">Kontakt</a>
+    </nav>
+    <div data-r="navactions">
+      <a href="anmeldung.html" class="btn btn-primary" style="font-size:15px;padding:10px 20px">Kurs buchen</a>
+      <a href="login.html" class="nav-login">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Anmelden</span>
+      </a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:56px 28px 96px">
+<div class="preview-banner">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
+</div>
+
+    <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start">
+      <div>
+        <span class="tag tag-accent" style="font-size:11.5px">BETAMOVE Konto</span>
+        <h1 style="margin:16px 0 14px;font-size:clamp(32px,4.2vw,48px)">Dein Lernkonto</h1>
+        <p style="max-width:52ch;font-size:18px;opacity:0.85">Ein Konto verbindet die Wissensplattform mit deinen Kursen: Prüfungen werden gespeichert, Qualifikationen bauen sich auf, und du siehst jederzeit, was dir zum nächsten Schein fehlt.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:30px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <span style="width:30px;height:30px;flex:none;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-800);display:grid;place-items:center;font-size:14px;font-weight:700">1</span>
+            <div><div style="font-family:var(--font-heading);font-size:18px">Prüfungen mit Nachweis</div><p style="margin:3px 0 0;font-size:15.5px;opacity:0.8">Bestandene Online-Prüfungen landen als Nachweis in deinem Konto.</p></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <span style="width:30px;height:30px;flex:none;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-800);display:grid;place-items:center;font-size:14px;font-weight:700">2</span>
+            <div><div style="font-family:var(--font-heading);font-size:18px">Qualifikationen aufbauen</div><p style="margin:3px 0 0;font-size:15.5px;opacity:0.8">Vom Sicherungsschein bis zur Mehrseillänge – Theorie online, Praxis im Kurs.</p></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <span style="width:30px;height:30px;flex:none;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-800);display:grid;place-items:center;font-size:14px;font-weight:700">3</span>
+            <div><div style="font-family:var(--font-heading);font-size:18px">Selbstständig lernen</div><p style="margin:3px 0 0;font-size:15.5px;opacity:0.8">Dein Lernstand, offene Themen und der nächste sinnvolle Schritt auf einen Blick.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:32px 34px;box-shadow:var(--shadow-md)">
+        <div style="display:flex;gap:6px;padding:5px;background:var(--color-surface);border-radius:999px;margin-bottom:26px">
+          <button type="button" id="tabLogin" class="auth-tab" data-active="true" style="flex:1;cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:11px 16px;border-radius:999px;border:0">Anmelden</button>
+          <button type="button" id="tabRegister" class="auth-tab" style="flex:1;cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:11px 16px;border-radius:999px;border:0">Konto erstellen</button>
+        </div>
+
+        <form id="loginForm" style="display:flex;flex-direction:column;gap:16px">
+          <div class="field"><label for="li-em">E-Mail</label><input id="li-em" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
+          <div class="field"><label for="li-pw">Passwort</label><input id="li-pw" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="••••••••"></div>
+          <button type="submit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Anmelden</button>
+          <p style="margin:0;font-size:14px;opacity:0.65">Noch kein Konto? Wechsle oben auf „Konto erstellen“.</p>
+        </form>
+
+        <form id="registerForm" hidden style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="field"><label for="rg-fn">Vorname</label><input id="rg-fn" class="input" style="min-height:46px;font-size:16px" placeholder="Anna"></div>
+            <div class="field"><label for="rg-ln">Nachname</label><input id="rg-ln" class="input" style="min-height:46px;font-size:16px" placeholder="Muster"></div>
+          </div>
+          <div class="field"><label for="rg-em">E-Mail</label><input id="rg-em" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
+          <div class="field"><label for="rg-pw">Passwort</label><input id="rg-pw" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="Mindestens 6 Zeichen"></div>
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:9px">Dein Kletterlevel</div>
+            <div style="display:flex;gap:9px;flex-wrap:wrap">
+              <button type="button" class="chip level-opt">Einstieg</button>
+              <button type="button" class="chip level-opt">Aufbau</button>
+              <button type="button" class="chip level-opt">Fortgeschritten</button>
+              <button type="button" class="chip level-opt">Einsteiger*in</button>
+            </div>
+          </div>
+          <label class="radio" style="font-size:15px">
+            <input type="checkbox" id="rgAgb"><span class="dot"></span>
+            <span>Ich akzeptiere die <a href="agb.html">AGB</a> und die <a href="datenschutz.html">Datenschutzerklärung</a>.</span>
+          </label>
+          <button type="submit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Konto erstellen</button>
+          <p style="margin:0;font-size:13.5px;opacity:0.6">Vorschau-Hinweis: Konto und Lernstand gibt es hier noch nicht wirklich — das folgt mit der Supabase-Anbindung.</p>
+        </form>
+      </div>
+    </div>
+  </main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildungsprogramm</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="anmeldung.html">Anmeldung</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen.html">Wissen</a>
+      <a href="konto.html">Mein Konto</a>
+      <a href="kontakt.html">Kontakt</a>
+      <a href="agb.html">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="widerruf.html">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<div class="chat-fab-wrap">
+  <div class="chat-panel" id="chatPanel" role="dialog" aria-label="BETAMOVE Assistent" hidden>
+    <div class="chat-panel-head">
+      <span style="width:38px;height:38px;flex:none;border-radius:50%;background:rgba(255,255,255,0.18);display:grid;place-items:center;font-size:19px;font-weight:700">?</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-heading);font-size:17px;line-height:1.2">BETAMOVE Assistent</div>
+        <div style="font-size:12.5px;opacity:0.85">Fragen zu Kursen, Terminen &amp; Material</div>
+      </div>
+      <button type="button" id="chatClose" aria-label="Chat schließen">×</button>
+    </div>
+    <div class="chat-list" id="chatList">
+      <div class="chat-msg bot">Hi! Ich bin die Vorschau des BETAMOVE Assistenten – noch nicht an ein echtes KI-System angebunden. Frag mich trotzdem gern etwas, oder schreib uns direkt über das Kontaktformular.</div>
+    </div>
+    <div class="chat-suggestions">
+      <button type="button">Welche Kurse sind in den nächsten zwei Monaten?</button>
+      <button type="button">Ich bin Einsteiger – welcher Kurs passt?</button>
+      <button type="button">Was brauche ich für „Halle an den Fels“?</button>
+      <button type="button">Wie funktioniert Bildungsurlaub?</button>
+    </div>
+    <form class="chat-input-row" id="chatForm">
+      <textarea aria-label="Deine Frage" id="chatInput" placeholder="Frage schreiben …"></textarea>
+      <button type="submit" aria-label="Senden">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
+      </button>
+    </form>
+    <p class="chat-note">KI-Assistent – kann Fehler machen. Verbindlich sind unsere Kursbeschreibungen.</p>
+  </div>
+  <button type="button" class="chat-fab" id="chatFab" aria-expanded="false" aria-controls="chatPanel" aria-label="Chat mit dem BETAMOVE Assistenten">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>Chat</span>
+  </button>
+</div>
+<script src="js/main.js"></script>
+<script>
+(function(){
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  tabLogin.addEventListener('click', () => { tabLogin.dataset.active='true'; tabRegister.dataset.active='false'; loginForm.hidden=false; registerForm.hidden=true; });
+  tabRegister.addEventListener('click', () => { tabRegister.dataset.active='true'; tabLogin.dataset.active='false'; registerForm.hidden=false; loginForm.hidden=true; });
+  document.querySelectorAll('.level-opt').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b===btn));
+  }));
+  // Kein echtes Backend angebunden — Login/Registrierung folgen mit der Supabase-Anbindung
+  loginForm.addEventListener('submit', e => { e.preventDefault(); alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden.'); });
+  registerForm.addEventListener('submit', e => { e.preventDefault(); alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden.'); });
+})();
+</script>
+</body>
+</html>

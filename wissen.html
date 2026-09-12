@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wissensplattform — BETAMOVE</title>
+<meta name="description" content="Kostenlose Kletter-Wissensplattform von BETAMOVE: Artikel, Quiz und Online-Prüfungen zu Sicherungstechnik, Fels, Alpin und Training.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .chip { cursor:pointer; font:inherit; font-size:14.5px; font-weight:500; padding:9px 17px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+  .quicktag-light { cursor:pointer; font:inherit; font-size:14px; padding:7px 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:#ffffff; }
+  .quicktag-light:hover { background: rgba(255,255,255,0.15); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="index.html" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildung</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+      <a href="wissen.html">Wissen</a>
+      <a href="kontakt.html">Kontakt</a>
+    </nav>
+    <div data-r="navactions">
+      <a href="anmeldung.html" class="btn btn-primary" style="font-size:15px;padding:10px 20px">Kurs buchen</a>
+      <a href="login.html" class="nav-login">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Anmelden</span>
+      </a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main>
+    <section style="background:var(--color-accent-700)">
+      <div data-r="pad" style="max-width:1160px;margin:0 auto;padding:64px 28px 56px">
+        <span class="tag" style="background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px">Wissensplattform</span>
+        <h1 style="margin:16px 0 14px;font-size:clamp(34px,4.4vw,52px);color:#ffffff">Klettern verstehen, nicht nur nachmachen</h1>
+        <p style="max-width:60ch;margin:0 0 30px;font-size:18px;color:#DEE4EC">Artikel, Quiz und Online-Prüfungen zu Sicherungstechnik, Fels, Alpin und Training. Alles kostenlos, alles auf dem Stand, den wir auch in den Kursen unterrichten.</p>
+        <div style="background:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:10px 10px 10px 20px;display:flex;align-items:center;gap:12px;max-width:640px;box-shadow:var(--shadow-md)">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input id="wissenSearch" aria-label="Wissensplattform durchsuchen" placeholder="Suche nach Stichwort: Bremshand, Exen, Standplatz …" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font:inherit;font-size:16.5px;color:var(--color-text);padding:12px 0">
+          <button type="button" id="wissenClear" style="cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:11px 18px;border-radius:999px;border:0;background:var(--color-surface);color:var(--color-accent-800);flex:none">Zurücksetzen</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center">
+          <span style="font-size:14px;color:#DEE4EC;opacity:0.85">Häufig gesucht:</span>
+          <button type="button" class="quicktag-light" data-q="Bremshand">Bremshand</button>
+          <button type="button" class="quicktag-light" data-q="Exen">Exen</button>
+          <button type="button" class="quicktag-light" data-q="Standplatz">Standplatz</button>
+          <button type="button" class="quicktag-light" data-q="Sandstein">Sandstein</button>
+          <button type="button" class="quicktag-light" data-q="Training">Training</button>
+          <button type="button" class="quicktag-light" data-q="Naturschutz">Naturschutz</button>
+        </div>
+      </div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:44px 28px 0">
+      <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:24px 28px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Format</span>
+          <button type="button" class="chip type-chip" data-type="alle" data-active="true">Alles</button>
+          <button type="button" class="chip type-chip" data-type="artikel">Artikel</button>
+          <button type="button" class="chip type-chip" data-type="quiz">Quiz</button>
+          <button type="button" class="chip type-chip" data-type="pruefung">Online-Prüfung</button>
+          <button type="button" class="chip type-chip" data-type="freizeit">Freizeit</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Thema</span>
+          <button type="button" class="chip topic-chip" data-topic="alle" data-active="true">Alle Themen</button>
+<button type="button" class="chip topic-chip" data-topic="sichern">Sicherungstechnik</button><button type="button" class="chip topic-chip" data-topic="fels">Halle an den Fels</button><button type="button" class="chip topic-chip" data-topic="alpin">Mehrseillänge & Alpin</button><button type="button" class="chip topic-chip" data-topic="training">Technik & Training</button><button type="button" class="chip topic-chip" data-topic="natur">Natur & Verantwortung</button><button type="button" class="chip topic-chip" data-topic="freizeit">Freizeit & Reisen</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Level</span>
+          <button type="button" class="chip level-chip" data-level="alle" data-active="true">Jedes Level</button>
+          <button type="button" class="chip level-chip" data-level="Einstieg">Einstieg</button>
+          <button type="button" class="chip level-chip" data-level="Aufbau">Aufbau</button>
+          <button type="button" class="chip level-chip" data-level="Fortgeschritten">Fortgeschritten</button>
+        </div>
+      </div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:34px 28px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:22px">
+        <h2 id="resultLabel" style="margin:0;font-size:26px">8 Ergebnisse</h2>
+      </div>
+      <div id="noResults" hidden style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:48px 42px;text-align:center">
+        <h3 style="margin:0 0 8px;font-size:24px">Dazu haben wir noch nichts</h3>
+        <p style="margin:0 0 20px;font-size:16px;opacity:0.8">Setz die Filter zurück oder schreib uns, welches Thema dir fehlt – wir schreiben danach.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button type="button" id="wissenClear2" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Filter zurücksetzen</button>
+          <a href="kontakt.html" class="btn btn-secondary" style="font-size:15px;padding:12px 22px">Thema vorschlagen</a>
+        </div>
+      </div>
+      <div id="resultGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:24px">
+      <a href="artikel-halle-an-den-fels.html" class="hover-border" data-item-card data-search="halle an den fels materialkunde, vorstieg am bohrhaken, umbauen und naturschutz – der komplette inhalt eines professionellen einstiegskurses." data-topic="fels" data-type="artikel" data-level="Aufbau" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Halle an den Fels" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/wissen-hero.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">Artikel</span>
+            <span style="font-size:13px;opacity:0.6">14 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Halle an den Fels</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Materialkunde, Vorstieg am Bohrhaken, Umbauen und Naturschutz – der komplette Inhalt eines professionellen Einstiegskurses.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Halle an den Fels</span><span>·</span><span>Aufbau</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="quiz-sichern.html" class="hover-border" data-item-card data-search="quiz: sichern ohne mythen fünf fragen zu bremshand, weichem sichern, partnercheck und gewichtsunterschieden – mit erklärung nach jeder antwort." data-topic="sichern" data-type="quiz" data-level="Einstieg" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-2-100);color:var(--color-accent-2-800)">Quiz</span>
+            <span style="font-size:13px;opacity:0.6">5 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Quiz: Sichern ohne Mythen</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Fünf Fragen zu Bremshand, weichem Sichern, Partnercheck und Gewichtsunterschieden – mit Erklärung nach jeder Antwort.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Sicherungstechnik</span><span>·</span><span>Einstieg</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="quiz-fels.html" class="hover-border" data-item-card data-search="quiz: der erste tag am fels exen richtig einhängen, clipstick, nasser sandstein und der umbau am umlenker." data-topic="fels" data-type="quiz" data-level="Aufbau" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-2-100);color:var(--color-accent-2-800)">Quiz</span>
+            <span style="font-size:13px;opacity:0.6">5 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Quiz: Der erste Tag am Fels</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Exen richtig einhängen, Clipstick, nasser Sandstein und der Umbau am Umlenker.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Halle an den Fels</span><span>·</span><span>Aufbau</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="pruefung-sicherungsschein.html" class="hover-border" data-item-card data-search="online-prüfung: sicherungstheorie die theorieprüfung vor dem sicherungs-update: acht fragen, direkte auswertung, jede antwort erklärt." data-topic="sichern" data-type="pruefung" data-level="Aufbau" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-700);color:#ffffff">Online-Prüfung</span>
+            <span style="font-size:13px;opacity:0.6">12 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Online-Prüfung: Sicherungstheorie</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Die Theorieprüfung vor dem Sicherungs-Update: acht Fragen, direkte Auswertung, jede Antwort erklärt.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Sicherungstechnik</span><span>·</span><span>Aufbau</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="artikel-bremshand.html" class="hover-border" data-item-card data-search="die bremshand – der rest ist zubehör warum fast jeder sicherungsunfall auf dieselbe ursache zurückgeht und wie du sie dir dauerhaft abtrainierst." data-topic="sichern" data-type="artikel" data-level="Einstieg" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Die Bremshand – der Rest ist Zubehör" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/kurs-sturz.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">Artikel</span>
+            <span style="font-size:13px;opacity:0.6">9 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Die Bremshand – der Rest ist Zubehör</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Warum fast jeder Sicherungsunfall auf dieselbe Ursache zurückgeht und wie du sie dir dauerhaft abtrainierst.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Sicherungstechnik</span><span>·</span><span>Einstieg</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="artikel-trainingsplan.html" class="hover-border" data-item-card data-search="warum dein trainingsplan nicht funktioniert die meisten kletternden trainieren kraft, obwohl ihr limit die bewegung ist. so findest du heraus, was dich wirklich bremst." data-topic="training" data-type="artikel" data-level="Aufbau" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Warum dein Trainingsplan nicht funktioniert" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/kurs-technik.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">Artikel</span>
+            <span style="font-size:13px;opacity:0.6">11 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Warum dein Trainingsplan nicht funktioniert</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Die meisten Kletternden trainieren Kraft, obwohl ihr Limit die Bewegung ist. So findest du heraus, was dich wirklich bremst.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Technik & Training</span><span>·</span><span>Aufbau</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="artikel-sperrzeiten.html" class="hover-border" data-item-card data-search="sperrzeiten verstehen statt umgehen wer klettergebiete verlieren will, muss nur lange genug schilder ignorieren. wie du dich informierst und warum es sich lohnt." data-topic="natur" data-type="artikel" data-level="Einstieg" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Sperrzeiten verstehen statt umgehen" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/ueber-3.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">Artikel</span>
+            <span style="font-size:13px;opacity:0.6">7 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Sperrzeiten verstehen statt umgehen</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Wer Klettergebiete verlieren will, muss nur lange genug Schilder ignorieren. Wie du dich informierst und warum es sich lohnt.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Natur & Verantwortung</span><span>·</span><span>Einstieg</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="artikel-standplatz.html" class="hover-border" data-item-card data-search="standplatz: einfach, redundant, überprüfbar warum der beste standplatz der ist, den deine seilpartnerin in fünf sekunden versteht." data-topic="alpin" data-type="artikel" data-level="Fortgeschritten" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Standplatz: einfach, redundant, überprüfbar" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/kurs-msl.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">Artikel</span>
+            <span style="font-size:13px;opacity:0.6">12 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Standplatz: einfach, redundant, überprüfbar</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Warum der beste Standplatz der ist, den deine Seilpartnerin in fünf Sekunden versteht.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Mehrseillänge & Alpin</span><span>·</span><span>Fortgeschritten</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      <a href="artikel-elbsandstein-woche.html" class="hover-border" data-item-card data-search="eine woche elbsandstein – reisetagebuch sechs tage, viel reibung, zwei regentage und die erkenntnis, dass ringe weiter auseinander liegen als erwartet." data-topic="freizeit" data-type="freizeit" data-level="Einstieg" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div role="img" aria-label="Eine Woche Elbsandstein – Reisetagebuch" style="height:158px;background-color:var(--color-neutral-300);background-image:url('assets-min/reisen.jpg');background-size:cover;background-position:center"></div>
+        <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-neutral-200);color:var(--color-neutral-800)">Freizeit</span>
+            <span style="font-size:13px;opacity:0.6">8 Min.</span>
+          </div>
+          <h3 style="margin:0;font-size:22px;line-height:1.25">Eine Woche Elbsandstein – Reisetagebuch</h3>
+          <p style="margin:0;font-size:15px;opacity:0.82;flex:1">Sechs Tage, viel Reibung, zwei Regentage und die Erkenntnis, dass Ringe weiter auseinander liegen als erwartet.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px;opacity:0.6;padding-top:4px">
+            <span>Freizeit & Reisen</span><span>·</span><span>Einstieg</span>
+          </div>
+          <span style="font-size:15px;font-weight:600;color:var(--color-accent-700);margin-top:4px">Ansehen →</span>
+        </div>
+      </a>
+      </div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:76px 28px 0">
+      <h2 style="margin:0 0 8px;font-size:34px">Themenbereiche</h2>
+      <p style="max-width:60ch;font-size:17px;opacity:0.8;margin-bottom:30px">Wenn du ein Thema von Grund auf durcharbeiten willst, statt einzelne Artikel zu lesen.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px">      <a href="wissen-thema-sichern.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Sicherungstechnik</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Vom Handling des Geräts bis zum weichen Fangstoß: alles, was zwischen dir und dem Boden steht.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+      <a href="wissen-thema-fels.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Halle an den Fels</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Der Übergang nach draußen: Material, Vorstieg am Bohrhaken, Umbauen, Wetter und Gebietswissen.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+      <a href="wissen-thema-alpin.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Mehrseillänge & Alpin</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Standplatz, Seilhandling, Taktik und behelfsmäßige Bergrettung in großem Gelände.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+      <a href="wissen-thema-training.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Technik & Training</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Bewegungslernen, Trainingsplanung, Fingerkraft und der Kopf: wie du planbar besser wirst.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+      <a href="wissen-thema-natur.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Natur & Verantwortung</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Sperrzeiten, Zustiege, Bodenverdichtung und der Umgang mit Gebieten, die uns nur geliehen sind.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+      <a href="wissen-thema-freizeit.html" class="hover-tint" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;border-top:5px solid var(--color-accent)">
+        <h3 style="margin:0;font-size:23px">Freizeit & Reisen</h3>
+        <p style="margin:0;font-size:15.5px;opacity:0.82;flex:1">Gebietsberichte, Reisetagebücher und die Geschichten, die zwischen den Routen passieren.</p>
+        <span style="font-size:14px;font-weight:600;color:var(--color-accent-700)">Ansehen →</span>
+      </a>
+</div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:76px 28px 0">
+      <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;align-items:start">
+        <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:32px 34px">
+          <h2 style="margin:0 0 6px;font-size:26px">Dein Fortschritt</h2>
+          <p style="margin:0 0 20px;font-size:15.5px;opacity:0.8">Wird nur in deinem Browser gespeichert – kein Konto, keine Anmeldung.</p>
+          <div style="height:10px;border-radius:999px;background:#ffffff;overflow:hidden">
+            <div id="progressBar" style="height:100%;width:0%;background:var(--color-accent);border-radius:999px"></div>
+          </div>
+          <p id="progressText" style="margin:12px 0 0;font-size:15px;opacity:0.75">0 von 9 Inhalten bearbeitet</p>
+        </div>
+        <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:32px 34px">
+          <h2 style="margin:0 0 6px;font-size:26px">In Arbeit</h2>
+          <p style="margin:0 0 18px;font-size:15.5px;opacity:0.8">Diese Beiträge schreiben wir gerade.</p>
+          <div style="display:flex;flex-direction:column;gap:12px">          <div style="display:flex;flex-direction:column;gap:3px;padding-bottom:12px;border-bottom:1px solid var(--color-divider)">
+            <span style="font-size:16px;font-weight:600">Sturztraining: Aufbau für die eigene Halle</span>
+            <span style="font-size:13.5px;opacity:0.6">Sicherungstechnik</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;padding-bottom:12px;border-bottom:1px solid var(--color-divider)">
+            <span style="font-size:16px;font-weight:600">Mobile Sicherung: Cams lesen lernen</span>
+            <span style="font-size:13.5px;opacity:0.6">Mehrseillänge & Alpin</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;padding-bottom:12px;border-bottom:1px solid var(--color-divider)">
+            <span style="font-size:16px;font-weight:600">Kopfsache: Angst als Information</span>
+            <span style="font-size:13.5px;opacity:0.6">Technik & Training</span>
+          </div>
+</div>
+        </div>
+      </div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:44px 28px 0">
+      <div style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:32px 34px;display:flex;flex-wrap:wrap;gap:22px;align-items:center">
+        <div style="flex:1;min-width:280px">
+          <h3 style="margin:0 0 8px;font-size:26px">Lernstand speichern und Scheine aufbauen</h3>
+          <p style="margin:0;font-size:16px;opacity:0.82">Mit einem kostenlosen BETAMOVE-Konto werden Prüfungen als Nachweis gespeichert, und du siehst, was dir zum Vorstiegsschein noch fehlt.</p>
+        </div>
+        <a href="login.html" class="btn btn-primary" style="font-size:16px;padding:14px 26px">Konto erstellen</a>
+      </div>
+    </section>
+
+    <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:76px 28px 96px">
+      <div style="background:var(--color-accent-700);border-radius:calc(var(--radius-lg) * 1.15);padding:48px 46px;display:flex;flex-wrap:wrap;gap:24px;align-items:center">
+        <div style="flex:1;min-width:300px">
+          <h3 style="margin:0 0 8px;font-size:30px;color:#ffffff">Wissen ist die halbe Sicherung</h3>
+          <p style="margin:0;font-size:17px;color:#DEE4EC">Die andere Hälfte passiert am Seil. Lesen und Quiz ersetzen keinen Kurs – sie machen ihn nur besser.</p>
+        </div>
+        <a href="kurse.html" class="btn btn-onblue" style="font-size:17px;padding:15px 28px">Kurse ansehen</a>
+      </div>
+    </section>
+  </main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildungsprogramm</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="anmeldung.html">Anmeldung</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen.html">Wissen</a>
+      <a href="konto.html">Mein Konto</a>
+      <a href="kontakt.html">Kontakt</a>
+      <a href="agb.html">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="widerruf.html">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<div class="chat-fab-wrap">
+  <div class="chat-panel" id="chatPanel" role="dialog" aria-label="BETAMOVE Assistent" hidden>
+    <div class="chat-panel-head">
+      <span style="width:38px;height:38px;flex:none;border-radius:50%;background:rgba(255,255,255,0.18);display:grid;place-items:center;font-size:19px;font-weight:700">?</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-heading);font-size:17px;line-height:1.2">BETAMOVE Assistent</div>
+        <div style="font-size:12.5px;opacity:0.85">Fragen zu Kursen, Terminen &amp; Material</div>
+      </div>
+      <button type="button" id="chatClose" aria-label="Chat schließen">×</button>
+    </div>
+    <div class="chat-list" id="chatList">
+      <div class="chat-msg bot">Hi! Ich bin die Vorschau des BETAMOVE Assistenten – noch nicht an ein echtes KI-System angebunden. Frag mich trotzdem gern etwas, oder schreib uns direkt über das Kontaktformular.</div>
+    </div>
+    <div class="chat-suggestions">
+      <button type="button">Welche Kurse sind in den nächsten zwei Monaten?</button>
+      <button type="button">Ich bin Einsteiger – welcher Kurs passt?</button>
+      <button type="button">Was brauche ich für „Halle an den Fels“?</button>
+      <button type="button">Wie funktioniert Bildungsurlaub?</button>
+    </div>
+    <form class="chat-input-row" id="chatForm">
+      <textarea aria-label="Deine Frage" id="chatInput" placeholder="Frage schreiben …"></textarea>
+      <button type="submit" aria-label="Senden">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
+      </button>
+    </form>
+    <p class="chat-note">KI-Assistent – kann Fehler machen. Verbindlich sind unsere Kursbeschreibungen.</p>
+  </div>
+  <button type="button" class="chat-fab" id="chatFab" aria-expanded="false" aria-controls="chatPanel" aria-label="Chat mit dem BETAMOVE Assistenten">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>Chat</span>
+  </button>
+</div>
+<script src="js/main.js"></script>
+<script>
+(function(){
+  const ITEM_IDS = ["halle-an-den-fels", "quiz-sichern", "quiz-fels", "pruefung-sicherungsschein", "bremshand", "trainingsplan", "sperrzeiten", "standplatz", "elbsandstein-woche"];
+  const cards = Array.from(document.querySelectorAll('[data-item-card]'));
+  const search = document.getElementById('wissenSearch');
+  const typeChips = Array.from(document.querySelectorAll('.type-chip'));
+  const topicChips = Array.from(document.querySelectorAll('.topic-chip'));
+  const levelChips = Array.from(document.querySelectorAll('.level-chip'));
+  const resultLabel = document.getElementById('resultLabel');
+  const noResults = document.getElementById('noResults');
+  let type = 'alle', topic = 'alle', level = 'alle';
+
+  function apply() {
+    const q = (search.value || '').trim().toLowerCase();
+    let visible = 0;
+    cards.forEach(card => {
+      const show = (type === 'alle' || card.dataset.type === type)
+        && (topic === 'alle' || card.dataset.topic === topic)
+        && (level === 'alle' || card.dataset.level === level)
+        && (!q || card.dataset.search.indexOf(q) > -1);
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    resultLabel.textContent = visible + (visible === 1 ? ' Ergebnis' : ' Ergebnisse');
+    noResults.hidden = visible !== 0;
+  }
+  search.addEventListener('input', apply);
+  typeChips.forEach(c => c.addEventListener('click', () => { type = c.dataset.type; typeChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
+  topicChips.forEach(c => c.addEventListener('click', () => { topic = c.dataset.topic; topicChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
+  levelChips.forEach(c => c.addEventListener('click', () => { level = c.dataset.level; levelChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
+  document.querySelectorAll('.quicktag-light').forEach(btn => btn.addEventListener('click', () => { search.value = btn.dataset.q; apply(); }));
+  function reset() {
+    search.value=''; type='alle'; topic='alle'; level='alle';
+    typeChips.forEach(x=>x.dataset.active=String(x.dataset.type==='alle'));
+    topicChips.forEach(x=>x.dataset.active=String(x.dataset.topic==='alle'));
+    levelChips.forEach(x=>x.dataset.active=String(x.dataset.level==='alle'));
+    apply();
+  }
+  document.getElementById('wissenClear').addEventListener('click', reset);
+  document.getElementById('wissenClear2').addEventListener('click', reset);
+
+  // Fortschritt aus localStorage (bmProgress, siehe js/main.js)
+  try {
+    const done = ITEM_IDS.filter(id => bmProgress.isDone(id)).length;
+    const pct = Math.round((done / ITEM_IDS.length) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressText').textContent = done + ' von ' + ITEM_IDS.length + ' Inhalten bearbeitet';
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

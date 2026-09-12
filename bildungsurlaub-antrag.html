@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bildungsurlaub-Antrag erstellen — BETAMOVE</title>
+<meta name="description" content="In vier Schritten zum Bildungsurlaubs-Antrag: Bundesland prüfen, Kurswoche wählen und den fertigen Antragstext für deinen Arbeitgeber erhalten.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .chip { cursor:pointer; font:inherit; font-size:15px; padding:11px 18px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent); color:#fff; }
+  .date-chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent); color:#fff; }
+  [data-course-block] { border: 2px solid transparent; }
+  [data-course-block][data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); }
+  .step-bar { height:5px; border-radius:999px; background: var(--color-divider); }
+  li[data-step-tab] .step-label { display:flex; align-items:center; gap:8px; font-size:14px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .step-dot { width:22px; height:22px; flex:none; border-radius:50%; display:grid; place-items:center; font-size:12px; background: var(--color-neutral-300); color: var(--color-neutral-700); }
+  li[data-step-tab][data-state="done"] .step-bar, li[data-step-tab][data-state="current"] .step-bar { background: var(--color-accent); }
+  li[data-step-tab][data-state="done"] .step-dot, li[data-step-tab][data-state="current"] .step-dot { background: var(--color-accent); color:#fff; }
+  li[data-step-tab][data-state="current"] .step-label { color: var(--color-text); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="index.html" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildung</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+      <a href="wissen.html">Wissen</a>
+      <a href="kontakt.html">Kontakt</a>
+    </nav>
+    <div data-r="navactions">
+      <a href="anmeldung.html" class="btn btn-primary" style="font-size:15px;padding:10px 20px">Kurs buchen</a>
+      <a href="login.html" class="nav-login">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Anmelden</span>
+      </a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:56px 28px 96px">
+    <a href="bildungsurlaub.html" style="font-size:15px">← Zurück zum Bildungsurlaub</a>
+    <h1 style="margin:14px 0 10px;font-size:clamp(34px,4.2vw,50px)">Anspruch prüfen &amp; Antrag erstellen</h1>
+    <p style="max-width:62ch;font-size:18px;opacity:0.82;margin-bottom:34px">Vier Schritte: Bundesland wählen, Kurswoche aussuchen, Daten eintragen – am Ende bekommst du deinen Antragsentwurf zum Kopieren. In der fertigen Version schicken wir ihn dir zusätzlich als PDF per E-Mail.</p>
+
+    <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:38px;align-items:start">
+      <div>
+        <ol data-r="steps" id="stepBar" style="list-style:none;display:flex;gap:8px;margin:0 0 30px;padding:0">
+          <li data-step-tab="1" style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="step-bar"></div><div class="step-label"><span class="step-dot">1</span><span>Bundesland</span></div></li>
+          <li data-step-tab="2" style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="step-bar"></div><div class="step-label"><span class="step-dot">2</span><span>Kurswoche</span></div></li>
+          <li data-step-tab="3" style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="step-bar"></div><div class="step-label"><span class="step-dot">3</span><span>Daten</span></div></li>
+          <li data-step-tab="4" style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="step-bar"></div><div class="step-label"><span class="step-dot">4</span><span>Antrag</span></div></li>
+        </ol>
+
+        <section data-step="1" style="animation:bmFade 0.25s ease both">
+          <h2 style="margin:0 0 6px;font-size:28px">In welchem Bundesland arbeitest du?</h2>
+          <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Entscheidend ist dein Arbeitsort, nicht dein Wohnort.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px"><button type="button" class="chip state-chip" data-state="Baden-Württemberg">Baden-Württemberg</button><button type="button" class="chip state-chip" data-state="Bayern">Bayern</button><button type="button" class="chip state-chip" data-state="Berlin">Berlin</button><button type="button" class="chip state-chip" data-state="Brandenburg">Brandenburg</button><button type="button" class="chip state-chip" data-state="Bremen">Bremen</button><button type="button" class="chip state-chip" data-state="Hamburg">Hamburg</button><button type="button" class="chip state-chip" data-state="Hessen">Hessen</button><button type="button" class="chip state-chip" data-state="Mecklenburg-Vorpommern">Mecklenburg-Vorpommern</button><button type="button" class="chip state-chip" data-state="Niedersachsen">Niedersachsen</button><button type="button" class="chip state-chip" data-state="Nordrhein-Westfalen">Nordrhein-Westfalen</button><button type="button" class="chip state-chip" data-state="Rheinland-Pfalz">Rheinland-Pfalz</button><button type="button" class="chip state-chip" data-state="Saarland">Saarland</button><button type="button" class="chip state-chip" data-state="Sachsen">Sachsen</button><button type="button" class="chip state-chip" data-state="Sachsen-Anhalt">Sachsen-Anhalt</button><button type="button" class="chip state-chip" data-state="Schleswig-Holstein">Schleswig-Holstein</button><button type="button" class="chip state-chip" data-state="Thüringen">Thüringen</button></div>
+          <div id="stateInfo" hidden style="margin-top:26px;border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;animation:bmFade 0.25s ease both">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span id="stateIcon" style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#ffffff;font-size:18px">✓</span>
+              <h3 id="stateHeadline" style="margin:0;font-size:23px"></h3>
+            </div>
+            <p id="stateBody" style="margin:14px 0 0;font-size:16.5px"></p>
+            <dl style="margin:20px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px">
+              <div style="background:#ffffff;border-radius:var(--radius-md);padding:14px 16px"><dt style="font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6">Anspruch</dt><dd id="factDays" style="margin:5px 0 0;font-family:var(--font-heading);font-size:19px"></dd></div>
+              <div style="background:#ffffff;border-radius:var(--radius-md);padding:14px 16px"><dt style="font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6">Antragsfrist</dt><dd id="factLead" style="margin:5px 0 0;font-family:var(--font-heading);font-size:19px"></dd></div>
+              <div style="background:#ffffff;border-radius:var(--radius-md);padding:14px 16px"><dt style="font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6">Rechtsgrundlage</dt><dd id="factLaw" style="margin:5px 0 0;font-family:var(--font-heading);font-size:19px"></dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section data-step="2" hidden style="animation:bmFade 0.25s ease both">
+          <h2 style="margin:0 0 6px;font-size:28px">Welche Kurswoche?</h2>
+          <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Fünf Tage, sechs Unterrichtsstunden täglich – wähle Kurs und Termin.</p>
+          <div style="display:flex;flex-direction:column;gap:14px">        <article class="card" data-course-block data-course-id="bu-fels" style="padding:22px 24px;gap:14px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style="font-family:var(--font-heading);font-size:20px">Sicher am Fels – Wochenkurs</div>
+              <div style="font-size:14px;opacity:0.7;margin-top:3px">5 Tage · 6 Unterrichtsstunden täglich</div>
+            </div>
+            <span style="font-family:var(--font-heading);font-size:21px;color:var(--color-accent-700);flex:none">749 €</span>
+          </div>
+          <p style="margin:0;font-size:15px;opacity:0.85">Die Woche für den Übergang von der Halle an den Fels: Materialkunde, Vorstieg, Umbauen, Gefahrenbeurteilung und Naturschutz.</p>
+          <ul style="margin:0;padding-left:20px;font-size:14.5px;opacity:0.85;display:flex;flex-direction:column;gap:3px"><li>Sicherungstechnik am Naturfels</li><li>Risikobewertung und Entscheidungsfindung</li><li>Verantwortung für Natur und Gebiet</li></ul>
+          <div style="display:flex;flex-wrap:wrap;gap:9px"><button type="button" class="chip date-chip" data-course="bu-fels" data-date="11.05. – 15.05.2026">11.05. – 15.05.2026</button><button type="button" class="chip date-chip" data-course="bu-fels" data-date="07.09. – 11.09.2026">07.09. – 11.09.2026</button><button type="button" class="chip date-chip" data-course="bu-fels" data-date="10.05. – 14.05.2027">10.05. – 14.05.2027</button></div>
+        </article>
+        <article class="card" data-course-block data-course-id="bu-msl" style="padding:22px 24px;gap:14px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style="font-family:var(--font-heading);font-size:20px">Mehrseillängen-Woche</div>
+              <div style="font-size:14px;opacity:0.7;margin-top:3px">5 Tage · 6 Unterrichtsstunden täglich</div>
+            </div>
+            <span style="font-family:var(--font-heading);font-size:21px;color:var(--color-accent-700);flex:none">849 €</span>
+          </div>
+          <p style="margin:0;font-size:15px;opacity:0.85">Standplatzbau, Seilhandling und behelfsmäßige Bergrettung in großem Gelände – mit viel Zeit für Wiederholung und Reflexion.</p>
+          <ul style="margin:0;padding-left:20px;font-size:14.5px;opacity:0.85;display:flex;flex-direction:column;gap:3px"><li>Selbstständige Seilschaftsführung</li><li>Notfallmanagement und Erste Hilfe</li><li>Taktik und Routenplanung</li></ul>
+          <div style="display:flex;flex-wrap:wrap;gap:9px"><button type="button" class="chip date-chip" data-course="bu-msl" data-date="15.06. – 19.06.2026">15.06. – 19.06.2026</button><button type="button" class="chip date-chip" data-course="bu-msl" data-date="28.09. – 02.10.2026">28.09. – 02.10.2026</button><button type="button" class="chip date-chip" data-course="bu-msl" data-date="14.06. – 18.06.2027">14.06. – 18.06.2027</button></div>
+        </article>
+        <article class="card" data-course-block data-course-id="bu-mental" style="padding:22px 24px;gap:14px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style="font-family:var(--font-heading);font-size:20px">Bewegung & Mentale Stärke</div>
+              <div style="font-size:14px;opacity:0.7;margin-top:3px">5 Tage · 6 Unterrichtsstunden täglich</div>
+            </div>
+            <span style="font-family:var(--font-heading);font-size:21px;color:var(--color-accent-700);flex:none">699 €</span>
+          </div>
+          <p style="margin:0;font-size:15px;opacity:0.85">Bewegungsanalyse, Sturztraining und Umgang mit Angst. Eine Woche an der eigenen Handlungsfähigkeit unter Belastung.</p>
+          <ul style="margin:0;padding-left:20px;font-size:14.5px;opacity:0.85;display:flex;flex-direction:column;gap:3px"><li>Bewegungsanalyse mit Videofeedback</li><li>Umgang mit Angst und Stress</li><li>Kommunikation in der Seilschaft</li></ul>
+          <div style="display:flex;flex-wrap:wrap;gap:9px"><button type="button" class="chip date-chip" data-course="bu-mental" data-date="20.04. – 24.04.2026">20.04. – 24.04.2026</button><button type="button" class="chip date-chip" data-course="bu-mental" data-date="19.10. – 23.10.2026">19.10. – 23.10.2026</button><button type="button" class="chip date-chip" data-course="bu-mental" data-date="19.04. – 23.04.2027">19.04. – 23.04.2027</button></div>
+        </article>
+</div>
+          <p id="leadHint" style="margin:10px 0 0;font-size:14.5px;opacity:0.65"></p>
+        </section>
+
+        <section data-step="3" hidden style="animation:bmFade 0.25s ease both">
+          <h2 style="margin:0 0 6px;font-size:28px">Deine Daten und dein Arbeitgeber</h2>
+          <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Diese Angaben stehen später im Antragsentwurf.</p>
+          <h4 style="margin:0 0 12px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-600);font-weight:700">Person</h4>
+          <div data-r="2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field"><label for="bfn">Vorname</label><input id="bfn" class="input" style="min-height:46px;font-size:16px" placeholder="Anna"></div>
+            <div class="field"><label for="bln">Nachname</label><input id="bln" class="input" style="min-height:46px;font-size:16px" placeholder="Muster"></div>
+            <div class="field"><label for="bem">E-Mail</label><input id="bem" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
+            <div class="field"><label for="bph">Telefon</label><input id="bph" type="tel" class="input" style="min-height:46px;font-size:16px" placeholder="+49 …"></div>
+            <div class="field" style="grid-column:1/-1"><label for="bst">Straße und Hausnummer</label><input id="bst" class="input" style="min-height:46px;font-size:16px" placeholder="Musterstraße 1"></div>
+            <div class="field"><label for="bzip">PLZ</label><input id="bzip" class="input" style="min-height:46px;font-size:16px" placeholder="04109"></div>
+            <div class="field"><label for="bcity">Ort</label><input id="bcity" class="input" style="min-height:46px;font-size:16px" placeholder="Leipzig"></div>
+          </div>
+          <h4 style="margin:30px 0 12px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-600);font-weight:700">Arbeitgeber</h4>
+          <div data-r="2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field" style="grid-column:1/-1"><label for="bemp">Firma</label><input id="bemp" class="input" style="min-height:46px;font-size:16px" placeholder="Muster GmbH"></div>
+            <div class="field"><label for="bcon">Ansprechpartner*in</label><input id="bcon" class="input" style="min-height:46px;font-size:16px" placeholder="Personalabteilung"></div>
+            <div class="field"><label for="bempaddr">Straße und Hausnummer</label><input id="bempaddr" class="input" style="min-height:46px;font-size:16px" placeholder="Werkstraße 5"></div>
+            <div class="field"><label for="bempzip">PLZ</label><input id="bempzip" class="input" style="min-height:46px;font-size:16px" placeholder="04103"></div>
+            <div class="field"><label for="bempcity">Ort</label><input id="bempcity" class="input" style="min-height:46px;font-size:16px" placeholder="Leipzig"></div>
+          </div>
+          <div class="field" style="margin-top:22px"><label for="bnote">Anmerkungen für uns</label><textarea id="bnote" class="input" style="min-height:100px;font-size:16px;border-radius:var(--radius-md)" placeholder="Fragen, Vorerfahrung, gemeinsame Anmeldung mit …"></textarea></div>
+        </section>
+
+        <section data-step="4" hidden style="animation:bmFade 0.25s ease both">
+          <h2 style="margin:0 0 6px;font-size:28px">Dein Antrag</h2>
+          <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Prüfen, bestätigen, absenden – wir schicken dir den Antrag als PDF (sobald die Anbindung live ist).</p>
+          <label class="radio" style="margin-bottom:22px;font-size:15.5px">
+            <input type="checkbox" id="buAgb"><span class="dot"></span>
+            <span>Ich habe die <a href="agb.html">AGB</a> und die <a href="datenschutz.html">Datenschutzerklärung</a> gelesen und akzeptiere sie. Meine Anfrage darf zur Bearbeitung gespeichert werden.</span>
+          </label>
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:44px 46px;box-shadow:var(--shadow-sm);font-size:15.5px;line-height:1.65">
+            <div id="letterSender" style="font-size:14px;opacity:0.75;white-space:pre-line"></div>
+            <div id="letterRecipient" style="margin-top:30px;font-size:15px;white-space:pre-line"></div>
+            <div id="letterDate" style="margin-top:30px;font-size:14px;opacity:0.75"></div>
+            <h3 style="margin:26px 0 18px;font-size:19px;font-weight:700">Antrag auf Bildungsfreistellung / Bildungsurlaub</h3>
+            <div id="letterBody" style="white-space:pre-line"></div>
+          </div>
+          <p style="margin:16px 0 0;font-size:15px;opacity:0.8">Diese Vorschau ist noch nicht angebunden — nach dem Absenden schicken wir dir diesen Antrag später automatisch als PDF zu, zusammen mit Kursbeschreibung und Zeitplan.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px">
+            <button type="button" id="buSubmit" class="btn btn-primary" style="font-size:16px;padding:14px 28px">Antrag absenden</button>
+          </div>
+          <p id="buHint4" style="margin:14px 0 0;font-size:14.5px;opacity:0.65"></p>
+          <div id="buSuccess" hidden style="margin-top:18px;padding:16px 20px;border-radius:var(--radius-md);background:var(--color-accent-2-100);color:var(--color-accent-2-900);font-weight:600">Danke! (Vorschau) In der Live-Version würden wir dir jetzt den Antrag als PDF zuschicken.</div>
+        </section>
+
+        <div style="display:flex;gap:12px;margin-top:36px;flex-wrap:wrap">
+          <button type="button" id="buBack" class="btn btn-secondary" style="font-size:16px;padding:14px 26px" hidden>Zurück</button>
+          <button type="button" id="buNext" class="btn btn-primary" style="font-size:16px;padding:14px 30px">Weiter zur Kurswoche</button>
+          <span id="buHint" style="align-self:center;font-size:14px;opacity:0.6"></span>
+        </div>
+      </div>
+
+      <aside data-r="aside" style="position:sticky;top:96px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;box-shadow:var(--shadow-sm)">
+        <h4 style="margin:0 0 14px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent);font-weight:700">Deine Angaben</h4>
+        <dl style="margin:0;display:flex;flex-direction:column;gap:11px;font-size:15px" id="buSummary"></dl>
+        <p style="margin:20px 0 0;padding-top:16px;border-top:1px solid var(--color-divider);font-size:13.5px;opacity:0.65">Der Antrag ist eine Vorlage nach den üblichen Landesregelungen und keine Rechtsberatung. Prüfe Fristen und Form deines Bundeslandes.</p>
+      </aside>
+    </div>
+  </main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse.html">Kurse</a>
+      <a href="ausbildung.html">Ausbildungsprogramm</a>
+      <a href="bildungsurlaub.html">Bildungsurlaub</a>
+      <a href="anmeldung.html">Anmeldung</a>
+      <a href="team.html">Team</a>
+      <a href="ueber-uns.html">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen.html">Wissen</a>
+      <a href="konto.html">Mein Konto</a>
+      <a href="kontakt.html">Kontakt</a>
+      <a href="agb.html">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="widerruf.html">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<div class="chat-fab-wrap">
+  <div class="chat-panel" id="chatPanel" role="dialog" aria-label="BETAMOVE Assistent" hidden>
+    <div class="chat-panel-head">
+      <span style="width:38px;height:38px;flex:none;border-radius:50%;background:rgba(255,255,255,0.18);display:grid;place-items:center;font-size:19px;font-weight:700">?</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-heading);font-size:17px;line-height:1.2">BETAMOVE Assistent</div>
+        <div style="font-size:12.5px;opacity:0.85">Fragen zu Kursen, Terminen &amp; Material</div>
+      </div>
+      <button type="button" id="chatClose" aria-label="Chat schließen">×</button>
+    </div>
+    <div class="chat-list" id="chatList">
+      <div class="chat-msg bot">Hi! Ich bin die Vorschau des BETAMOVE Assistenten – noch nicht an ein echtes KI-System angebunden. Frag mich trotzdem gern etwas, oder schreib uns direkt über das Kontaktformular.</div>
+    </div>
+    <div class="chat-suggestions">
+      <button type="button">Welche Kurse sind in den nächsten zwei Monaten?</button>
+      <button type="button">Ich bin Einsteiger – welcher Kurs passt?</button>
+      <button type="button">Was brauche ich für „Halle an den Fels“?</button>
+      <button type="button">Wie funktioniert Bildungsurlaub?</button>
+    </div>
+    <form class="chat-input-row" id="chatForm">
+      <textarea aria-label="Deine Frage" id="chatInput" placeholder="Frage schreiben …"></textarea>
+      <button type="submit" aria-label="Senden">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
+      </button>
+    </form>
+    <p class="chat-note">KI-Assistent – kann Fehler machen. Verbindlich sind unsere Kursbeschreibungen.</p>
+  </div>
+  <button type="button" class="chat-fab" id="chatFab" aria-expanded="false" aria-controls="chatPanel" aria-label="Chat mit dem BETAMOVE Assistenten">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>Chat</span>
+  </button>
+</div>
+<script src="js/main.js"></script>
+<script>
+const BU_LAW = {"Baden-Württemberg": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Bildungszeitgesetz BW", "lead": "9 Wochen", "extra": "Anspruch besteht erst nach 12 Monaten Betriebszugehörigkeit."}, "Bayern": {"status": "none", "days": "kein gesetzlicher Anspruch", "law": "–", "lead": "–", "extra": "Bayern hat kein Bildungsurlaubsgesetz. Möglich ist eine Freistellung über Tarifvertrag, Betriebsvereinbarung oder als individuelle Absprache – der Antrag hilft dir auch dabei."}, "Berlin": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Berliner Bildungszeitgesetz", "lead": "6 Wochen", "extra": "Beschäftigte unter 25 Jahren haben 10 Tage pro Jahr."}, "Brandenburg": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Brandenburgisches Weiterbildungsgesetz", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}, "Bremen": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Bremisches Bildungszeitgesetz", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}, "Hamburg": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Hamburgisches Bildungsurlaubsgesetz", "lead": "6 Wochen", "extra": "Bemessen wird die Gesamtdauer der Veranstaltung."}, "Hessen": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Hessisches Bildungsurlaubsgesetz", "lead": "6 Wochen", "extra": "10 Tage können über zwei Jahre gebündelt werden."}, "Mecklenburg-Vorpommern": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Bildungsfreistellungsgesetz M-V", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}, "Niedersachsen": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Niedersächsisches Bildungsurlaubsgesetz", "lead": "6 Wochen", "extra": "10 Tage können über zwei Jahre gebündelt werden; Anspruch nach 6 Monaten."}, "Nordrhein-Westfalen": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Arbeitnehmerweiterbildungsgesetz NRW", "lead": "6 Wochen", "extra": "Nur in Betrieben mit mehr als 9 Beschäftigten; Anspruch nach 6 Monaten."}, "Rheinland-Pfalz": {"status": "ok", "days": "10 Tage in 2 Jahren", "law": "Bildungsfreistellungsgesetz RLP", "lead": "6 Wochen", "extra": "Berufliche und gesellschaftspolitische Weiterbildung sind gleichgestellt."}, "Saarland": {"status": "ok", "days": "6 Tage in 2 Jahren", "law": "Saarländisches Weiterbildungs- und Bildungsfreistellungsgesetz", "lead": "6 Wochen", "extra": "Anspruch nach 12 Monaten Betriebszugehörigkeit."}, "Sachsen": {"status": "future", "days": "ab 2027: 3 Tage pro Jahr", "law": "Sächsisches Bildungsfreistellungsgesetz", "lead": "6 Wochen", "extra": "Das Gesetz wurde 2026 beschlossen und gilt ab 2027. Bis dahin ist eine Freistellung nur als Absprache mit dem Arbeitgeber möglich."}, "Sachsen-Anhalt": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Bildungsfreistellungsgesetz LSA", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}, "Schleswig-Holstein": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Weiterbildungsgesetz Schleswig-Holstein", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}, "Thüringen": {"status": "ok", "days": "5 Tage pro Jahr", "law": "Thüringer Bildungsfreistellungsgesetz", "lead": "6 Wochen", "extra": "Anspruch nach 6 Monaten Betriebszugehörigkeit."}};
+const BU_COURSES = [{"id": "bu-fels", "name": "Sicher am Fels – Wochenkurs", "dauer": "5 Tage", "price": "749 €", "img": "kurs-halle.jpg", "dates": ["11.05. – 15.05.2026", "07.09. – 11.09.2026", "10.05. – 14.05.2027"], "benefit": "Der Kurs trainiert strukturierte Gefahrenanalyse und das Treffen verbindlicher Entscheidungen unter Unsicherheit – übertragbar auf Arbeitssicherheit, Projektrisiken und Verantwortungsübernahme im Team.", "learning": ["Gefahren systematisch erkennen und bewerten", "Entscheidungen unter Unsicherheit treffen und begründen", "Verantwortung für Dritte übernehmen", "Klare Kommunikation in kritischen Momenten"], "text": "Die Woche für den Übergang von der Halle an den Fels: Materialkunde, Vorstieg, Umbauen, Gefahrenbeurteilung und Naturschutz.", "items": ["Sicherungstechnik am Naturfels", "Risikobewertung und Entscheidungsfindung", "Verantwortung für Natur und Gebiet"]}, {"id": "bu-msl", "name": "Mehrseillängen-Woche", "dauer": "5 Tage", "price": "849 €", "img": "kurs-msl.jpg", "dates": ["15.06. – 19.06.2026", "28.09. – 02.10.2026", "14.06. – 18.06.2027"], "benefit": "Fünf Tage Führungsverantwortung in einer Kleingruppe: Planung, Delegation, Notfallorganisation und Reflexion – direkt übertragbar auf Teamführung und Krisenmanagement im Betrieb.", "learning": ["Eine Gruppe planen, führen und absichern", "Notfallorganisation und Erste Hilfe", "Aufgaben verteilen und kontrollieren", "Nachbereitung und strukturierte Reflexion"], "text": "Standplatzbau, Seilhandling und behelfsmäßige Bergrettung in großem Gelände – mit viel Zeit für Wiederholung und Reflexion.", "items": ["Selbstständige Seilschaftsführung", "Notfallmanagement und Erste Hilfe", "Taktik und Routenplanung"]}, {"id": "bu-mental", "name": "Bewegung & Mentale Stärke", "dauer": "5 Tage", "price": "699 €", "img": "kurs-technik.jpg", "dates": ["20.04. – 24.04.2026", "19.10. – 23.10.2026", "19.04. – 23.04.2027"], "benefit": "Arbeit an Stressregulation, Selbstwirksamkeit und dem Umgang mit Angst und Fehlern – relevant für Belastbarkeit, Gesundheitsprävention und Feedbackkultur am Arbeitsplatz.", "learning": ["Stress und Angst erkennen und regulieren", "Umgang mit Fehlern und Rückschlägen", "Selbstwirksamkeit aufbauen", "Feedback geben und annehmen"], "text": "Bewegungsanalyse, Sturztraining und Umgang mit Angst. Eine Woche an der eigenen Handlungsfähigkeit unter Belastung.", "items": ["Bewegungsanalyse mit Videofeedback", "Umgang mit Angst und Stress", "Kommunikation in der Seilschaft"]}];
+
+(function(){
+  let step = 1;
+  const st = { state: null, courseId: null, courseDate: null };
+  const sections = document.querySelectorAll('[data-step]');
+  const tabs = document.querySelectorAll('[data-step-tab]');
+  const nextBtn = document.getElementById('buNext');
+  const backBtn = document.getElementById('buBack');
+  const hint = document.getElementById('buHint');
+  const nextLabels = {1:'Weiter zur Kurswoche', 2:'Weiter zu deinen Daten', 3:'Zum Antrag'};
+
+  function valid(n) {
+    if (n === 1) return !!st.state;
+    if (n === 2) return !!st.courseId && !!st.courseDate;
+    if (n === 3) {
+      return document.getElementById('bfn').value && document.getElementById('bln').value &&
+             /.+@.+\..+/.test(document.getElementById('bem').value) && document.getElementById('bemp').value;
+    }
+    return true;
+  }
+
+  function render() {
+    sections.forEach(s => s.hidden = Number(s.dataset.step) !== step);
+    tabs.forEach(t => {
+      const n = Number(t.dataset.stepTab);
+      t.dataset.state = n < step ? 'done' : (n === step ? 'current' : '');
+    });
+    backBtn.hidden = step === 1;
+    nextBtn.hidden = step === 4;
+    nextBtn.textContent = nextLabels[step] || '';
+    nextBtn.disabled = !valid(step);
+    hint.textContent = valid(step) ? '' : (step===1 ? 'Wähle ein Bundesland.' : step===2 ? 'Wähle Kurs und Termin.' : 'Bitte Name, E-Mail und Firma angeben.');
+    updateSummary();
+    if (step === 4) renderLetter();
+    window.scrollTo({top: document.querySelector('[data-r=\"2col\"]').offsetTop - 90, behavior: 'smooth'});
+  }
+
+  document.querySelectorAll('.state-chip').forEach(btn => btn.addEventListener('click', () => {
+    st.state = btn.dataset.state;
+    document.querySelectorAll('.state-chip').forEach(b => b.dataset.active = String(b === btn));
+    const law = BU_LAW[st.state];
+    const info = document.getElementById('stateInfo');
+    info.hidden = false;
+    const tone = law.status === 'ok' ? {bg:'var(--color-accent-2-100)', fg:'var(--color-accent-2-900)', icon:'var(--color-accent-2-600)'}
+      : law.status === 'future' ? {bg:'var(--color-accent-100)', fg:'var(--color-accent-900)', icon:'var(--color-accent-600)'}
+      : {bg:'var(--color-neutral-200)', fg:'var(--color-neutral-900)', icon:'var(--color-neutral-600)'};
+    info.style.background = tone.bg; info.style.color = tone.fg;
+    document.getElementById('stateIcon').style.background = tone.icon;
+    document.getElementById('stateIcon').textContent = law.status === 'ok' ? '✓' : (law.status === 'future' ? '!' : '–');
+    document.getElementById('stateHeadline').textContent = law.status === 'ok' ? 'Bildungsurlaub ist in ' + st.state + ' möglich'
+      : law.status === 'future' ? 'In ' + st.state + ' erst ab 2027' : 'Kein gesetzlicher Anspruch in ' + st.state;
+    document.getElementById('stateBody').textContent = law.extra;
+    document.getElementById('factDays').textContent = law.days;
+    document.getElementById('factLead').textContent = law.lead === '–' ? 'frei vereinbar' : law.lead + ' vorher';
+    document.getElementById('factLaw').textContent = law.law;
+    render();
+  }));
+
+  document.querySelectorAll('.date-chip').forEach(btn => btn.addEventListener('click', () => {
+    st.courseId = btn.dataset.course;
+    st.courseDate = btn.dataset.date;
+    document.querySelectorAll('.date-chip').forEach(b => b.dataset.active = String(b === btn));
+    document.querySelectorAll('[data-course-block]').forEach(b => b.dataset.active = String(b.dataset.courseId === st.courseId));
+    const c = BU_COURSES.find(x => x.id === st.courseId);
+    document.getElementById('leadHint').textContent = 'Sprich den Termin frühzeitig mit deinem Arbeitgeber ab.';
+    render();
+  }));
+
+  nextBtn.addEventListener('click', () => { if (valid(step) && step < 4) { step++; render(); } });
+  backBtn.addEventListener('click', () => { if (step > 1) { step--; render(); } });
+
+  function updateSummary() {
+    const c = BU_COURSES.find(x => x.id === st.courseId);
+    const rows = [
+      ['Bundesland', st.state || '—'],
+      ['Kurs', c ? c.name : '—'],
+      ['Termin', st.courseDate || '—'],
+      ['Name', ((document.getElementById('bfn').value||'') + ' ' + (document.getElementById('bln').value||'')).trim() || '—'],
+      ['E-Mail', document.getElementById('bem').value || '—'],
+    ];
+    document.getElementById('buSummary').innerHTML = rows.map(r =>
+      '<div><dt style="font-size:12.5px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.55">'+r[0]+'</dt><dd style="margin:3px 0 0">'+r[1]+'</dd></div>'
+    ).join('');
+  }
+  ['bfn','bln','bem'].forEach(id => document.getElementById(id).addEventListener('input', updateSummary));
+
+  function renderLetter() {
+    const c = BU_COURSES.find(x => x.id === st.courseId);
+    const law = BU_LAW[st.state];
+    const fn = document.getElementById('bfn').value, ln = document.getElementById('bln').value;
+    const sender = [((fn+' '+ln).trim()), document.getElementById('bst').value, ((document.getElementById('bzip').value+' '+document.getElementById('bcity').value).trim()), document.getElementById('bem').value].filter(Boolean).join('\n') || 'Dein Name\nStraße\nPLZ Ort';
+    const recipient = [document.getElementById('bemp').value, document.getElementById('bcon').value, document.getElementById('bempaddr').value, ((document.getElementById('bempzip').value+' '+document.getElementById('bempcity').value).trim())].filter(Boolean).join('\n') || 'Arbeitgeber\nAnsprechpartner*in\nAnschrift';
+    const today = new Date().toLocaleDateString('de-DE');
+    const kursName = c ? c.name : 'Wochenkurs bei BETAMOVE';
+    const zeitraum = st.courseDate || '[Kurstermin]';
+    let anspruch;
+    if (law) {
+      anspruch = law.status === 'ok' ? ('Nach ' + law.law + ' steht mir ein Anspruch auf Bildungsfreistellung von ' + law.days + ' zu.')
+        : law.status === 'future' ? ('In ' + st.state + ' tritt der gesetzliche Anspruch (' + law.days + ') erst 2027 in Kraft. Ich bitte daher um eine freiwillige Freistellung für diese Weiterbildung.')
+        : ('In ' + st.state + ' besteht kein gesetzlicher Anspruch auf Bildungsurlaub. Ich bitte daher um eine freiwillige Freistellung für diese Weiterbildung.');
+    } else {
+      anspruch = 'Nach dem Bildungsfreistellungsgesetz meines Bundeslandes steht mir ein Anspruch auf Bildungsurlaub zu.';
+    }
+    const body = 'Sehr geehrte Damen und Herren,\n\n' +
+      'hiermit beantrage ich die Freistellung für die Bildungsveranstaltung „' + kursName + '“ des Anbieters BETAMOVE, Leipzig.\n\n' +
+      'Zeitraum: ' + zeitraum + ' (5 Tage, jeweils mindestens 6 Unterrichtsstunden)\n' +
+      'Veranstalter: BETAMOVE, Leipzig – info@betamove.de\n' +
+      'Arbeitsort / Bundesland: ' + (st.state || '[Bundesland]') + '\n\n' +
+      anspruch + '\n\n' +
+      'Inhalt der Veranstaltung: ' + (c ? c.text : 'Kompetenzvermittlung in Theorie und Praxis mit täglicher Reflexion.') + '\n\n' +
+      'Lernziele:\n' + (c ? c.learning.map(l => '· ' + l).join('\n') : '· Strukturierte Risikobewertung\n· Entscheidungsfindung unter Belastung') + '\n\n' +
+      'Mehrwert für meinen Arbeitsalltag: ' + (c ? c.benefit : 'Der Kurs stärkt Risikobewertung, Entscheidungsfähigkeit und Zusammenarbeit im Team.') + '\n\n' +
+      'Programm, Lernziele und Zeitplan des Anbieters lege ich diesem Antrag bei.\n\n' +
+      'Ich bitte um eine schriftliche Bestätigung der Freistellung, damit ich meinen Platz verbindlich buchen kann.\n\n' +
+      'Mit freundlichen Grüßen\n\n\n' + (((fn+' '+ln).trim()) || '[Name]');
+    document.getElementById('letterSender').textContent = sender;
+    document.getElementById('letterRecipient').textContent = recipient;
+    document.getElementById('letterDate').textContent = 'Leipzig, ' + today;
+    document.getElementById('letterBody').textContent = body;
+    const agb = document.getElementById('buAgb');
+    const submit = document.getElementById('buSubmit');
+    function syncSubmit() { submit.disabled = !agb.checked; document.getElementById('buHint4').textContent = agb.checked ? '' : 'Bitte AGB bestätigen.'; }
+    agb.addEventListener('change', syncSubmit);
+    syncSubmit();
+  }
+
+  document.getElementById('buSubmit').addEventListener('click', (e) => {
+    e.preventDefault(); // Kein echtes Backend angebunden — Versand folgt mit der Supabase-Anbindung
+    document.getElementById('buSuccess').hidden = false;
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
