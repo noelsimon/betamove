@@ -16,6 +16,6 @@
 // kontakt.html beim Absenden einen sauberen Hinweis ("nicht verbunden") statt
 // eines kaputten Fehlers — siehe js/supabase-client.js.
 window.BETAMOVE_SUPABASE = {
-  url: 'DEINE-SUPABASE-PROJECT-URL',
-  anonKey: 'DEIN-SUPABASE-ANON-KEY',
+  url: 'DEINE-SUPABASE-PROJECT-URL', // TODO: noch einzutragen, siehe Chat
+  anonKey: 'sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA',
 };
