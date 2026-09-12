@@ -3,7 +3,7 @@ name: Deploy static site to GitHub Pages
 on:
   push:
     branches:
-      - main
+      - claude/github-website-deployment-bg4ct0
   workflow_dispatch:
 
 permissions:
