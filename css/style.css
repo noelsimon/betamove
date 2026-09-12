@@ -117,6 +117,12 @@ textarea.input { resize: vertical; font-family: inherit; }
 .preview-banner { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--color-accent-2-100); color: var(--color-accent-2-900); border: 1px solid var(--color-accent-2-300); border-radius: var(--radius-md); padding: 11px 18px; font-size: 13.5px; margin-bottom: 24px; }
 .preview-banner svg { flex: none; }
 
+/* Fehlerzustand bei Formularen (z.B. Supabase-Insert fehlgeschlagen oder
+   noch nicht konfiguriert) — bewusst eigene, gedeckte Rot-Töne, da die
+   Design-Tokens oben keine Fehlerfarbe vorsehen. */
+.form-error { display: flex; gap: 10px; align-items: flex-start; background: #fbeaea; color: #7a2020; border: 1px solid #e3b3b3; border-radius: var(--radius-md); padding: 13px 18px; font-size: 14.5px; margin-top: 16px; max-width: 60ch; }
+.form-error svg { flex: none; margin-top: 1px; }
+
 /* Hover states that were `style-hover="…"` attributes in the canvas export
    (a Claude Design authoring feature with no plain-CSS equivalent) */
 .hover-tint:hover { background: var(--color-accent-100) !important; }

@@ -197,12 +197,24 @@
             </label>
           </section>
 
+          <!-- Honeypot gegen simple Formular-Bots: für Menschen unsichtbar
+               (per Position außerhalb des Bildschirms, nicht per display:none —
+               manche Bots ignorieren display:none-Felder gezielt), aus der
+               Tab-Reihenfolge entfernt und nicht in den Formular-Steps. Ist
+               dieses Feld beim Absenden ausgefüllt, wird die Anmeldung
+               stillschweigend verworfen, siehe submitBtn-Handler unten. -->
+          <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+            <label for="hpWebsite">Bitte leer lassen</label>
+            <input type="text" id="hpWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
           <div style="display:flex;gap:12px;margin-top:36px;flex-wrap:wrap">
             <button type="button" id="backBtn" class="btn btn-secondary" style="font-size:16px;padding:14px 26px" hidden>Zurück</button>
             <button type="button" id="nextBtn" class="btn btn-primary" style="font-size:16px;padding:14px 30px">Weiter zu deinen Daten</button>
             <button type="button" id="submitBtn" class="btn btn-primary" style="font-size:16px;padding:14px 30px" hidden>Anmeldung abschicken</button>
             <span id="hintText" style="align-self:center;font-size:14px;opacity:0.6"></span>
           </div>
+          <div id="submitError" class="form-error" role="alert" hidden></div>
         </div>
 
         <aside data-r="aside" style="position:sticky;top:96px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;box-shadow:var(--shadow-sm)">
@@ -280,6 +292,13 @@
   </button>
 </div>
 <script src="js/main.js"></script>
+<!-- Supabase-JS per CDN (kein Build-Schritt/npm nötig). Version bewusst fest
+     gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
+     der Seite nicht unbemerkt ändert, wenn Supabase eine neue Version
+     veröffentlicht. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script>
 const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "level": "Einstieg Fels", "dauer": "2 Tage", "price": 75, "img": "kurs-halle.jpg", "date": "06.06. – 07.06.2026", "ort": "Klettergarten um Leipzig", "teaser": "Der Klassiker für alle, die aus der Halle raus wollen: Vorsteigen und Sichern am Naturfels, Routenauswahl, Abbauen und Abseilen.", "beschreibung": "Du hast bereits Klettererfahrungen in der Kletterhalle gesammelt und hast Lust, endlich draußen am Fels zu klettern? Dann solltest du auf jeden Fall diesen Kurs besuchen.", "lernziel": "Nach dem Kurs kannst du selbstständig in einem Klettergarten klettern und kennst alle wichtigen Techniken, um sicher nach oben sowie nach unten zu kommen.", "inhalte": ["Vorsteigen und Sichern am Naturfels", "Einhängen der Zwischensicherungen", "Sinnvolle Fels- und Routenauswahl", "Abbauen des Materials und Abseilen", "Gefahrensituationen Outdoor"], "voraussetzungen": ["Vorstieg klettern im 5. Grad in der Kletterhalle", "Erfahrungen im Vorstieg sichern (auch bereits Stürze gesichert)"], "equipment": ["Gurt", "Seil", "Sicherungsgerät (Halbautomat o. Autotuber)", "Helm", "Exen"], "hinweis": "Der Ort wird vor dem Kurs mitgeteilt. Vergünstigter Preis für Studierende und Azubis."}, {"id": "msl", "title": "Mehrseillängen für Fortgeschrittene", "level": "Fortgeschritten", "dauer": "2 Tage", "price": 169, "img": "kurs-msl.jpg", "date": "Termin auf Anfrage", "ort": "Wird vor dem Kurs mitgeteilt", "teaser": "Standplatzbau, behelfsmäßige Bergrettung und individuelles Feedback zu deinen Gewohnheiten in der Mehrseillänge.", "beschreibung": "Du besitzt bereits Erfahrung im Klettern von Mehrseillängen, hast ein gutes Handling mit dem Alpin-Tuber und kannst selbstständig einen Standplatz bauen? In diesem Kurs erweitern wir diese Fähigkeiten und schauen deine Gewohnheiten oder eventuelle Fehler genau an. Du lernst die Grundlagen der behelfsmäßigen Bergrettung, sodass du auch im Notfall reagieren kannst.", "lernziel": "Durch individuelles Feedback und die Einschätzung des Kletterlehrers kannst du deinen derzeitigen Wissensstand prüfen. Außerdem weißt du, woran du noch arbeiten kannst. Dazu erhältst du Grundkenntnisse in der behelfsmäßigen Bergrettung und erweiterte Fähigkeiten im Standplatzbau.", "inhalte": ["Behelfsmäßige Bergrettung", "Individuelles Feedback und aktuelle Lehrmeinung Mehrseillängen", "Möglichst viel Praxis"], "voraussetzungen": ["Erfahrungen beim Mehrseillängen klettern", "Umgang mit Alpin-Tuber", "Erfahrungen im Abseilen"], "equipment": ["Gurt", "Halbseile", "Sicherungsgerät (Alpin-Tuber)", "5–10 Karabiner", "Helm", "Alpinexen", "5 m 6 mm Reepschnur und Prusikschnur", "Bandschlinge (120 cm, 240 cm)", "Adjust (Selbstsicherung)"], "hinweis": "BETAMOVE passt sich an die Gruppe an – die Lehrinhalte können sich dadurch etwas verschieben."}, {"id": "mobil", "title": "Keile, Friends und Co. – Mobile Sicherung", "level": "Fortgeschritten", "dauer": "1 Tag", "price": 149, "img": "kurs-mobil.jpg", "date": "Termin auf Anfrage", "ort": "Klettergebiet nach Absprache", "teaser": "Cams und Keile legen, testen und vertrauen lernen – inklusive Trainingsaufbau für dein eigenes Üben.", "beschreibung": "Du hast erste Erfahrungen mit mobilen Sicherungen gesammelt oder möchtest in das Thema einsteigen? In diesem Kurs lernst du den sicheren Umgang mit mobilen Sicherungsmitteln – mit besonderem Fokus auf Cams. Zusätzlich bekommst du einen sinnvollen Trainingsaufbau an die Hand.", "lernziel": "Der Kurs vermittelt dir ein solides Gefühl für mobile Sicherungen – durch Wissen, Ausprobieren und Wiederholen. Nach dem Kurs bist du in der Lage, selbstständig am Fels mit mobilen Sicherungen zu klettern und Vertrauen in dein Material aufzubauen.", "inhalte": ["Theoretische Grundlagen zu mobilen Sicherungen", "Intensives Praxistraining im Legen von Cams und Keilen", "Konkrete Übungen für dein eigenes Training", "Optional: Einführung in die Rissklettertechnik"], "voraussetzungen": ["Sicheres Vorstiegsklettern im 5. Grad am Naturfels", "Gute Sicherungspraxis beim Sichern von Kletternden"], "equipment": ["Klettergurt", "Helm", "Mobile Sicherungen (Cams, Keile etc.)", "Einfachseil", "Sicherungsgerät (Autotuber oder Halbautomat)", "Optional: Reibungsassistent"], "hinweis": ""}, {"id": "technik", "title": "Besser Klettern – Bewegungstechnik", "level": "Alle Level", "dauer": "1 Tag", "price": 99, "img": "kurs-technik.jpg", "date": "Termin auf Anfrage", "ort": "Kletterhalle oder Fels", "teaser": "Bewegungsanalyse mit individuellem Feedback statt Schema F – wir finden heraus, was dich bremst.", "beschreibung": "Du hast das Gefühl, beim Klettern auf der Stelle zu treten? Deine Technik fühlt sich nicht stimmig an, die Motivation lässt nach? In diesem Kurs nehmen wir deine Bewegungen gezielt unter die Lupe. Statt vorgegebener Schemata erhältst du persönliches Feedback, das genau auf dich und dein Klettern zugeschnitten ist.", "lernziel": "Du verstehst nach dem Kurs, welche kleinen Gewohnheiten sich eingeschlichen haben, was dir fehlt, um dein Ziel zu erreichen, und erhältst konkrete Aufgaben, die dir helfen, die Bewegungen zu verbessern.", "inhalte": ["Bewegungsanalyse mit individuellem Feedback", "Konkrete individuelle Aufgaben zur Verbesserung deiner Bewegungstechnik", "Verständnis-Aufbau der Kletter-Phasen"], "voraussetzungen": ["Bewegungserfahrung im 6. Grad (idealerweise Vorstieg)", "Vorstieg sichern von Vorteil"], "equipment": ["Gurt", "Einfachseil", "Sicherungsgerät (Autotuber, Halbautomat)", "Eventuell Reibungsassistent"], "hinweis": "Hast du noch keine langjährige Erfahrung, schreibe das bitte bei der Anmeldung dazu – dann telefonieren wir vorher. Anmelden kannst du dich trotzdem."}, {"id": "update", "title": "Sicherungs-Update", "level": "Auffrischung", "dauer": "3 Stunden", "price": 75, "img": "kurs-update.jpg", "date": "16.01.2027", "ort": "Kletterhalle No Limit", "teaser": "Aktuelle Lehrmeinung, Gewohnheiten-Check und Sicherungsmythen aufgedeckt – mit Zertifikat.", "beschreibung": "Du bist dir unsicher, ob du alles richtig machst? In diesem Kurs bringen wir dich auf den aktuellen Stand der Lehrmeinung. Wir betrachten deine Gewohnheiten und decken eventuelle Sicherungs-Mythen auf.", "lernziel": "Nach dem Kurs kennst du die aktuelle Lehrmeinung und hast deine Sicherungspraxis nachhaltig verbessert.", "inhalte": ["Übung der Sicherungspraxis", "Vermittlung der aktuellen Lehrmeinung", "Gewohnheiten-Check mit individueller Rückmeldung", "Zertifikat Sicherungsupdate"], "voraussetzungen": ["Vorstieg klettern im 5. Grad in der Kletterhalle", "Erfahrungen im Vorstieg sichern"], "equipment": ["Seil", "Sicherungsgerät", "Gurt"], "hinweis": ""}, {"id": "sturz", "title": "Sturz- und Sicherungstraining", "level": "Alle Level", "dauer": "3 Stunden", "price": 75, "img": "kurs-sturz.jpg", "date": "Termin auf Anfrage", "ort": "Kletterhalle", "teaser": "Weich sichern, Gewichtsunterschiede verstehen und Stürze ohne Verletzung erlernen.", "beschreibung": "Angst ist ein wichtiger Teil des Kletterns, jedoch ist der Umgang mit diesem Gefühl manchmal schwer. Wir schauen uns diese Ängste an und behandeln sie mit praxisnahen Übungen.", "lernziel": "Nach dem Kurs verstehst du, wie du weich sichern kannst, wie sich ein Gewichtsunterschied auf Stürze auswirkt und was NoGos sind. Du verstehst viele Zusammenhänge zwischen Sturz, Sichern und externen sowie internen Faktoren.", "inhalte": ["Umgang mit dem Sicherungsgerät", "Sturztraining (mit Aufbau für das private Üben)", "Umgang mit Gewichtsunterschieden", "Gefahrenanalyse (interne und externe Faktoren)", "Individuelles Coaching und Empfehlungen", "Kommunikation in einer Seilschaft", "Fallen ohne Verletzung", "Weiches Sichern"], "voraussetzungen": ["Vorstieg sichern (idealerweise bereits Stürze gehalten)", "Routinierter Umgang mit deinem Sicherungsgerät"], "equipment": ["Gurt", "Seil", "Sicherungsgerät (Halbautomat o. Autotuber)"], "hinweis": ""}, {"id": "paket-basis", "title": "Jahresausbildung Basis", "price": 799, "date": "Einstieg jederzeit · nächster Zyklus ab März", "ort": "Leipzig, Elbsandstein und Umgebung", "level": "Stufe 1–3", "dauer": "1 Jahr"}, {"id": "paket-komplett", "title": "Jahresausbildung Komplett", "price": 1490, "date": "Einstieg jederzeit · nächster Zyklus ab März", "ort": "Leipzig, Elbsandstein, Ausbildungswoche outdoor", "level": "Stufe 1–3 + Woche", "dauer": "1 Jahr"}];
 (function(){
@@ -346,6 +365,17 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.querySelector('[data-r="2col"]').scrollIntoView({behavior:'smooth', block:'start'});
   }
 
+  // Vorbestehender Bug, beim Testen der Supabase-Anbindung gefunden und mit
+  // behoben: "Weiter"-Button auf Schritt 2 blieb deaktiviert, weil valid(2)
+  // zwar bei jedem Schrittwechsel geprüft wurde, aber nichts erneut prüfte,
+  // während man in die Felder tippte — ohne das war die Anmeldung mit Tastatur
+  // nie abschließbar.
+  function revalidateNext() {
+    document.getElementById('nextBtn').disabled = !valid(step);
+    document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level.');
+  }
+  ['fn','ln','em','ph'].forEach(id => document.getElementById(id).addEventListener('input', revalidateNext));
+
   document.querySelectorAll('.opt-btn').forEach(btn => btn.addEventListener('click', () => {
     f.courseId = btn.dataset.course;
     document.querySelectorAll('.opt-btn').forEach(b => b.dataset.active = String(b === btn));
@@ -374,14 +404,72 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.getElementById('submitBtn').disabled = !e.target.checked;
   });
 
-  document.getElementById('submitBtn').addEventListener('click', (e) => {
-    e.preventDefault(); // Kein echtes Backend angebunden — Versand folgt mit der Supabase-Anbindung / Formspree
-    if (!document.getElementById('agb').checked) return;
-    const c = course();
+  function showSuccess(c) {
     document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + (c ? c.title : 'deinen Kurs') + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + document.getElementById('em').value + ' mit der Bestätigung und allen Details.';
     document.getElementById('formPanel').hidden = true;
     document.getElementById('successPanel').hidden = false;
     window.scrollTo(0,0);
+  }
+
+  function showSubmitError(message) {
+    const box = document.getElementById('submitError');
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  const FALLBACK_EMAIL_HINT = ' Bitte versuch es erneut oder schreib uns direkt eine E-Mail an info@betamove.de.';
+
+  document.getElementById('submitBtn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!document.getElementById('agb').checked) return;
+
+    const errorBox = document.getElementById('submitError');
+    errorBox.hidden = true;
+
+    const c = course();
+
+    // Honeypot ausgefüllt -> vermutlich ein Bot. Wir verwerfen die Anmeldung
+    // still (kein Insert), zeigen dem Absender aber ganz normal den
+    // Erfolgs-Screen, damit ein Bot keinen Hinweis bekommt, dass er erkannt wurde.
+    const honeypot = document.getElementById('hpWebsite');
+    if (honeypot && honeypot.value.trim()) {
+      showSuccess(c);
+      return;
+    }
+
+    const { client, error: cfgError } = window.bmGetSupabaseClient ? window.bmGetSupabaseClient() : { client: null, error: 'sdk_missing' };
+    if (!client) {
+      showSubmitError('Die Anmeldung ist aktuell noch nicht mit der Datenbank verbunden.' + FALLBACK_EMAIL_HINT);
+      return;
+    }
+
+    const submitBtn = document.getElementById('submitBtn');
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Wird gesendet …';
+
+    try {
+      const { error } = await client.from('kursanmeldungen').insert({
+        vorname: document.getElementById('fn').value.trim(),
+        nachname: document.getElementById('ln').value.trim(),
+        email: document.getElementById('em').value.trim(),
+        telefon: document.getElementById('ph').value.trim() || null,
+        kurs_id: f.courseId,
+        kurs_titel: c ? c.title : '',
+        level: f.level,
+        leihmaterial: f.gear,
+        rabatt_typ: f.discount,
+        anmerkungen: document.getElementById('nt').value.trim() || null,
+        agb_akzeptiert: true,
+      });
+      if (error) throw error;
+      showSuccess(c);
+    } catch (err) {
+      showSubmitError('Anmeldung konnte leider nicht gesendet werden.' + FALLBACK_EMAIL_HINT);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
 
   document.getElementById('resetForm').addEventListener('click', () => {
@@ -392,6 +480,8 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.querySelectorAll('.opt-btn,.level-opt,.discount-opt').forEach(b => b.dataset.active = 'false');
     ['fn','ln','em','ph','nt'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('agb').checked = false;
+    document.getElementById('hpWebsite').value = '';
+    document.getElementById('submitError').hidden = true;
     render();
   });
 

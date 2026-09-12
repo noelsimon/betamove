@@ -46,19 +46,21 @@
           <span>Danke für deine Nachricht! Wir melden uns in Kürze bei dir.</span>
         </div>
 
-        <!--
-          TODO vor Veröffentlichung: Formular-Endpunkt eintragen.
-          Empfehlung: kostenloses Konto bei https://formspree.io anlegen,
-          eigene Formular-ID erzeugen und unten bei "action" einsetzen
-          (ersetzt "DEINE-FORM-ID"). Ohne echten Endpunkt landen
-          Nachrichten nirgends.
-        -->
-        <form id="kontaktForm" action="https://formspree.io/f/DEINE-FORM-ID" method="POST" style="display:flex;flex-direction:column;gap:16px">
+        <form id="kontaktForm" style="display:flex;flex-direction:column;gap:16px">
           <div class="field"><label for="kn">Name</label><input id="kn" name="name" class="input" style="min-height:46px;font-size:16px" placeholder="Vor- und Nachname" required></div>
           <div class="field"><label for="ke">E-Mail</label><input id="ke" name="email" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="du@example.de" required></div>
           <div class="field"><label for="kb">Betreff</label><input id="kb" name="betreff" class="input" style="min-height:46px;font-size:16px" placeholder="Worum geht es?"></div>
-          <div class="field"><label for="km">Nachricht</label><textarea id="km" name="nachricht" class="input" style="min-height:150px;font-size:16px;border-radius:var(--radius-md)" placeholder="Deine Nachricht …"></textarea></div>
+          <div class="field"><label for="km">Nachricht</label><textarea id="km" name="nachricht" class="input" style="min-height:150px;font-size:16px;border-radius:var(--radius-md)" placeholder="Deine Nachricht …" required></textarea></div>
+          <!-- Honeypot gegen simple Formular-Bots: für Menschen unsichtbar
+               (Position außerhalb des Bildschirms statt display:none, aus der
+               Tab-Reihenfolge entfernt). Ausgefüllt = vermutlich Bot, siehe
+               Submit-Handler unten. -->
+          <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+            <label for="khpWebsite">Bitte leer lassen</label>
+            <input type="text" id="khpWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
           <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:16px;padding:14px 28px">Nachricht senden</button>
+          <div id="formError" class="form-error" role="alert" hidden></div>
         </form>
       </div>
       <div>
@@ -67,14 +69,6 @@
           <h3 style="margin:0;font-size:22px">BETAMOVE</h3>
           <p style="margin:0;font-size:16px;opacity:0.85">Leipzig, Sachsen<br>info@betamove.de</p>
           <p style="margin:0;font-size:15px;opacity:0.7">Kurse in Leipzig und Umgebung, im Elbsandstein sowie auf Kletterreisen in Europa.</p>
-        </div>
-        <div id="newsletter" style="margin-top:24px;background:var(--color-accent-2-800);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px">
-          <h3 style="margin:0 0 6px;font-size:23px;color:#ffffff">Zum Newsletter</h3>
-          <p style="margin:0 0 16px;color:var(--color-accent-2-100);opacity:0.9;font-size:15.5px">Keine wichtigen Informationen zu Kursen verpassen.</p>
-          <form id="newsletterForm" action="https://formspree.io/f/DEINE-FORM-ID" method="POST" style="display:flex;gap:10px;flex-wrap:wrap">
-            <input class="input" name="email" type="email" style="flex:1;min-width:180px;min-height:44px;font-size:15px;background:var(--color-bg)" placeholder="E-Mail-Adresse" required>
-            <button type="submit" class="btn btn-onblue" style="font-size:15px;padding:12px 22px">Anmelden</button>
-          </form>
         </div>
       </div>
     </div>
@@ -140,30 +134,66 @@
   </button>
 </div>
 <script src="js/main.js"></script>
+<!-- Supabase-JS per CDN (kein Build-Schritt/npm nötig). Version bewusst fest
+     gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
+     der Seite nicht unbemerkt ändert, wenn Supabase eine neue Version
+     veröffentlicht. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script>
 (function(){
   const form = document.getElementById('kontaktForm');
   const success = document.getElementById('formSuccess');
+  const errorBox = document.getElementById('formError');
+  const FALLBACK_EMAIL_HINT = ' Bitte versuch es erneut oder schreib uns direkt eine E-Mail an info@betamove.de.';
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = new FormData(form);
-    try {
-      const res = await fetch(form.action, { method: 'POST', body: data, headers: { 'Accept': 'application/json' } });
-      if (res.ok) {
-        success.style.display = 'flex';
-        form.reset();
-        success.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        alert('Senden hat leider nicht geklappt. Bitte versuch es erneut oder schreib uns direkt eine E-Mail an info@betamove.de.');
-      }
-    } catch (err) {
-      alert('Senden hat leider nicht geklappt. Bitte versuch es erneut oder schreib uns direkt eine E-Mail an info@betamove.de.');
+    errorBox.hidden = true;
+
+    // Honeypot ausgefüllt -> vermutlich ein Bot. Anfrage wird still verworfen
+    // (kein Insert), dem Absender aber ganz normal der Erfolg gezeigt.
+    const honeypot = document.getElementById('khpWebsite');
+    if (honeypot && honeypot.value.trim()) {
+      success.style.display = 'flex';
+      form.reset();
+      return;
     }
-  });
-  const nl = document.getElementById('newsletterForm');
-  nl.addEventListener('submit', (e) => {
-    e.preventDefault();
-    alert('Danke! (Diese Vorschau hat noch keinen echten Formular-Endpunkt hinterlegt — siehe TODO im Quellcode.)');
+
+    const { client, error: cfgError } = window.bmGetSupabaseClient ? window.bmGetSupabaseClient() : { client: null, error: 'sdk_missing' };
+    if (!client) {
+      showError('Das Kontaktformular ist aktuell noch nicht mit der Datenbank verbunden.' + FALLBACK_EMAIL_HINT);
+      return;
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Wird gesendet …';
+
+    try {
+      const { error } = await client.from('kontaktanfragen').insert({
+        name: document.getElementById('kn').value.trim(),
+        email: document.getElementById('ke').value.trim(),
+        betreff: document.getElementById('kb').value.trim() || null,
+        nachricht: document.getElementById('km').value.trim(),
+      });
+      if (error) throw error;
+      success.style.display = 'flex';
+      form.reset();
+      success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      showError('Nachricht konnte leider nicht gesendet werden.' + FALLBACK_EMAIL_HINT);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
 })();
 </script>

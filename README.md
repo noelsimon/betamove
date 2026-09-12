@@ -15,13 +15,15 @@ Marketing- und Infoseiten:
 ```
 index.html                      Startseite
 kurse.html                       Kursübersicht mit Suche/Filtern
-anmeldung.html                   Kursanmeldung (4-Schritte-Formular, sendet noch nirgends hin)
+anmeldung.html                   Kursanmeldung (4-Schritte-Formular, schreibt per Supabase in
+                                  `kursanmeldungen` — echte Zugangsdaten fehlen noch, siehe unten)
 ausbildung.html                  Ausbildungskonzept, Module, Jahrespakete
 bildungsurlaub.html              Bildungsurlaub: Wochenkurse, Anspruch nach Bundesland, FAQ
 bildungsurlaub-antrag.html       Antrag erstellen (4-Schritte-Formular mit Live-Briefvorschau)
 team.html                        Team
 ueber-uns.html                   Über BETAMOVE
-kontakt.html                     Kontaktformular + Newsletter-Anmeldung
+kontakt.html                     Kontaktformular (schreibt per Supabase in `kontaktanfragen`;
+                                  kein Newsletter-Formular mehr)
 agb.html / impressum.html / datenschutz.html / widerruf.html   Rechtstexte
 ```
 
@@ -49,10 +51,15 @@ konto-profil.html                 Profildaten
 Gemeinsame Dateien:
 
 ```
-css/style.css     Gesamtes Styling (Design-Tokens, Farben, Buttons, Komponenten oben in der Datei)
-js/main.js        Mobiles Menü, aktive Nav-Markierung, Chat-Widget-Optik, Accordion-Helfer,
-                   kleine Lernfortschritts-Hilfsfunktion (bmProgress, nutzt nur localStorage)
-assets-min/       Bild- und Videodateien (siehe assets-min/README.md — Ordner ist absichtlich leer)
+css/style.css              Gesamtes Styling (Design-Tokens, Farben, Buttons, Komponenten oben in der Datei)
+js/main.js                 Mobiles Menü, aktive Nav-Markierung, Chat-Widget-Optik, Accordion-Helfer,
+                            kleine Lernfortschritts-Hilfsfunktion (bmProgress, nutzt nur localStorage)
+js/supabase-config.js      Supabase-URL + anon key — aktuell Platzhalter, siehe unten
+js/supabase-client.js      Baut daraus (defensiv, ohne zu crashen) den Supabase-Client für
+                            anmeldung.html und kontakt.html
+supabase/schema.sql        Tabellen + Row-Level-Security für Supabase, einmalig im SQL-Editor
+                            des Supabase-Projekts auszuführen (siehe unten)
+assets-min/                Bild- und Videodateien (siehe assets-min/README.md — Ordner ist absichtlich leer)
 .github/workflows/deploy-pages.yml   Deployment nach GitHub Pages
 ```
 
@@ -62,10 +69,23 @@ einzeln nachgezogen werden. Das ist bewusst so gehalten (siehe "Kein Build-Schri
 
 ## Vor der Veröffentlichung unbedingt anpassen
 
-1. **Formular-Endpunkt in `kontakt.html`**: aktuell `action="https://formspree.io/f/DEINE-FORM-ID"`
-   (zweimal: Kontaktformular und Newsletter-Anmeldung). Kostenloses Konto auf
-   [formspree.io](https://formspree.io) anlegen, eigene Formular-ID einsetzen. Ohne echten
-   Endpunkt gehen Nachrichten verloren.
+1. **Supabase-Zugangsdaten in `js/supabase-config.js`**: Die Formulare auf `anmeldung.html` und
+   `kontakt.html` schreiben per Supabase-JS-Client (CDN, kein Build-Schritt) direkt in eine
+   Supabase-Tabelle — es wird kein Formspree oder anderer Drittanbieter mehr gebraucht. Dafür
+   nötig:
+   1. Ein Supabase-Projekt anlegen (EU-Region empfohlen) — das ist Kontoerstellung und kann nicht
+      automatisiert werden.
+   2. In `js/supabase-config.js` die beiden Platzhalter `DEINE-SUPABASE-PROJECT-URL` und
+      `DEIN-SUPABASE-ANON-KEY` durch die echten Werte aus dem Supabase-Dashboard ersetzen
+      (Project Settings → API → "Project URL" bzw. "anon public" Key — **nicht** den
+      `service_role`-Key verwenden, der hebelt die Zugriffsbeschränkung komplett aus).
+   3. Den kompletten Inhalt von `supabase/schema.sql` einmalig im Supabase SQL-Editor ausführen
+      (legt die Tabellen `kursanmeldungen` und `kontaktanfragen` inkl. Row-Level-Security an —
+      Details und Sicherheitshinweise stehen als Kommentare in der Datei).
+
+   Ohne echte Werte in `js/supabase-config.js` zeigen beide Formulare beim Absenden einen
+   sauberen Hinweis ("nicht verbunden") statt Daten zu verlieren oder mit einem kaputten
+   JavaScript-Fehler abzubrechen.
 2. **Bilder und Video in `assets-min/`**: Beim Export aus Claude Design waren keine echten
    Bilddateien dabei, nur die Pfade dazu. Die vollständige Liste der erwarteten Dateinamen
    (Logo, Hero-Video, Kursbilder, Teamfotos, Ausbildungskonzept-Diagramm usw.) steht in
@@ -94,7 +114,7 @@ erledigen.
 
 Git-Historie vergisst nichts. Anmeldungen, Kontaktanfragen und alles, was Nutzer*innen über
 Formulare eingeben, darf deshalb nie als Datei ins Repo committet werden — diese Daten laufen
-ausschließlich über den externen Formular-Dienst (Formspree o. Ä.) bzw. später über Supabase.
+ausschließlich über Supabase (Tabellen `kursanmeldungen` und `kontaktanfragen`, siehe oben).
 
 ## Konto, Quiz-Nachweise und Zertifikate: aktuell nur Design-Vorschau
 

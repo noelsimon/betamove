@@ -17,7 +17,7 @@ Stand: 2026-09-12 · Projektmanager: Claude (dieser Chat) · Programmierer: von 
 | E-Mail | **Zoho Mail** auf eigener Domain | von dir gewählt |
 | Framework | Keins — reines HTML/CSS/JS | bleibt portabel (z. B. falls später WordPress gewünscht) |
 
-**Wichtige Änderung gegenüber vorherigem Stand:** Die bereits gebauten Formulare (`kontakt.html`, `anmeldung.html`) nutzen aktuell einen Formspree-Platzhalter. Da du dich für Supabase entscheidest, ersetzt der Programmierer das durch eine Supabase-Tabelle — dann brauchst du Formspree gar nicht erst einzurichten.
+**Umgesetzt:** Die Formulare (`kontakt.html`, `anmeldung.html`) nutzten ursprünglich einen Formspree-Platzhalter. Der Programmierer hat das durch echten Supabase-Code ersetzt (`supabase/schema.sql`, `js/supabase-client.js`) — Formspree wird nicht mehr gebraucht. Es fehlen nur noch die echten Zugangsdaten (Platzhalter in `js/supabase-config.js`), siehe 3.4.
 
 ## 2. Phasen-Übersicht
 
@@ -52,6 +52,7 @@ Impressum/Datenschutz/AGB/Widerruf wurden von der KI entworfen — **müssen vor
 
 ### 3.4 Was ich von dir brauche, bevor Phase 1 starten kann
 - [ ] Supabase-Konto + Projekt angelegt (EU-Region) → Projekt-URL und `anon key` an mich/den Programmierer
+- [ ] **Neu:** Sobald das Supabase-Projekt steht — Projekt-URL + `anon key` in `js/supabase-config.js` eintragen (zwei Platzhalter-Zeilen, klar mit TODO markiert) **und** einmalig den kompletten Inhalt von `supabase/schema.sql` im Supabase-Dashboard unter „SQL Editor" ausführen (legt die Tabellen `kursanmeldungen` + `kontaktanfragen` inkl. RLS an — ohne diesen Schritt läuft kein Insert, auch mit korrekt eingetragenen Zugangsdaten nicht)
 - [ ] Zoho-Mail-Konto für die Domain eingerichtet (zumindest die Absenderadresse, z. B. `info@deinedomain.de`)
 - [ ] Bestätigung des Seiten-Scopes aus 3.1
 - [ ] Rechtstexte gegengelesen (oder zumindest "vorläufig okay, wird vor echtem Launch final geprüft")
@@ -81,3 +82,16 @@ Damit der Programmierer sinnvoll loslegen kann, ohne stecken zu bleiben, muss er
 4. ~~Spam-Schutz~~ — **erledigt:** Basis-Schutz (DB-Validierung + Honeypot-Feld), kein Captcha (siehe 3.2).
 
 **Alle Vorab-Entscheidungen sind getroffen. Der Programmierer kann mit dem Code beginnen** (Formulare, Tabellenschema/SQL, Fehlerbehandlung) — nur der **echte Supabase-Projektzugang (URL + anon key)** fehlt noch für den Live-Test, siehe 3.4. Bis dahin arbeitet der Programmierer mit klar markierten Platzhaltern (analog zum bisherigen Formspree-TODO-Muster).
+
+## 7. Umsetzungsstand (Programmierer)
+
+Code für 3.2 ist fertig implementiert, ungetestet gegen ein echtes Supabase-Projekt (kein Zugang vorhanden):
+- `supabase/schema.sql` — beide Tabellen, RLS aktiviert, nur INSERT-Policy + DB-seitige Validierung (Pflichtfelder, E-Mail-Format, Längenlimits).
+- `js/supabase-config.js` — Platzhalter für Projekt-URL + anon key (TODO-Kommentar, analog zum bisherigen Formspree-Muster).
+- `js/supabase-client.js` — baut daraus den Client, fällt sauber (ohne Konsolenfehler) auf einen Konfigurationshinweis zurück, solange die Platzhalter noch drinstehen.
+- `anmeldung.html` — echter Supabase-Insert statt `preventDefault()`-Platzhalter, Honeypot-Feld, Fehlerzustand im UI.
+- `kontakt.html` — Newsletter-Formular entfernt, Kontaktformular auf Supabase-Insert umgestellt, Honeypot-Feld, Fehlerzustand im UI.
+- `css/style.css` — `.form-error`-Klasse für den neuen Fehlerzustand ergänzt.
+- README.md aktualisiert (Formspree-Erwähnung ersetzt, neue TODO-Schritte für Supabase-Setup).
+
+**Noch offen (erst mit echtem Supabase-Zugang möglich):** ein echter End-to-End-Test (Formular absenden → Zeile erscheint in Supabase). Ohne Zugangsdaten wurde nur geprüft, dass beide Formulare mit den Platzhalter-Werten sauber den Konfigurationshinweis zeigen statt mit einem JS-Fehler abzubrechen.
