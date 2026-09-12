@@ -32,16 +32,23 @@ Stand: 2026-09-12 · Projektmanager: Claude (dieser Chat) · Programmierer: von 
 
 Der eigentliche **funktionale Fokus von Phase 1** ist ausschließlich: die Kursanmeldung (`anmeldung.html`) soll echt funktionieren (Supabase-Anbindung statt Formspree-Platzhalter). Alles andere bleibt wie es ist — Design sichtbar, aber ohne echtes Backend, wie in den jeweiligen Vorschau-Bannern schon markiert.
 
-### 3.2 Technische Umsetzung
+### 3.2 Technische Umsetzung (nach Feasibility-Check des Programmierers, final entschieden)
+
 1. Supabase-Projekt (EU-Region) wird angelegt — **das musst du selbst tun** (Kontoerstellung/Zahlungsdaten sind nicht delegierbar).
-2. Tabelle `kursanmeldungen` (Name, E-Mail, Telefon, gewählter Kurs, Nachricht, Zeitstempel) mit Row-Level-Security: **nur Einfügen (INSERT) von außen erlaubt, kein Lesen** — so kann niemand fremde Anmeldungen einsehen, nur du über das Supabase-Dashboard.
-3. `anmeldung.html` schreibt direkt per Supabase-JS-Client in diese Tabelle (kein eigener Server nötig).
-4. Du bekommst neue Anmeldungen entweder über das Supabase-Dashboard zu sehen, oder (optional, etwas mehr Aufwand) per Zoho-Mail-Benachrichtigung über eine Supabase Edge Function — das entscheiden wir nach Rücksprache mit dem Programmierer, wie aufwendig das ist.
-5. GitHub Pages aktivieren (dein einmaliger Klick in den Repo-Einstellungen).
-6. Bilder/Video für die Phase-1-Seiten (Logo, Hero, Kursbilder) müssen von dir geliefert werden (Liste steht in `assets-min/README.md`).
+2. Zwei Tabellen, beide mit RLS **explizit aktiviert** und nur einer INSERT-Policy (kein SELECT von außen):
+   - `kursanmeldungen` — vollständiges Schema nach den tatsächlichen Feldern im 4-Schritte-Formular: Vorname, Nachname, E-Mail, Telefon, gewählter Kurs/Paket, Kletterlevel, Material-Leihe (ja/nein), Studierenden-/Azubi-Rabatt (ja/nein + Hinweis auf Nachweispflicht), Nachricht, AGB-Bestätigung, Zeitstempel.
+   - `kontaktanfragen` — Name, E-Mail, Betreff, Nachricht, Zeitstempel. Ersetzt Formspree auf `kontakt.html`.
+   - **Newsletter-Formular auf `kontakt.html` wird entfernt** (kein Bedarf zum Launch, spart eine dritte Tabelle/einen Anbieter).
+3. Spam-/Datenschutz für die offen beschreibbaren Tabellen: `WITH CHECK`-Constraints (Pflichtfelder, E-Mail-Format, Längenlimits) + ein unsichtbares Honeypot-Feld im Formular (Bots füllen es aus, echte Nutzer sehen es nicht — Einsendung mit ausgefülltem Honeypot wird client-seitig verworfen). Kein Captcha, kein zusätzlicher Dienst.
+4. `anmeldung.html` und `kontakt.html` schreiben direkt per Supabase-JS-Client (CDN-Script, kein Build-Schritt) in die jeweilige Tabelle. Klarer Fehlerzustand im Formular, falls der Insert fehlschlägt (aktuell nicht vorhanden — wird ergänzt).
+5. **Keine E-Mail-Benachrichtigung in Phase 1.** Du prüfst neue Anmeldungen/Anfragen zunächst im Supabase-Dashboard. E-Mail-Alarm (Supabase Edge Function + Zoho SMTP, geschätzt 4–8 Std.) ist bewusst auf später verschoben (Fast-Follow, nicht Teil von Phase 1).
+6. GitHub Pages aktivieren (dein einmaliger Klick in den Repo-Einstellungen).
+7. Bilder/Video für die Seiten (Logo, Hero, Kursbilder) müssen von dir geliefert werden (Liste steht in `assets-min/README.md`).
+
+**Sicherheitshinweis (vom Programmierer bestätigt):** Der Supabase `anon key` ist ein öffentlicher Client-Schlüssel, kein Geheimnis — Sicherheit kommt ausschließlich von aktiviertem RLS + der INSERT-only-Policy, nicht von der Geheimhaltung des Keys. Wichtig: es muss der `anon key` geliefert werden, niemals der `service_role`-Key (der hebelt RLS komplett aus).
 
 ### 3.3 Rechtliches (nicht vom Programmierer lösbar)
-Impressum/Datenschutz/AGB/Widerruf wurden von der KI entworfen — **müssen vor Launch von dir bzw. einer Person mit Rechtskenntnis geprüft werden**, insbesondere weil jetzt echte Personendaten (Kursanmeldungen) gespeichert werden. Das ist ein Blocker, keine Nebensache.
+Impressum/Datenschutz/AGB/Widerruf wurden von der KI entworfen — **müssen vor Launch von dir bzw. einer Person mit Rechtskenntnis geprüft werden**, insbesondere weil jetzt echte Personendaten (Kursanmeldungen, Kontaktanfragen) gespeichert werden. Das ist ein Blocker, keine Nebensache. Die Datenschutzerklärung sollte dabei **Supabase als Auftragsverarbeiter (inkl. AVV)** konkret benennen, sobald echte Anmeldedaten dort liegen.
 
 ### 3.4 Was ich von dir brauche, bevor Phase 1 starten kann
 - [ ] Supabase-Konto + Projekt angelegt (EU-Region) → Projekt-URL und `anon key` an mich/den Programmierer
@@ -69,4 +76,8 @@ Damit der Programmierer sinnvoll loslegen kann, ohne stecken zu bleiben, muss er
 ## 6. Offene Entscheidungen
 
 1. ~~Seiten-Scope~~ — **erledigt:** alle 32 Seiten bleiben live (siehe 3.1).
-2. Soll ich den Programmierer schon mit den vorbereitenden Arbeiten beauftragen (Formular umbauen, Tabellenschema entwerfen), während du parallel das Supabase-Konto einrichtest? Oder warten wir, bis der Zugang da ist?
+2. ~~Kontakt-/Newsletter-Formular~~ — **erledigt:** Newsletter entfällt, Kontaktformular bekommt eigene Supabase-Tabelle (siehe 3.2).
+3. ~~E-Mail-Benachrichtigung~~ — **erledigt:** nicht Teil von Phase 1, nur Dashboard-Check (siehe 3.2).
+4. ~~Spam-Schutz~~ — **erledigt:** Basis-Schutz (DB-Validierung + Honeypot-Feld), kein Captcha (siehe 3.2).
+
+**Alle Vorab-Entscheidungen sind getroffen. Der Programmierer kann mit dem Code beginnen** (Formulare, Tabellenschema/SQL, Fehlerbehandlung) — nur der **echte Supabase-Projektzugang (URL + anon key)** fehlt noch für den Live-Test, siehe 3.4. Bis dahin arbeitet der Programmierer mit klar markierten Platzhaltern (analog zum bisherigen Formspree-TODO-Muster).
