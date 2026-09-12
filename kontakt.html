@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontakt &amp; Kursanmeldung — Betamove</title>
+<meta name="description" content="Kurs bei Betamove anfragen oder Kontakt aufnehmen.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav container">
+    <a href="index.html" class="nav-brand">
+      <span class="nav-logo">B</span>
+      Betamove
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Start</a></li>
+      <li><a href="kurse.html">Kurse</a></li>
+      <li><a href="index.html#ueber">Über uns</a></li>
+      <li><a href="kontakt.html" aria-current="page">Kontakt</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </nav>
+</header>
+
+<main>
+  <section class="section" style="padding-bottom:0">
+    <div class="container">
+      <span class="eyebrow">Kursanmeldung</span>
+      <h1 style="font-size:clamp(28px,4vw,42px)">Kurs anfragen</h1>
+      <p class="lead" style="margin-top:14px">Schick uns dein Wunschdatum und den Kurs — wir melden uns innerhalb von 2 Werktagen mit freien Terminen zurück.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="form-card">
+
+        <div class="form-success" id="formSuccess">
+          Danke für deine Anfrage! Wir melden uns in Kürze bei dir.
+        </div>
+
+        <!--
+          TODO vor Veröffentlichung: Formular-Endpunkt eintragen.
+          Empfehlung: kostenloses Konto bei https://formspree.io anlegen,
+          eigene Formular-ID erzeugen und unten bei "action" einsetzen
+          (ersetzt "DEINE-FORM-ID"). Ohne echten Endpunkt landen
+          Absendungen nirgends.
+        -->
+        <form id="anmeldeForm" action="https://formspree.io/f/DEINE-FORM-ID" method="POST">
+
+          <div class="field-row">
+            <div class="field">
+              <label for="vorname">Vorname</label>
+              <input class="input" type="text" id="vorname" name="vorname" required>
+            </div>
+            <div class="field">
+              <label for="nachname">Nachname</label>
+              <input class="input" type="text" id="nachname" name="nachname" required>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="email">E-Mail</label>
+              <input class="input" type="email" id="email" name="email" required>
+            </div>
+            <div class="field">
+              <label for="telefon">Telefon (optional)</label>
+              <input class="input" type="tel" id="telefon" name="telefon">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="kurs">Kurs</label>
+            <select id="kurs" name="kurs" required>
+              <option value="">Bitte wählen…</option>
+              <option value="Grundkurs Klettern">Grundkurs Klettern</option>
+              <option value="Sicherungsschein-Prüfung">Sicherungsschein-Prüfung</option>
+              <option value="Vorstiegskurs">Vorstiegskurs</option>
+              <option value="Outdoorschein">Outdoorschein</option>
+              <option value="Boulderkurs">Boulderkurs</option>
+              <option value="Sicherungstechnik-Refresher">Sicherungstechnik-Refresher</option>
+              <option value="Sonstiges / Frage">Sonstiges / Frage</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="wunschtermin">Wunschtermin (optional)</label>
+            <input class="input" type="text" id="wunschtermin" name="wunschtermin" placeholder="z. B. ein Wochenende im Mai">
+          </div>
+
+          <div class="field">
+            <label for="nachricht">Nachricht</label>
+            <textarea id="nachricht" name="nachricht" placeholder="Erzähl uns kurz von deiner Vorerfahrung…"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Anfrage senden</button>
+          <p class="form-note">Mit dem Absenden stimmst du zu, dass wir deine Angaben zur Bearbeitung deiner Kursanfrage nutzen. Weitere Infos in unserer Datenschutzerklärung.</p>
+        </form>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" class="nav-brand" style="margin-bottom:10px">
+          <span class="nav-logo">B</span> Betamove
+        </a>
+        <p>Kletterwissen, das sitzt — vor Ort und im Kopf.</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul>
+          <li><a href="index.html">Start</a></li>
+          <li><a href="kurse.html">Kurse</a></li>
+          <li><a href="kontakt.html">Kontakt</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <ul>
+          <li><a href="mailto:info@betamove-beispiel.de">info@betamove-beispiel.de</a></li>
+          <li>Musterstraße 1, 01234 Musterstadt</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Betamove</span>
+      <span>Platzhalter-Inhalte — bitte vor Veröffentlichung anpassen.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  // Vorausgewählten Kurs aus der URL übernehmen (?kurs=...), z.B. von der Kursseite verlinkt
+  const params = new URLSearchParams(window.location.search);
+  const kursParam = params.get('kurs');
+  if (kursParam) {
+    const select = document.getElementById('kurs');
+    for (const opt of select.options) {
+      if (opt.value === kursParam) { opt.selected = true; break; }
+    }
+  }
+
+  // Formular per fetch abschicken, damit wir die Erfolgsmeldung zeigen können,
+  // statt auf Formspree wegzuleiten.
+  const form = document.getElementById('anmeldeForm');
+  const success = document.getElementById('formSuccess');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        success.classList.add('visible');
+        form.reset();
+        success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        alert('Senden hat leider nicht geklappt. Bitte versuch es erneut oder schreib uns direkt eine E-Mail.');
+      }
+    } catch (err) {
+      alert('Senden hat leider nicht geklappt. Bitte versuch es erneut oder schreib uns direkt eine E-Mail.');
+    }
+  });
+</script>
+</body>
+</html>
