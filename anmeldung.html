@@ -195,6 +195,7 @@
               <input type="checkbox" id="agb"><span class="dot"></span>
               <span>Ich habe die <a href="agb.html">AGB</a> und die <a href="datenschutz.html">Datenschutzerklärung</a> gelesen und akzeptiere sie. Mir ist bewusst, dass Klettern eine Risikosportart ist.</span>
             </label>
+            <span id="agbHint" style="display:block;margin-top:8px;font-size:14px;opacity:0.6"></span>
           </section>
 
           <!-- Honeypot gegen simple Formular-Bots: für Menschen unsichtbar
@@ -361,7 +362,7 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.getElementById('nextBtn').disabled = !valid(step);
     document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level.');
     updateAside();
-    if (step === 4) updateSummary();
+    if (step === 4) { updateSummary(); syncSubmit(); }
     document.querySelector('[data-r="2col"]').scrollIntoView({behavior:'smooth', block:'start'});
   }
 
@@ -400,9 +401,18 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
 
   document.getElementById('nextBtn').addEventListener('click', () => { if (valid(step) && step < 4) { step++; render(); } });
   document.getElementById('backBtn').addEventListener('click', () => { if (step > 1) { step--; render(); } });
-  document.getElementById('agb') && document.getElementById('agb').addEventListener('change', e => {
-    document.getElementById('submitBtn').disabled = !e.target.checked;
-  });
+  // Vorbestehender Bug, beim Launch-Check gefunden und mit behoben: der
+  // "Anmeldung abschicken"-Button sah anklickbar aus, bevor die AGB-Checkbox
+  // angehakt war, tat beim Klick aber einfach gar nichts (stiller Return) —
+  // wirkte wie ein kaputter Button. Jetzt: Button startet disabled, Hinweistext
+  // wie in den Schritten 1-3, und der Zustand wird bei jedem Rendern von
+  // Schritt 4 neu gesetzt (nicht nur beim ersten Ankreuzen).
+  function syncSubmit() {
+    const agbEl = document.getElementById('agb');
+    document.getElementById('submitBtn').disabled = !agbEl.checked;
+    document.getElementById('agbHint').textContent = agbEl.checked ? '' : 'Bitte AGB und Datenschutzerklärung bestätigen.';
+  }
+  document.getElementById('agb') && document.getElementById('agb').addEventListener('change', syncSubmit);
 
   function showSuccess(c) {
     document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + (c ? c.title : 'deinen Kurs') + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + document.getElementById('em').value + ' mit der Bestätigung und allen Details.';
