@@ -38,6 +38,7 @@ haben eine `background`-Fläche in `var(--color-surface)` bzw. eine feste `aspec
 | `wissen-hero.jpg` | Wissensplattform: Vorschaubild "Wissensplattform" (Startseite), Artikel-Titelbild „Halle an den Fels" |
 | `wissen-1.jpg` | Bild im Artikel „Halle an den Fels" (Materialkunde-Abschnitt), 16:9 |
 | `kontakt.jpg` | Bild auf der Kontaktseite neben dem Formular, 4:3 |
+| `og-default.jpg` | Social-Media-Vorschaubild beim Teilen von Links, 1200×630px empfohlen (einheitliches Platzhalterbild für alle Seiten, verlinkt über `og:image`/`twitter:image` im `<head>`) |
 
 ## Partner-Logos (im Original per Claude-Design „image-slot" direkt im Browser editiert)
 
