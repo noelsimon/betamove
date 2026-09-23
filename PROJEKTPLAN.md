@@ -60,6 +60,34 @@ Impressum/Datenschutz/AGB/Widerruf wurden von der KI entworfen — **müssen vor
 ### 3.5 Definition of Done — Phase 1
 Kursanmeldung ist live, schreibt erfolgreich in Supabase, GitHub Pages läuft, nur die vereinbarten Seiten sind sichtbar/verlinkt, Rechtstexte sind freigegeben.
 
+## 3.6 E-Mail-Benachrichtigung (nachträglich beauftragt, 2026-09-23)
+
+Nach dem Launch-Readiness-Check hat die Kundin explizit gefordert: Sie soll bei jeder neuen
+Kursanmeldung eine E-Mail bekommen, die anmeldende Person automatisch eine Bestätigungs-Mail.
+
+**Entscheidung:** [Resend](https://resend.com) als Transaktions-Mail-Dienst (statt rohem
+Zoho-SMTP) — einfacher einzurichten, zuverlässigere Zustellung/Tracking, großzügiger Gratis-Tarif.
+
+**Technischer Weg:**
+1. Supabase **Database Webhook** auf `INSERT` in `kursanmeldungen` → ruft eine **Supabase Edge
+   Function** auf.
+2. Die Edge Function verschickt über die Resend-API zwei Mails: eine Benachrichtigung an die
+   Kundin selbst, eine Bestätigung an die im Formular angegebene Adresse der anmeldenden Person.
+3. Der Resend-API-Key liegt sicher als Edge-Function-Secret (server-seitig, nie im Frontend/Repo).
+4. Die bestehenden RLS-Policies aus `supabase/schema.sql` bleiben unverändert — der Webhook läuft
+   mit vollen Rechten unabhängig vom `anon key`.
+
+**Was die Kundin dafür bereitstellen muss:**
+- [ ] Kostenloses Resend-Konto erstellen
+- [ ] API-Key erzeugen
+- [ ] Eigene Domain (z. B. `betamove.de`) bei Resend verifizieren (DNS-Einträge, ähnlich wie bei
+      der Zoho-Mail-Einrichtung), damit Mails glaubwürdig von `info@betamove.de` o. ä. kommen statt
+      von einer generischen Resend-Testadresse
+- [ ] Supabase-Projekt: der Edge Function als Secret hinterlegter API-Key (macht das Team, sobald
+      der Key da ist)
+
+**Status:** Beauftragt, Umsetzung läuft (siehe unten).
+
 ## 4. Phase 2 — grober Ausblick (noch nicht beauftragt)
 - Restliche Seiten scharfschalten (Navigation erweitern)
 - Supabase Auth: Login/Registrierung echt anbinden
