@@ -72,11 +72,18 @@ alter table public.kursanmeldungen enable row level security;
 -- neue Zeilen live per Realtime-Subscription mitlesen, obwohl es keine
 -- SELECT-Policy gibt.
 
+-- "anon" UND "authenticated": ein Browser kann eine aktive Supabase-Auth-
+-- Sitzung haben (z.B. später durch das Konto-Login aus Phase 2, oder auch
+-- nur durch vorheriges Testen) — dann sendet der Supabase-JS-Client
+-- automatisch das Auth-Token statt des reinen anon keys, und die Rolle ist
+-- "authenticated" statt "anon". Ohne "authenticated" hier würde das
+-- Formular in genau diesem Fall mit "new row violates row-level security
+-- policy" fehlschlagen, obwohl alles andere korrekt ist.
 drop policy if exists "kursanmeldungen_insert_only" on public.kursanmeldungen;
 create policy "kursanmeldungen_insert_only"
   on public.kursanmeldungen
   for insert
-  to anon
+  to anon, authenticated
   with check (
     char_length(trim(vorname)) between 1 and 100
     and char_length(trim(nachname)) between 1 and 100
@@ -87,8 +94,8 @@ create policy "kursanmeldungen_insert_only"
     and agb_akzeptiert = true
   );
 
--- Kein SELECT/UPDATE/DELETE für "anon" — Supabase verweigert das automatisch,
--- solange RLS aktiv ist und keine passende Policy existiert.
+-- Kein SELECT/UPDATE/DELETE für "anon"/"authenticated" — Supabase verweigert
+-- das automatisch, solange RLS aktiv ist und keine passende Policy existiert.
 
 
 -- ============================================================================
@@ -113,11 +120,12 @@ comment on table public.kontaktanfragen is 'Kontaktanfragen aus kontakt.html (BE
 
 alter table public.kontaktanfragen enable row level security;
 
+-- "anon" UND "authenticated", siehe Kommentar bei kursanmeldungen oben.
 drop policy if exists "kontaktanfragen_insert_only" on public.kontaktanfragen;
 create policy "kontaktanfragen_insert_only"
   on public.kontaktanfragen
   for insert
-  to anon
+  to anon, authenticated
   with check (
     char_length(trim(name)) between 1 and 100
     and email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
