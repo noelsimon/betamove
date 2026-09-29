@@ -14,7 +14,10 @@
 // ---------------------------------------------------------------------------
 
 // Feste Adresse der Betreiberin, an die jede neue Kontaktanfrage gemeldet wird.
-const OWNER_EMAIL = "info@betamove.de"; // TODO: ggf. anpassen
+// Übergangsweise die private Gmail-Adresse, bis info@betamove.de über die
+// eigene Domain eingerichtet ist. TODO: zurück auf info@betamove.de, sobald
+// die Domain umgezogen und Zoho Mail dafür eingerichtet ist.
+const OWNER_EMAIL = "noel.uhlrich@gmail.com";
 
 // Absenderadresse. Muss zu einer bei Resend verifizierten Domain gehören
 // (siehe supabase/EMAIL-SETUP.md, Schritt 2).
