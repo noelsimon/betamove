@@ -18,7 +18,10 @@ const OWNER_EMAIL = "info@betamove.de"; // TODO: ggf. anpassen
 
 // Absenderadresse. Muss zu einer bei Resend verifizierten Domain gehören
 // (siehe supabase/EMAIL-SETUP.md, Schritt 2).
-const FROM_EMAIL = "BETAMOVE <info@betamove.de>"; // TODO: ggf. anpassen, sobald Domain bei Resend verifiziert ist
+// Übergangsweise Resend-Testadresse, bis die eigene Domain bei Resend
+// verifiziert ist (Domain-Umzug von Jimdo läuft noch). Sobald verifiziert:
+// zurück auf "BETAMOVE <info@betamove.de>" ändern.
+const FROM_EMAIL = "BETAMOVE <onboarding@resend.dev>"; // TODO: zurück auf eigene Domain, sobald bei Resend verifiziert
 
 // ---------------------------------------------------------------------------
 

@@ -27,7 +27,10 @@ const OWNER_EMAIL = "info@betamove.de"; // TODO: ggf. anpassen
 // Domain verifiziert ist, kann ersatzweise die von Resend bereitgestellte
 // Testadresse "onboarding@resend.dev" verwendet werden (kommt dann aber
 // sichtbar von "resend.dev", nicht von der eigenen Domain).
-const FROM_EMAIL = "BETAMOVE <info@betamove.de>"; // TODO: ggf. anpassen, sobald Domain bei Resend verifiziert ist
+// Übergangsweise Resend-Testadresse, bis die eigene Domain bei Resend
+// verifiziert ist (Domain-Umzug von Jimdo läuft noch). Sobald verifiziert:
+// zurück auf "BETAMOVE <info@betamove.de>" ändern.
+const FROM_EMAIL = "BETAMOVE <onboarding@resend.dev>"; // TODO: zurück auf eigene Domain, sobald bei Resend verifiziert
 
 // ---------------------------------------------------------------------------
 
