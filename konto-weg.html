@@ -45,16 +45,16 @@
 <main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
 <div class="preview-banner">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
+  <span>Lädt dein Konto …</span>
 </div>
 
     <div data-r="dash" style="display:grid;grid-template-columns:264px minmax(0,1fr);gap:36px;align-items:start">
       <aside data-r="dashside" style="position:sticky;top:96px;display:flex;flex-direction:column;gap:18px">
         <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.2);padding:24px 22px;text-align:center;box-shadow:var(--shadow-sm)">
-          <div style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">AM</div>
-          <div style="font-family:var(--font-heading);font-size:21px;line-height:1.2">Anna Muster</div>
-          <div style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word">anna@example.de</div>
-          <div style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block">Vorstieg 5. Grad</div>
+          <div data-acc="initials" style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">–</div>
+          <div data-acc="name" style="font-family:var(--font-heading);font-size:21px;line-height:1.2">…</div>
+          <div data-acc="email" style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word"></div>
+          <div data-acc="level" hidden style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block"></div>
         </div>
         <nav style="display:flex;flex-direction:column;gap:6px">
 <a href="konto.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Übersicht</a>
@@ -64,77 +64,15 @@
 <a href="konto-profil.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Profil</a>
         </nav>
         <button type="button" id="logoutBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:12px 18px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abmelden</button>
-        <p style="margin:0;font-size:13px;opacity:0.55;padding:0 4px">Konto seit März 2026 (Demo-Daten)</p>
       </aside>
       <div>
         <h2 style="margin:0 0 8px;font-size:30px">Mein Ausbildungsweg</h2>
-        <p style="max-width:66ch;margin:0 0 24px;font-size:17px;opacity:0.82">Das BETAMOVE Ausbildungskonzept als Karte: von der Grundausbildung über die Erweiterungskurse bis zur Spezialisierung. Hake ab, was du absolviert hast – deine Qualifikationen aktualisieren sich automatisch. <em style="opacity:0.7">(Demo-Daten dieser Vorschau)</em></p>
+        <p style="max-width:66ch;margin:0 0 24px;font-size:17px;opacity:0.82">Das BETAMOVE Ausbildungskonzept als Karte: dieselben Qualifikationen wie auf der Seite „Qualifikationen“, hier als Wegverlauf. Hake ab, was du absolviert hast.</p>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:34px;max-width:560px">
-          <div style="flex:1;height:10px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div style="height:100%;width:15%;background:var(--color-accent-2-500);border-radius:999px"></div></div>
-          <span style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none">1 von 9 Modulen</span>
+          <div style="flex:1;height:10px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div id="wegBar" style="height:100%;width:0%;background:var(--color-accent-2-500);border-radius:999px"></div></div>
+          <span id="wegLabel" style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none"></span>
         </div>
-        <div data-r="path" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:start">
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div style="background:var(--color-accent-700);color:#ffffff;border-radius:var(--radius-md);padding:14px 18px">
-                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.25">Grundausbildung</div>
-                <div style="font-size:13px;opacity:0.85;margin-top:2px">Halle · Einstieg</div>
-              </div>
-                <button type="button" class="toggle-node" data-state="done" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:var(--color-accent-100);border:2px solid var(--color-accent);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-accent);background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px">✓</span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Toprope Kurs</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">1 Tag · Halle</span></span>
-                </button>
-                <button type="button" class="toggle-node" data-state="progress" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-accent-400);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-accent-400);background:var(--color-accent-400);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px">…</span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Vorstiegs Kurs</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">2 Abende · Halle</span></span>
-                </button>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Grundkurs</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">Toprope + Vorstieg kombiniert</span></span>
-                </button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div style="background:var(--color-accent-700);color:#ffffff;border-radius:var(--radius-md);padding:14px 18px">
-                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.25">Erweiterungskurs 1</div>
-                <div style="font-size:13px;opacity:0.85;margin-top:2px">Großes Gelände</div>
-              </div>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Mehrseillängen</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">2 Tage · Fels</span></span>
-                </button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div style="background:var(--color-accent-700);color:#ffffff;border-radius:var(--radius-md);padding:14px 18px">
-                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.25">Erweiterungskurs 2</div>
-                <div style="font-size:13px;opacity:0.85;margin-top:2px">Naturfels</div>
-              </div>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Halle an den Fels</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">2 Tage · Klettergarten</span></span>
-                </button>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Sicherungs-Update</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">3 Stunden · Halle</span></span>
-                </button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div style="background:var(--color-accent-700);color:#ffffff;border-radius:var(--radius-md);padding:14px 18px">
-                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.25">Spezialisierung</div>
-                <div style="font-size:13px;opacity:0.85;margin-top:2px">Eigenständigkeit</div>
-              </div>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Mobile Sicherung</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">1 Tag · Fels</span></span>
-                </button>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Alpinklettern</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">Online + Ausbildungswoche</span></span>
-                </button>
-                <button type="button" class="toggle-node" data-state="open" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:flex-start;background:#ffffff;border:2px solid var(--color-divider);border-radius:var(--radius-md);padding:16px 18px;width:100%">
-                  <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px"></span>
-                  <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">Sturz- und Sicherungstraining</span><span style="display:block;font-size:13px;opacity:0.65;margin-top:3px">3 Stunden · Halle</span></span>
-                </button>
-            </div>
-        </div>
+        <div id="wegPath" data-r="path" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:start"></div>
         <div style="margin-top:34px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 30px;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
           <p style="margin:0;flex:1;min-width:260px;font-size:16px">Ein Modul fehlt dir noch? Die Kurstermine stehen auf der Kursseite – gebuchte Module bestätigen wir nach dem Kurs.</p>
           <a href="kurse.html" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Kurstermine ansehen</a>
@@ -206,16 +144,10 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/main.js"></script>
-<script>
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden — es gibt noch nichts, wovon man sich abmelden könnte.');
-});
-</script>
-<script>
-document.querySelectorAll('.toggle-node').forEach(btn => btn.addEventListener('click', () => {
-  alert('Kursteilnahmen werden nach dem Kurs von uns bestätigt. Das Umschalten hier ist nur eine Vorschau ohne echtes Konto.');
-}));
-</script>
+<script src="js/account.js"></script>
 </body>
 </html>

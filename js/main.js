@@ -271,12 +271,19 @@ const bmProgress = {
   read() {
     try { return JSON.parse(localStorage.getItem(this.key) || '{}'); } catch (e) { return {}; }
   },
-  markDone(id) {
+  // kind/opts sind optional: Artikel-Seiten rufen einfach markDone(id) auf
+  // (Standard: kind "artikel"). Quiz- und Prüfungsseiten übergeben zusätzlich
+  // kind: "quiz"/"pruefung" und opts: {score, total, passed}, damit im Konto
+  // (falls eingeloggt) das echte Ergebnis landet statt nur "erledigt".
+  markDone(id, kind, opts) {
     try {
       const data = this.read();
       data[id] = true;
       localStorage.setItem(this.key, JSON.stringify(data));
     } catch (e) { /* localStorage kann in Privat-Modus fehlschlagen — dann bleibt es unmarkiert */ }
+    // Zusätzlich mit dem Konto synchronisieren, falls eingeloggt (js/account.js).
+    // Ohne Konto passiert hier nichts — rein lokal wie bisher.
+    try { if (window.bmSyncLernfortschritt) window.bmSyncLernfortschritt(id, kind || 'artikel', opts); } catch (e) {}
   },
   isDone(id) {
     return !!this.read()[id];

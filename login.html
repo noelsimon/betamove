@@ -49,10 +49,6 @@
   </div>
 </header>
 <main data-r="pad" style="max-width:1160px;margin:0 auto;padding:56px 28px 96px">
-<div class="preview-banner">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
-</div>
 
     <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start">
       <div>
@@ -84,7 +80,8 @@
         <form id="loginForm" style="display:flex;flex-direction:column;gap:16px">
           <div class="field"><label for="li-em">E-Mail</label><input id="li-em" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
           <div class="field"><label for="li-pw">Passwort</label><input id="li-pw" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="••••••••"></div>
-          <button type="submit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Anmelden</button>
+          <p id="loginError" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-700)"></p>
+          <button type="submit" id="loginSubmit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Anmelden</button>
           <p style="margin:0;font-size:14px;opacity:0.65">Noch kein Konto? Wechsle oben auf „Konto erstellen“.</p>
         </form>
 
@@ -108,8 +105,9 @@
             <input type="checkbox" id="rgAgb"><span class="dot"></span>
             <span>Ich akzeptiere die <a href="agb.html">AGB</a> und die <a href="datenschutz.html">Datenschutzerklärung</a>.</span>
           </label>
-          <button type="submit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Konto erstellen</button>
-          <p style="margin:0;font-size:13.5px;opacity:0.6">Vorschau-Hinweis: Konto und Lernstand gibt es hier noch nicht wirklich — das folgt mit der Supabase-Anbindung.</p>
+          <p id="registerError" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-700)"></p>
+          <p id="registerSuccess" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-2-700)"></p>
+          <button type="submit" id="registerSubmit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Konto erstellen</button>
         </form>
       </div>
     </div>
@@ -174,7 +172,11 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/main.js"></script>
+<script src="js/account.js"></script>
 <script>
 (function(){
   const tabLogin = document.getElementById('tabLogin');
@@ -186,9 +188,76 @@
   document.querySelectorAll('.level-opt').forEach(btn => btn.addEventListener('click', () => {
     document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b===btn));
   }));
-  // Kein echtes Backend angebunden — Login/Registrierung folgen mit der Supabase-Anbindung
-  loginForm.addEventListener('submit', e => { e.preventDefault(); alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden.'); });
-  registerForm.addEventListener('submit', e => { e.preventDefault(); alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden.'); });
+
+  function nextUrl() {
+    const n = new URLSearchParams(location.search).get('next');
+    return (n && /^[a-z0-9-]+\.html$/i.test(n)) ? n : 'konto.html';
+  }
+
+  function friendlyAuthError(err) {
+    const msg = (err && err.message) || '';
+    if (/already registered|already exists/i.test(msg)) return 'Für diese E-Mail existiert schon ein Konto — wechsle auf „Anmelden“.';
+    if (/invalid login credentials/i.test(msg)) return 'E-Mail oder Passwort ist falsch.';
+    if (/email not confirmed/i.test(msg)) return 'Bitte bestätige zuerst den Link in der E-Mail, die wir dir geschickt haben.';
+    if (/password.*(least|6)/i.test(msg)) return 'Das Passwort muss mindestens 6 Zeichen haben.';
+    return msg || 'Das hat leider nicht geklappt. Bitte versuch es erneut.';
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginSubmit');
+    errEl.hidden = true;
+    if (typeof window.bmGetSupabaseClient !== 'function') { errEl.hidden = false; errEl.textContent = 'Login ist auf dieser Seite noch nicht eingerichtet.'; return; }
+    const { client, error: cfgErr } = window.bmGetSupabaseClient();
+    if (!client) { errEl.hidden = false; errEl.textContent = 'Login ist gerade nicht erreichbar (' + cfgErr + ').'; return; }
+    const email = document.getElementById('li-em').value.trim();
+    const password = document.getElementById('li-pw').value;
+    if (!email || !password) { errEl.hidden = false; errEl.textContent = 'Bitte E-Mail und Passwort eingeben.'; return; }
+    btn.disabled = true; btn.textContent = 'Meldet an …';
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    btn.disabled = false; btn.textContent = 'Anmelden';
+    if (error) { errEl.hidden = false; errEl.textContent = friendlyAuthError(error); return; }
+    location.href = nextUrl();
+  });
+
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('registerError');
+    const okEl = document.getElementById('registerSuccess');
+    const btn = document.getElementById('registerSubmit');
+    errEl.hidden = true; okEl.hidden = true;
+    if (typeof window.bmGetSupabaseClient !== 'function') { errEl.hidden = false; errEl.textContent = 'Registrierung ist auf dieser Seite noch nicht eingerichtet.'; return; }
+    const { client, error: cfgErr } = window.bmGetSupabaseClient();
+    if (!client) { errEl.hidden = false; errEl.textContent = 'Registrierung ist gerade nicht erreichbar (' + cfgErr + ').'; return; }
+    const vorname = document.getElementById('rg-fn').value.trim();
+    const nachname = document.getElementById('rg-ln').value.trim();
+    const email = document.getElementById('rg-em').value.trim();
+    const password = document.getElementById('rg-pw').value;
+    const levelBtn = document.querySelector('.level-opt[data-active="true"]');
+    const level = levelBtn ? levelBtn.textContent.trim() : null;
+    const agbOk = document.getElementById('rgAgb').checked;
+    if (!vorname || !nachname || !email || !password) { errEl.hidden = false; errEl.textContent = 'Bitte alle Felder ausfüllen.'; return; }
+    if (password.length < 6) { errEl.hidden = false; errEl.textContent = 'Das Passwort muss mindestens 6 Zeichen haben.'; return; }
+    if (!agbOk) { errEl.hidden = false; errEl.textContent = 'Bitte AGB und Datenschutzerklärung akzeptieren.'; return; }
+    btn.disabled = true; btn.textContent = 'Erstellt Konto …';
+    const { data, error } = await client.auth.signUp({
+      email, password,
+      options: { data: { vorname, nachname, level } }
+    });
+    btn.disabled = false; btn.textContent = 'Konto erstellen';
+    if (error) { errEl.hidden = false; errEl.textContent = friendlyAuthError(error); return; }
+    if (data && data.session) {
+      // Sofort eingeloggt (E-Mail-Bestätigung ist in diesem Projekt aus) —
+      // Profilzeile gleich anlegen und direkt weiter.
+      try { await client.from('profiles').upsert({ id: data.user.id, vorname, nachname, email, level }, { onConflict: 'id' }); } catch (e2) {}
+      location.href = nextUrl();
+      return;
+    }
+    okEl.hidden = false;
+    okEl.textContent = 'Fast geschafft: Wir haben dir eine Bestätigungs-E-Mail geschickt. Klick den Link darin an, dann kannst du dich anmelden.';
+    registerForm.reset();
+  });
 })();
 </script>
 </body>

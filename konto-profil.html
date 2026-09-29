@@ -49,16 +49,16 @@
 <main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
 <div class="preview-banner">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
+  <span>Lädt dein Konto …</span>
 </div>
 
     <div data-r="dash" style="display:grid;grid-template-columns:264px minmax(0,1fr);gap:36px;align-items:start">
       <aside data-r="dashside" style="position:sticky;top:96px;display:flex;flex-direction:column;gap:18px">
         <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.2);padding:24px 22px;text-align:center;box-shadow:var(--shadow-sm)">
-          <div style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">AM</div>
-          <div style="font-family:var(--font-heading);font-size:21px;line-height:1.2">Anna Muster</div>
-          <div style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word">anna@example.de</div>
-          <div style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block">Vorstieg 5. Grad</div>
+          <div data-acc="initials" style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">–</div>
+          <div data-acc="name" style="font-family:var(--font-heading);font-size:21px;line-height:1.2">…</div>
+          <div data-acc="email" style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word"></div>
+          <div data-acc="level" hidden style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block"></div>
         </div>
         <nav style="display:flex;flex-direction:column;gap:6px">
 <a href="konto.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Übersicht</a>
@@ -68,40 +68,23 @@
 <a href="konto-profil.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:var(--color-accent);color:#ffffff;border:2px solid var(--color-accent);display:flex;align-items:center;gap:10px">Profil</a>
         </nav>
         <button type="button" id="logoutBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:12px 18px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abmelden</button>
-        <p style="margin:0;font-size:13px;opacity:0.55;padding:0 4px">Konto seit März 2026 (Demo-Daten)</p>
       </aside>
       <div>
         <div style="max-width:760px">
         <h2 style="margin:0 0 8px;font-size:30px">Profil</h2>
-        <p style="margin:0 0 28px;font-size:17px;opacity:0.82">Diese Angaben nutzen wir für Kursanmeldungen, damit du sie nicht jedes Mal neu eintippen musst. <em style="opacity:0.7">(Vorschau — noch nicht gespeichert)</em></p>
-        <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:30px 32px;margin-bottom:22px">
-          <div style="font-family:var(--font-heading);font-size:20px;margin-bottom:16px">Profilbild</div>
-          <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
-            <div style="width:96px;height:96px;flex:none;border-radius:50%;background:var(--color-surface);color:var(--color-accent-700);display:grid;place-items:center;font-family:var(--font-heading);font-size:32px">AM</div>
-            <div style="flex:1;min-width:220px">
-              <p style="margin:0 0 14px;font-size:15px;opacity:0.75">Wird neben deinem Namen bei Kommentaren angezeigt. Quadratischer Ausschnitt, max. 6 MB.</p>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-                <button type="button" class="btn btn-primary" style="font-size:15px;padding:12px 22px" onclick="alert('Profilbild-Upload folgt mit der Supabase-Anbindung.')">Bild wählen</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <p style="margin:0 0 28px;font-size:17px;opacity:0.82">Diese Angaben nutzen wir für Kursanmeldungen, damit du sie nicht jedes Mal neu eintippen musst.</p>
         <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:30px 32px">
           <div style="font-family:var(--font-heading);font-size:20px;margin-bottom:16px">Deine Angaben</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
-              <div class="field"><label>Vorname</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Anna"></div>
-              <div class="field"><label>Nachname</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Muster"></div>
-              <div class="field"><label>E-Mail</label><input class="input" type="email" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
-              <div class="field"><label>Telefon</label><input class="input" type="tel" style="min-height:46px;font-size:16px" placeholder="+49 …"></div>
-              <div class="field"><label>Stadt</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Leipzig"></div>
-              <div class="field"><label>Geburtsdatum</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="TT.MM.JJJJ"></div>
-              <div class="field"><label>Notfallkontakt</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Name und Telefonnummer"></div>
-              <div class="field"><label>DAV-Sektion (optional)</label><input class="input" type="text" style="min-height:46px;font-size:16px" placeholder="z. B. DAV Leipzig"></div>
+              <div class="field"><label for="fVorname">Vorname</label><input id="fVorname" class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Anna"></div>
+              <div class="field"><label for="fNachname">Nachname</label><input id="fNachname" class="input" type="text" style="min-height:46px;font-size:16px" placeholder="Muster"></div>
+              <div class="field"><label for="fEmail">E-Mail</label><input id="fEmail" class="input" type="email" disabled style="min-height:46px;font-size:16px;opacity:0.6"></div>
           </div>
+          <p style="margin:10px 0 0;font-size:13.5px;opacity:0.6">E-Mail-Adresse ändern geht aktuell nur über den Support — schreib uns dazu über kontakt.html.</p>
           <div style="margin-top:24px">
             <div style="font-size:14px;font-weight:600;margin-bottom:10px">Kletterlevel</div>
             <div style="display:flex;gap:9px;flex-wrap:wrap">
-              <button type="button" class="chip level-opt" data-active="true">Einsteiger*in</button>
+              <button type="button" class="chip level-opt">Einsteiger*in</button>
               <button type="button" class="chip level-opt">Einstieg</button>
               <button type="button" class="chip level-opt">Aufbau</button>
               <button type="button" class="chip level-opt">Fortgeschritten</button>
@@ -109,7 +92,8 @@
           </div>
           <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:28px">
             <button type="button" id="saveProfileBtn" class="btn btn-primary" style="font-size:16px;padding:14px 26px">Änderungen speichern</button>
-            <span id="profileSaved" hidden style="font-size:15px;font-weight:600;color:var(--color-accent-2-700)">✓ Gespeichert (nur in dieser Vorschau, nicht dauerhaft)</span>
+            <span id="profileSaved" hidden style="font-size:15px;font-weight:600;color:var(--color-accent-2-700)">✓ Gespeichert</span>
+            <span id="profileError" hidden style="font-size:15px;font-weight:600;color:var(--color-accent-700)"></span>
           </div>
         </div>
         </div>
@@ -176,20 +160,10 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/main.js"></script>
-<script>
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden — es gibt noch nichts, wovon man sich abmelden könnte.');
-});
-</script>
-<script>
-document.querySelectorAll('.level-opt').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b===btn));
-}));
-document.getElementById('saveProfileBtn').addEventListener('click', (e) => {
-  e.preventDefault(); // Kein echtes Backend — Speichern folgt mit der Supabase-Anbindung
-  document.getElementById('profileSaved').hidden = false;
-});
-</script>
+<script src="js/account.js"></script>
 </body>
 </html>

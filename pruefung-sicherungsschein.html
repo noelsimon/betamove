@@ -150,7 +150,11 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/main.js"></script>
+<script src="js/account.js"></script>
 <script>
 const EXAM = [{"q": "Das Bremsseil wird beim Sichern …", "options": ["bei blockierendem Gerät kurz freigegeben", "ununterbrochen von der Bremshand umschlossen"], "a": 1, "why": "Es gibt keine Situation, in der die Bremshand das Bremsseil verlässt."}, {"q": "Ein Anseilknoten ist korrekt, wenn …", "options": ["er zugezogen ist und ein ausreichender Restfaden bleibt", "er locker sitzt, damit er sich im Sturz setzen kann"], "a": 0, "why": "Achterknoten zugezogen, parallel gelegt, Restfaden mindestens eine Handbreit."}, {"q": "Beim Vorstiegssichern stehst du …", "options": ["direkt an der Wand, seitlich zur ersten Exe versetzt", "zwei Meter hinter der Wand mittig unter der Route"], "a": 0, "why": "Nah an der Wand und leicht versetzt: kurzer Seilweg, freie Sicht, kein Zug in die Wand."}, {"q": "Schlappseil im Vorstieg ist …", "options": ["grundsätzlich gut, damit der Sturz weich wird", "so knapp wie möglich zu halten, ohne den Kletternden zu behindern"], "a": 1, "why": "Schlappseil verlängert die Sturzstrecke. Weichheit kommt aus dem Sicherungsverhalten, nicht aus Schlappseil."}, {"q": "Vor dem Klettern prüfst du im Partnercheck …", "options": ["Gurt, Knoten, Gerät, Seilende", "nur Knoten und Gerät"], "a": 0, "why": "Alle vier Punkte, in fester Reihenfolge, laut und gegenseitig."}, {"q": "Ein Sturz kurz über der ersten Zwischensicherung ist …", "options": ["harmlos, das Seil fängt weich", "kritisch, weil Bodennähe und Seildehnung zusammenfallen"], "a": 1, "why": "Grundfallrisiko: wenig Seil im System, kurze Bremsstrecke, Boden nah. Vorclippen entschärft das."}, {"q": "Wird die sichernde Person deutlich angehoben, …", "options": ["ist das normal und unkritisch", "droht Kontrollverlust über das Bremsseil – Ausgleich nötig"], "a": 1, "why": "Beim Anheben geht die Bremshandposition verloren. Gewichtsunterschiede brauchen eine Lösung."}, {"q": "Ein Helm gehört am Naturfels …", "options": ["nur beim Vorsteigen getragen", "beim Klettern und beim Sichern getragen"], "a": 1, "why": "Steinschlag trifft auch die sichernde Person. Helm auf, sobald du am Wandfuß stehst."}];
 const EXAM_PASS = 6;
@@ -214,9 +218,7 @@ const EXAM_PASS = 6;
       div.innerHTML = '<span style="width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;background:'+(ok?'var(--color-accent-2-500)':'var(--color-accent-600)')+';color:#fff">'+(ok?'✓':'✕')+'</span><div style="min-width:0"><div style="font-size:16.5px;font-weight:600;margin-bottom:8px">'+q.q+'</div><div style="font-size:15px;opacity:0.75;margin-bottom:3px">Deine Antwort: '+(q.options[picks[i]]||'—')+'</div><div style="font-size:15px;opacity:0.75;margin-bottom:8px">Richtig: '+q.options[q.a]+'</div><p style="margin:0;font-size:15.5px;opacity:0.85">'+q.why+'</p></div>';
       review.appendChild(div);
     });
-    try { bmProgress.markDone('pruefung-sicherungsschein'); } catch (e) {}
-    // Zertifikat-Speicherung erfordert ein echtes Nutzerkonto (folgt mit Supabase) —
-    // in dieser Vorschau wird das Ergebnis nur lokal markiert, nicht als Nachweis gespeichert.
+    try { bmProgress.markDone('pruefung-sicherungsschein', 'pruefung', { score, total: EXAM.length, passed }); } catch (e) {}
     window.scrollTo(0,0);
   });
 

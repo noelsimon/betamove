@@ -45,16 +45,16 @@
 <main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
 <div class="preview-banner">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
+  <span>Lädt dein Konto …</span>
 </div>
 
     <div data-r="dash" style="display:grid;grid-template-columns:264px minmax(0,1fr);gap:36px;align-items:start">
       <aside data-r="dashside" style="position:sticky;top:96px;display:flex;flex-direction:column;gap:18px">
         <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.2);padding:24px 22px;text-align:center;box-shadow:var(--shadow-sm)">
-          <div style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">AM</div>
-          <div style="font-family:var(--font-heading);font-size:21px;line-height:1.2">Anna Muster</div>
-          <div style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word">anna@example.de</div>
-          <div style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block">Vorstieg 5. Grad</div>
+          <div data-acc="initials" style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">–</div>
+          <div data-acc="name" style="font-family:var(--font-heading);font-size:21px;line-height:1.2">…</div>
+          <div data-acc="email" style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word"></div>
+          <div data-acc="level" hidden style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block"></div>
         </div>
         <nav style="display:flex;flex-direction:column;gap:6px">
 <a href="konto.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Übersicht</a>
@@ -64,142 +64,11 @@
 <a href="konto-profil.html" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Profil</a>
         </nav>
         <button type="button" id="logoutBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:12px 18px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abmelden</button>
-        <p style="margin:0;font-size:13px;opacity:0.55;padding:0 4px">Konto seit März 2026 (Demo-Daten)</p>
       </aside>
       <div>
         <h2 style="margin:0 0 8px;font-size:30px">Qualifikationen aufbauen</h2>
-        <p style="max-width:64ch;margin:0 0 30px;font-size:17px;opacity:0.82">Jede Qualifikation besteht aus Theorie, die du hier selbst erledigst, und Praxis, die im Kurs stattfindet. Die Kursteilnahme bestätigen wir nach dem Kurs – in dieser Vorschau kannst du sie nur testweise umschalten. <em style="opacity:0.7">(Demo-Daten)</em></p>
-        <div style="display:flex;flex-direction:column;gap:20px">
-            <div style="background:#ffffff;border:2px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 32px">
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-                <span class="tag tag-neutral" style="font-size:11.5px">{level}</span>
-                <h3 style="margin:0;font-size:24px">{name}</h3>
-                <span style="margin-left:auto;font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:6px 13px;border-radius:999px;background:{badge_bg};color:{badge_fg}">{badge}</span>
-              </div>
-              <p style="margin:0 0 18px;font-size:16px;opacity:0.82">{text}</p>
-              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-                <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div style="height:100%;width:{pct}%;background:var(--color-accent);border-radius:999px"></div></div>
-                <span style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none">{done}/{total} erfüllt</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:11px">
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-accent);background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">✓</span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Quiz „Sichern ohne Mythen“ bestehen</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-accent-2-700);flex:none">Erledigt</span>
-                    <a href="quiz-sichern.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-accent);background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">✓</span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Toprope Kurs absolvieren</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-accent-2-700);flex:none">Bestätigt</span>
-                    <button type="button" class="toggle-course" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:2px solid var(--color-accent);background:#ffffff;color:var(--color-accent);flex:none">Teilnahme umschalten</button>
-                  </div>
-              </div>
-                <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-wrap:wrap;gap:16px;align-items:center">
-                  <p style="margin:0;flex:1;min-width:240px;font-size:15.5px;color:var(--color-accent-2-800)">Alle Anforderungen erfüllt – du kannst deinen Nachweis herunterladen.</p>
-                  <button type="button" class="btn btn-primary" style="font-size:15px;padding:12px 22px" onclick="alert('Zertifikats-Download folgt mit der Supabase-Anbindung.')">Zertifikat herunterladen</button>
-                </div>
-            </div>
-            <div style="background:#ffffff;border:2px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 32px">
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-                <span class="tag tag-neutral" style="font-size:11.5px">{level}</span>
-                <h3 style="margin:0;font-size:24px">{name}</h3>
-                <span style="margin-left:auto;font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:6px 13px;border-radius:999px;background:{badge_bg};color:{badge_fg}">{badge}</span>
-              </div>
-              <p style="margin:0 0 18px;font-size:16px;opacity:0.82">{text}</p>
-              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-                <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div style="height:100%;width:{pct}%;background:var(--color-accent);border-radius:999px"></div></div>
-                <span style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none">{done}/{total} erfüllt</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:11px">
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-accent);background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">✓</span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Online-Prüfung Sicherungstheorie bestehen</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-accent-2-700);flex:none">Bestanden</span>
-                    <a href="pruefung-sicherungsschein.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Artikel „Sicherungsgeräte im Überblick“ durcharbeiten</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <a href="artikel-sicherungsgeraete.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Vorstiegs Kurs absolvieren</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <button type="button" class="toggle-course" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:2px solid var(--color-accent);background:#ffffff;color:var(--color-accent);flex:none">Teilnahme umschalten</button>
-                  </div>
-              </div>
-                <p style="margin:18px 0 0;font-size:14.5px;opacity:0.6">Das Zertifikat wird freigeschaltet, sobald alle Anforderungen erfüllt sind.</p>
-            </div>
-            <div style="background:#ffffff;border:2px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 32px">
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-                <span class="tag tag-neutral" style="font-size:11.5px">{level}</span>
-                <h3 style="margin:0;font-size:24px">{name}</h3>
-                <span style="margin-left:auto;font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:6px 13px;border-radius:999px;background:{badge_bg};color:{badge_fg}">{badge}</span>
-              </div>
-              <p style="margin:0 0 18px;font-size:16px;opacity:0.82">{text}</p>
-              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-                <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div style="height:100%;width:{pct}%;background:var(--color-accent);border-radius:999px"></div></div>
-                <span style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none">{done}/{total} erfüllt</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:11px">
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Artikel „Halle an den Fels“ durcharbeiten</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <a href="artikel-halle-an-den-fels.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Quiz „Der erste Tag am Fels“ bestehen</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <a href="quiz-fels.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Artikel „Kletterschuhe finden“ lesen</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <a href="artikel-kletterschuhe-finden.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Kurs „Halle an den Fels“ absolvieren</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <button type="button" class="toggle-course" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:2px solid var(--color-accent);background:#ffffff;color:var(--color-accent);flex:none">Teilnahme umschalten</button>
-                  </div>
-              </div>
-                <p style="margin:18px 0 0;font-size:14.5px;opacity:0.6">Das Zertifikat wird freigeschaltet, sobald alle Anforderungen erfüllt sind.</p>
-            </div>
-            <div style="background:#ffffff;border:2px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 32px">
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-                <span class="tag tag-neutral" style="font-size:11.5px">{level}</span>
-                <h3 style="margin:0;font-size:24px">{name}</h3>
-                <span style="margin-left:auto;font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:6px 13px;border-radius:999px;background:{badge_bg};color:{badge_fg}">{badge}</span>
-              </div>
-              <p style="margin:0 0 18px;font-size:16px;opacity:0.82">{text}</p>
-              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-                <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden"><div style="height:100%;width:{pct}%;background:var(--color-accent);border-radius:999px"></div></div>
-                <span style="font-size:14.5px;font-weight:600;opacity:0.7;flex:none">{done}/{total} erfüllt</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:11px">
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Artikel „Richtig Mehrseillängen planen“ durcharbeiten</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <a href="artikel-mehrseillaengen-taktik.html" style="font-size:13.5px;font-weight:600;color:var(--color-accent-700);flex:none">Öffnen →</a>
-                  </div>
-                  <div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
-                    <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid var(--color-divider);background:var(--color-neutral-300);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700"></span>
-                    <span style="flex:1;min-width:180px;font-size:16px">Mehrseillängenkurs absolvieren</span>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--color-text);flex:none">Offen</span>
-                    <button type="button" class="toggle-course" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:2px solid var(--color-accent);background:#ffffff;color:var(--color-accent);flex:none">Teilnahme umschalten</button>
-                  </div>
-              </div>
-                <p style="margin:18px 0 0;font-size:14.5px;opacity:0.6">Das Zertifikat wird freigeschaltet, sobald alle Anforderungen erfüllt sind.</p>
-            </div>
-        </div>
+        <p style="max-width:64ch;margin:0 0 30px;font-size:17px;opacity:0.82">Jede Qualifikation besteht aus Theorie, die du hier selbst erledigst, und Praxis, die im Kurs stattfindet. Die Kursteilnahme bestätigt aktuell noch niemand außer dir selbst — bis wir eine Kursleitungs-Bestätigung eingebaut haben, ist das Umschalten eine ehrliche Selbstauskunft.</p>
+        <div id="qualCards" style="display:flex;flex-direction:column;gap:20px"></div>
       </div>
     </div>
   </main>
@@ -263,16 +132,10 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/main.js"></script>
-<script>
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  alert('Diese Vorschau ist noch nicht mit echten Nutzerkonten verbunden — es gibt noch nichts, wovon man sich abmelden könnte.');
-});
-</script>
-<script>
-document.querySelectorAll('.toggle-course').forEach(btn => btn.addEventListener('click', () => {
-  alert('Kursteilnahmen werden nach dem Kurs von uns bestätigt. Das Umschalten hier ist nur eine Vorschau ohne echtes Konto.');
-}));
-</script>
+<script src="js/account.js"></script>
 </body>
 </html>
