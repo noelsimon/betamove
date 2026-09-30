@@ -125,13 +125,9 @@
               <button type="button" class="chip discount-opt" data-discount="none">Kein Rabatt</button>
               <button type="button" class="chip discount-opt" data-discount="student">Studierend / Azubi (−15 %)</button>
             </div>
-            <div id="discountReasonBox" hidden style="margin-top:14px">
-              <p style="margin:0 0 8px;font-size:14.5px;opacity:0.75">Was trifft auf dich zu?</p>
-              <div style="display:flex;flex-wrap:wrap;gap:10px" id="discountReasonOptions">
-                <button type="button" class="chip reason-opt" data-reason="Studium">Studium</button>
-                <button type="button" class="chip reason-opt" data-reason="Ausbildung">Ausbildung</button>
-                <button type="button" class="chip reason-opt" data-reason="Praktikum">Praktikum</button>
-              </div>
+            <div id="discountReasonBox" hidden class="field" style="margin-top:14px">
+              <label for="discountReason">Hochschule, Ausbildungsbetrieb oder Praktikumsstelle</label>
+              <input id="discountReason" class="input" style="min-height:46px;font-size:16px" placeholder="z. B. Uni Leipzig, Musterfirma GmbH …">
             </div>
             <p style="margin:10px 0 0;font-size:14px;opacity:0.65">Nachweis (Studierenden- oder Azubi-Ausweis) bitte zum Kursbeginn mitbringen.</p>
             <h4 style="margin:30px 0 10px;font-size:18px">Gutscheincode</h4>
@@ -146,6 +142,16 @@
             <h2 style="margin:0 0 6px;font-size:28px">Prüfen &amp; absenden</h2>
             <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Ein letzter Blick, dann bist du dabei.</p>
             <dl data-r="summary" id="summaryRows" style="margin:0;display:grid;grid-template-columns:180px minmax(0,1fr);gap:0;font-size:16px"></dl>
+
+            <div style="margin-top:26px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 24px">
+              <h4 style="margin:0 0 4px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent);font-weight:700">Deine Buchung</h4>
+              <div id="priceRowsStep4" style="display:flex;flex-direction:column;gap:9px;font-size:15px;padding-top:12px"></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--color-divider)">
+                <span style="font-size:15px;opacity:0.75">Gesamt</span>
+                <span id="totalLabelStep4" style="font-family:var(--font-heading);font-size:28px;color:var(--color-accent-700)">— €</span>
+              </div>
+            </div>
+
             <label class="radio" style="margin-top:26px;font-size:15.5px">
               <input type="checkbox" id="agb"><span class="dot"></span>
               <span>Ich habe die <a href="agb">AGB</a> und die <a href="datenschutz">Datenschutzerklärung</a> gelesen und akzeptiere sie. Mir ist bewusst, dass Klettern eine Risikosportart ist.</span>
@@ -167,7 +173,7 @@
           <div style="display:flex;gap:12px;margin-top:36px;flex-wrap:wrap">
             <button type="button" id="backBtn" class="btn btn-secondary" style="font-size:16px;padding:14px 26px" hidden>Zurück</button>
             <button type="button" id="nextBtn" class="btn btn-primary" style="font-size:16px;padding:14px 30px">Weiter zu deinen Daten</button>
-            <button type="button" id="submitBtn" class="btn btn-primary" style="font-size:16px;padding:14px 30px" hidden>Anmeldung abschicken</button>
+            <button type="button" id="submitBtn" class="btn btn-primary" style="font-size:16px;padding:14px 30px" hidden>Buchen</button>
             <span id="hintText" style="align-self:center;font-size:14px;opacity:0.6"></span>
           </div>
           <div id="submitError" class="form-error" role="alert" hidden></div>
@@ -329,8 +335,15 @@
     if (pctDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Ausbildungsrabatt (15 %)</span><span>−'+eur(pctDisc)+'</span></div>';
     if (vDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Gutschein</span><span>−'+eur(vDisc)+'</span></div>';
     document.getElementById('priceRows').innerHTML = rows;
+    document.getElementById('priceRowsStep4').innerHTML = rows;
     const total = Math.max(0, base - pctDisc - vDisc);
-    document.getElementById('totalLabel').textContent = list.length ? eur(total) : '— €';
+    const totalText = list.length ? eur(total) : '— €';
+    document.getElementById('totalLabel').textContent = totalText;
+    document.getElementById('totalLabelStep4').textContent = totalText;
+    // Auf Schritt 4 steht die Buchungsübersicht schon inline im Ablauf
+    // (Daten -> Buchung -> AGB -> Buchen), die Seitenleiste wäre dort doppelt.
+    const asideEl = document.querySelector('[data-r="aside"]');
+    if (asideEl) asideEl.style.display = step === 4 ? 'none' : '';
   }
 
   function updateSummary() {
@@ -367,7 +380,6 @@
     document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle mindestens einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level (und ggf. die Ausbildungsart).');
     updateAside();
     if (step === 4) { updateSummary(); syncSubmit(); }
-    document.querySelector('[data-r="2col"]').scrollIntoView({behavior:'smooth', block:'start'});
   }
 
   // Vorbestehender Bug, beim Testen der Supabase-Anbindung gefunden und mit
@@ -396,14 +408,13 @@
     f.discount = btn.dataset.discount;
     document.querySelectorAll('.discount-opt').forEach(b => b.dataset.active = String(b === btn));
     document.getElementById('discountReasonBox').hidden = f.discount !== 'student';
-    if (f.discount !== 'student') { f.discountReason = ''; document.querySelectorAll('.reason-opt').forEach(b => b.dataset.active = 'false'); }
+    if (f.discount !== 'student') { f.discountReason = ''; document.getElementById('discountReason').value = ''; }
     render();
   }));
-  document.querySelectorAll('.reason-opt').forEach(btn => btn.addEventListener('click', () => {
-    f.discountReason = btn.dataset.reason;
-    document.querySelectorAll('.reason-opt').forEach(b => b.dataset.active = String(b === btn));
+  document.getElementById('discountReason').addEventListener('input', (e) => {
+    f.discountReason = e.target.value.trim();
     render();
-  }));
+  });
   document.getElementById('voucher').addEventListener('input', (e) => {
     f.voucher = e.target.value;
     const hint = document.getElementById('voucherHint');
@@ -414,8 +425,13 @@
     updateAside();
   });
 
-  document.getElementById('nextBtn').addEventListener('click', () => { if (valid(step) && step < 4) { step++; render(); } });
-  document.getElementById('backBtn').addEventListener('click', () => { if (step > 1) { step--; render(); } });
+  function goToStep(n) {
+    step = n;
+    render();
+    document.querySelector('[data-r="2col"]').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  document.getElementById('nextBtn').addEventListener('click', () => { if (valid(step) && step < 4) goToStep(step + 1); });
+  document.getElementById('backBtn').addEventListener('click', () => { if (step > 1) goToStep(step - 1); });
   // Vorbestehender Bug, beim Launch-Check gefunden und mit behoben: der
   // "Anmeldung abschicken"-Button sah anklickbar aus, bevor die AGB-Checkbox
   // angehakt war, tat beim Klick aber einfach gar nichts (stiller Return) —
@@ -508,9 +524,9 @@
     step = 1;
     f.courseIds = []; f.level = ''; f.gear = []; f.discount = 'none'; f.discountReason = ''; f.voucher = '';
     renderOptions();
-    document.querySelectorAll('.level-opt,.discount-opt,.reason-opt').forEach(b => b.dataset.active = 'false');
+    document.querySelectorAll('.level-opt,.discount-opt').forEach(b => b.dataset.active = 'false');
     document.getElementById('discountReasonBox').hidden = true;
-    ['fn','ln','em','ph','nt','voucher'].forEach(id => document.getElementById(id).value = '');
+    ['fn','ln','em','ph','nt','voucher','discountReason'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('voucherHint').textContent = 'Optional — falls du einen Gutscheincode hast.';
     document.getElementById('agb').checked = false;
     document.getElementById('hpWebsite').value = '';

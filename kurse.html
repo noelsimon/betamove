@@ -68,7 +68,9 @@
         <button type="button" id="filterToggle" aria-label="Filter anzeigen" aria-expanded="false" aria-controls="filterExtra" style="cursor:pointer;flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--color-surface);color:var(--color-accent-800);align-items:center;justify-content:center">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"></path></svg>
         </button>
-        <button type="button" id="clearFilters" style="cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;border:0;background:var(--color-surface);color:var(--color-accent-800);flex:none">Zurücksetzen</button>
+        <button type="button" id="clearFilters" aria-label="Filter zurücksetzen" style="cursor:pointer;flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--color-surface);color:var(--color-accent-800);display:flex;align-items:center;justify-content:center">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
       </div>
       <div id="filterExtra">
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
@@ -208,7 +210,7 @@
   function cardHtml(c) {
     const searchBlob = (c.title+' '+c.teaser+' '+c.beschreibung).toLowerCase();
     const badge = c.levelBadge || c.level;
-    return '<article class="card elev-sm" data-course-card data-id="'+c.id+'" data-level="'+c.level+'" data-sortdate="'+(c.sortDate||'')+'" data-search="'+searchBlob.replace(/"/g,'&quot;')+'" style="padding:0;overflow:hidden;flex-direction:row;gap:0;align-items:stretch">'
+    return '<article class="card elev-sm" data-course-card data-r="card" data-id="'+c.id+'" data-level="'+c.level+'" data-sortdate="'+(c.sortDate||'')+'" data-search="'+searchBlob.replace(/"/g,'&quot;')+'" style="padding:0;overflow:hidden;flex-direction:row;gap:0;align-items:stretch">'
       + '<div role="img" aria-label="'+c.title+'" style="width:230px;flex:none;align-self:stretch;min-height:200px;background-color:var(--color-neutral-300);background-image:url(\'assets-min/'+c.img+'\');background-size:cover;background-position:center"></div>'
       + '<div style="padding:26px 30px;display:flex;flex-direction:column;gap:14px;flex:1;min-width:0">'
       + '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="tag tag-accent" style="font-size:12px">'+badge+'</span><span class="tag tag-neutral" style="font-size:12px">'+c.dauer+'</span><span style="margin-left:auto;font-family:var(--font-heading);font-size:24px;color:var(--color-accent-700)">'+window.BM_EUR(c.price)+'</span></div>'
