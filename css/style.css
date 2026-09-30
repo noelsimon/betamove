@@ -203,7 +203,10 @@ textarea.input { resize: vertical; font-family: inherit; }
      rutschen teils aus dem ersten Bildschirm). Für Mobile: Inhalt oben
      ausrichten, Section-Höhe reduzieren, weniger Innenabstand oben. */
   [data-r="herowrap"] { min-height: auto !important; }
-  [data-r="hero"] { justify-content: flex-start !important; padding: 22px 18px 34px !important; gap: 14px !important; min-height: 480px; }
+  [data-r="hero"] { justify-content: flex-start !important; padding: 16px 18px 26px !important; gap: 10px !important; min-height: 0 !important; }
+  [data-r="hero"] h1 { font-size: 28px !important; }
+  [data-r="hero"] [data-r="herotext"] { font-size: 15.5px !important; }
+  [data-r="hero"] .btn { font-size: 15px !important; padding: 12px 22px !important; }
 }
 
 /* Mobile hamburger nav — an addition on top of the canvas export, which did
