@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://noelsimon.github.io/betamove/sitemap.xml
+Sitemap: https://betamove.de/sitemap.xml
