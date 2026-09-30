@@ -196,6 +196,14 @@ textarea.input { resize: vertical; font-family: inherit; }
 }
 @media (max-width: 560px) {
   [data-r="pad"] { padding-left: 18px !important; padding-right: 18px !important; }
+
+  /* Startseiten-Hero: auf schmalen Screens war der Inhalt per flex-end nach
+     unten gedrückt (funktioniert bei breiten Desktop-Bildern, auf hohen
+     Handy-Screens landet dadurch das Badge sehr weit unten und die Buttons
+     rutschen teils aus dem ersten Bildschirm). Für Mobile: Inhalt oben
+     ausrichten, Section-Höhe reduzieren, weniger Innenabstand oben. */
+  [data-r="herowrap"] { min-height: auto !important; }
+  [data-r="hero"] { justify-content: flex-start !important; padding: 22px 18px 34px !important; gap: 14px !important; min-height: 480px; }
 }
 
 /* Mobile hamburger nav — an addition on top of the canvas export, which did
@@ -203,7 +211,7 @@ textarea.input { resize: vertical; font-family: inherit; }
    chrome). Collapses nav links behind a toggle below 900px. */
 @media (max-width: 900px) {
   [data-r="nav"] { flex-wrap: nowrap; gap: 14px !important; padding: 10px 20px !important; position: relative; }
-  [data-r="nav"] > a.brand img { height: 40px !important; }
+  [data-r="nav"] > a.brand img { height: 46px !important; }
   [data-r="navlinks"] { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 20px 18px; border-bottom: 1px solid var(--color-divider); box-shadow: var(--shadow-md); }
   [data-r="navlinks"].open { display: flex; }
   [data-r="navlinks"] a { display: block; padding: 10px 4px; width: 100%; }
