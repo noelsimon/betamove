@@ -21,6 +21,7 @@
   .opt-btn[data-active="true"] { border-color: var(--color-accent) !important; background: var(--color-accent-100) !important; }
   .opt-btn[data-active="true"] .opt-dot { background: var(--color-accent); border-color: var(--color-accent); }
   .opt-btn[data-active="true"] .opt-dot::after { content:"✓"; }
+  .opt-dot { border-radius:6px !important; }
   .step-bar { height:5px; border-radius:999px; background: var(--color-divider); }
   li[data-step-tab] .step-label { display:flex; align-items:center; gap:8px; font-size:14px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
   .step-dot { width:22px; height:22px; flex:none; border-radius:50%; display:grid; place-items:center; font-size:12px; background: var(--color-neutral-300); color: var(--color-neutral-700); }
@@ -67,7 +68,7 @@
 
     <div id="formPanel">
       <h1 style="margin:0 0 10px;font-size:clamp(34px,4.2vw,50px)">Kursanmeldung</h1>
-      <p style="max-width:60ch;font-size:18px;opacity:0.82;margin-bottom:34px">Vier kurze Schritte, keine doppelten Angaben. Du siehst jederzeit, was dich der Kurs kostet.</p>
+      <p style="max-width:60ch;font-size:18px;opacity:0.82;margin-bottom:34px">Vier kurze Schritte, keine doppelten Angaben. Du siehst jederzeit, was dich der Kurs kostet. Du kannst auch mehrere Kurse gleichzeitig buchen.</p>
 
       <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:38px;align-items:start">
         <div>
@@ -80,76 +81,12 @@
 
           <section data-step="1" style="animation:bmFade 0.25s ease both">
             <h2 style="margin:0 0 6px;font-size:28px">Was möchtest du buchen?</h2>
-            <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Ein Klick genügt, Termin und Preis sind hinterlegt.</p>
+            <p style="opacity:0.75;font-size:16px;margin-bottom:22px">Du kannst mehrere Kurse auswählen — Termin und Preis sind hinterlegt, die Kursgebühren werden automatisch addiert.</p>
             <h4 style="margin:0 0 12px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-600);font-weight:700">Einzelkurse</h4>
-            <div style="display:flex;flex-direction:column;gap:12px">            <button type="button" class="opt-btn" data-course="halle" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Von der Halle an den Fels</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">06.06. – 07.06.2026 · Klettergarten um Leipzig</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">75 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="msl" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Mehrseillängen für Fortgeschrittene</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Termin auf Anfrage · Wird vor dem Kurs mitgeteilt</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">169 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="mobil" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Keile, Friends und Co. – Mobile Sicherung</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Termin auf Anfrage · Klettergebiet nach Absprache</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">149 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="technik" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Besser Klettern – Bewegungstechnik</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Termin auf Anfrage · Kletterhalle oder Fels</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">99 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="update" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Sicherungs-Update</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">16.01.2027 · Kletterhalle No Limit</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">75 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="sturz" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Sturz- und Sicherungstraining</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Termin auf Anfrage · Kletterhalle</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">75 €</span>
-            </button>
-</div>
+            <div id="courseOptions" style="display:flex;flex-direction:column;gap:12px"></div>
             <h4 style="margin:34px 0 6px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-600);font-weight:700">Jahresausbildung</h4>
             <p style="margin:0 0 12px;font-size:15px;opacity:0.75">Alle Module eines Jahres in einem Paket – ein fester Platz in jedem Kurs. <a href="ausbildung">Programm ansehen</a></p>
-            <div style="display:flex;flex-direction:column;gap:12px">            <button type="button" class="opt-btn" data-course="paket-basis" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Jahresausbildung Basis</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Einstieg jederzeit · nächster Zyklus ab März</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">799 €</span>
-            </button>
-            <button type="button" class="opt-btn" data-course="paket-komplett" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">
-              <span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-family:var(--font-heading);font-size:19px">Jahresausbildung Komplett</span>
-                <span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">Einstieg jederzeit · nächster Zyklus ab März</span>
-              </span>
-              <span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">1490 €</span>
-            </button>
-</div>
+            <div id="paketOptions" style="display:flex;flex-direction:column;gap:12px"></div>
           </section>
 
           <section data-step="2" hidden style="animation:bmFade 0.25s ease both">
@@ -188,7 +125,20 @@
               <button type="button" class="chip discount-opt" data-discount="none">Kein Rabatt</button>
               <button type="button" class="chip discount-opt" data-discount="student">Studierend / Azubi (−15 %)</button>
             </div>
+            <div id="discountReasonBox" hidden style="margin-top:14px">
+              <p style="margin:0 0 8px;font-size:14.5px;opacity:0.75">Was trifft auf dich zu?</p>
+              <div style="display:flex;flex-wrap:wrap;gap:10px" id="discountReasonOptions">
+                <button type="button" class="chip reason-opt" data-reason="Studium">Studium</button>
+                <button type="button" class="chip reason-opt" data-reason="Ausbildung">Ausbildung</button>
+                <button type="button" class="chip reason-opt" data-reason="Praktikum">Praktikum</button>
+              </div>
+            </div>
             <p style="margin:10px 0 0;font-size:14px;opacity:0.65">Nachweis (Studierenden- oder Azubi-Ausweis) bitte zum Kursbeginn mitbringen.</p>
+            <h4 style="margin:30px 0 10px;font-size:18px">Gutscheincode</h4>
+            <div class="field" style="max-width:280px">
+              <input id="voucher" class="input" style="min-height:46px;font-size:16px" placeholder="z. B. BETAMOVE15">
+            </div>
+            <p id="voucherHint" style="margin:8px 0 0;font-size:14px;opacity:0.65">Optional — falls du einen Gutscheincode hast.</p>
             <div class="field" style="margin-top:30px"><label for="nt">Anmerkungen</label><textarea id="nt" class="input" style="min-height:110px;font-size:16px;border-radius:var(--radius-md)" placeholder="Verletzungen, Ziele, Fragen, gemeinsame Anmeldung mit …"></textarea></div>
           </section>
 
@@ -225,7 +175,7 @@
 
         <aside data-r="aside" style="position:sticky;top:96px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;box-shadow:var(--shadow-sm)">
           <h4 style="margin:0 0 4px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent);font-weight:700">Deine Buchung</h4>
-          <p id="selTitle" style="margin:0 0 14px;font-family:var(--font-heading);font-size:22px;line-height:1.2">Noch kein Kurs gewählt</p>
+          <p id="selTitle" style="margin:0 0 4px;font-family:var(--font-heading);font-size:22px;line-height:1.2">Noch kein Kurs gewählt</p>
           <p id="selMeta" style="margin:0 0 18px;font-size:14.5px;opacity:0.75"></p>
           <div id="priceRows" style="display:flex;flex-direction:column;gap:9px;font-size:15px;padding-top:16px;border-top:1px solid var(--color-divider)"></div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--color-divider)">
@@ -296,6 +246,7 @@
     <span>Chat</span>
   </button>
 </div>
+<script src="js/courses-data.js"></script>
 <script src="js/main.js"></script>
 <!-- Supabase-JS per CDN (kein Build-Schritt/npm nötig). Version bewusst fest
      gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
@@ -306,47 +257,95 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/account.js"></script>
 <script>
-const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "level": "Einstieg Fels", "dauer": "2 Tage", "price": 75, "img": "kurs-halle.jpg", "date": "06.06. – 07.06.2026", "ort": "Klettergarten um Leipzig", "teaser": "Der Klassiker für alle, die aus der Halle raus wollen: Vorsteigen und Sichern am Naturfels, Routenauswahl, Abbauen und Abseilen.", "beschreibung": "Du hast bereits Klettererfahrungen in der Kletterhalle gesammelt und hast Lust, endlich draußen am Fels zu klettern? Dann solltest du auf jeden Fall diesen Kurs besuchen.", "lernziel": "Nach dem Kurs kannst du selbstständig in einem Klettergarten klettern und kennst alle wichtigen Techniken, um sicher nach oben sowie nach unten zu kommen.", "inhalte": ["Vorsteigen und Sichern am Naturfels", "Einhängen der Zwischensicherungen", "Sinnvolle Fels- und Routenauswahl", "Abbauen des Materials und Abseilen", "Gefahrensituationen Outdoor"], "voraussetzungen": ["Vorstieg klettern im 5. Grad in der Kletterhalle", "Erfahrungen im Vorstieg sichern (auch bereits Stürze gesichert)"], "equipment": ["Gurt", "Seil", "Sicherungsgerät (Halbautomat o. Autotuber)", "Helm", "Exen"], "hinweis": "Der Ort wird vor dem Kurs mitgeteilt. Vergünstigter Preis für Studierende und Azubis."}, {"id": "msl", "title": "Mehrseillängen für Fortgeschrittene", "level": "Fortgeschritten", "dauer": "2 Tage", "price": 169, "img": "kurs-msl.jpg", "date": "Termin auf Anfrage", "ort": "Wird vor dem Kurs mitgeteilt", "teaser": "Standplatzbau, behelfsmäßige Bergrettung und individuelles Feedback zu deinen Gewohnheiten in der Mehrseillänge.", "beschreibung": "Du besitzt bereits Erfahrung im Klettern von Mehrseillängen, hast ein gutes Handling mit dem Alpin-Tuber und kannst selbstständig einen Standplatz bauen? In diesem Kurs erweitern wir diese Fähigkeiten und schauen deine Gewohnheiten oder eventuelle Fehler genau an. Du lernst die Grundlagen der behelfsmäßigen Bergrettung, sodass du auch im Notfall reagieren kannst.", "lernziel": "Durch individuelles Feedback und die Einschätzung des Kletterlehrers kannst du deinen derzeitigen Wissensstand prüfen. Außerdem weißt du, woran du noch arbeiten kannst. Dazu erhältst du Grundkenntnisse in der behelfsmäßigen Bergrettung und erweiterte Fähigkeiten im Standplatzbau.", "inhalte": ["Behelfsmäßige Bergrettung", "Individuelles Feedback und aktuelle Lehrmeinung Mehrseillängen", "Möglichst viel Praxis"], "voraussetzungen": ["Erfahrungen beim Mehrseillängen klettern", "Umgang mit Alpin-Tuber", "Erfahrungen im Abseilen"], "equipment": ["Gurt", "Halbseile", "Sicherungsgerät (Alpin-Tuber)", "5–10 Karabiner", "Helm", "Alpinexen", "5 m 6 mm Reepschnur und Prusikschnur", "Bandschlinge (120 cm, 240 cm)", "Adjust (Selbstsicherung)"], "hinweis": "BETAMOVE passt sich an die Gruppe an – die Lehrinhalte können sich dadurch etwas verschieben."}, {"id": "mobil", "title": "Keile, Friends und Co. – Mobile Sicherung", "level": "Fortgeschritten", "dauer": "1 Tag", "price": 149, "img": "kurs-mobil.jpg", "date": "Termin auf Anfrage", "ort": "Klettergebiet nach Absprache", "teaser": "Cams und Keile legen, testen und vertrauen lernen – inklusive Trainingsaufbau für dein eigenes Üben.", "beschreibung": "Du hast erste Erfahrungen mit mobilen Sicherungen gesammelt oder möchtest in das Thema einsteigen? In diesem Kurs lernst du den sicheren Umgang mit mobilen Sicherungsmitteln – mit besonderem Fokus auf Cams. Zusätzlich bekommst du einen sinnvollen Trainingsaufbau an die Hand.", "lernziel": "Der Kurs vermittelt dir ein solides Gefühl für mobile Sicherungen – durch Wissen, Ausprobieren und Wiederholen. Nach dem Kurs bist du in der Lage, selbstständig am Fels mit mobilen Sicherungen zu klettern und Vertrauen in dein Material aufzubauen.", "inhalte": ["Theoretische Grundlagen zu mobilen Sicherungen", "Intensives Praxistraining im Legen von Cams und Keilen", "Konkrete Übungen für dein eigenes Training", "Optional: Einführung in die Rissklettertechnik"], "voraussetzungen": ["Sicheres Vorstiegsklettern im 5. Grad am Naturfels", "Gute Sicherungspraxis beim Sichern von Kletternden"], "equipment": ["Klettergurt", "Helm", "Mobile Sicherungen (Cams, Keile etc.)", "Einfachseil", "Sicherungsgerät (Autotuber oder Halbautomat)", "Optional: Reibungsassistent"], "hinweis": ""}, {"id": "technik", "title": "Besser Klettern – Bewegungstechnik", "level": "Alle Level", "dauer": "1 Tag", "price": 99, "img": "kurs-technik.jpg", "date": "Termin auf Anfrage", "ort": "Kletterhalle oder Fels", "teaser": "Bewegungsanalyse mit individuellem Feedback statt Schema F – wir finden heraus, was dich bremst.", "beschreibung": "Du hast das Gefühl, beim Klettern auf der Stelle zu treten? Deine Technik fühlt sich nicht stimmig an, die Motivation lässt nach? In diesem Kurs nehmen wir deine Bewegungen gezielt unter die Lupe. Statt vorgegebener Schemata erhältst du persönliches Feedback, das genau auf dich und dein Klettern zugeschnitten ist.", "lernziel": "Du verstehst nach dem Kurs, welche kleinen Gewohnheiten sich eingeschlichen haben, was dir fehlt, um dein Ziel zu erreichen, und erhältst konkrete Aufgaben, die dir helfen, die Bewegungen zu verbessern.", "inhalte": ["Bewegungsanalyse mit individuellem Feedback", "Konkrete individuelle Aufgaben zur Verbesserung deiner Bewegungstechnik", "Verständnis-Aufbau der Kletter-Phasen"], "voraussetzungen": ["Bewegungserfahrung im 6. Grad (idealerweise Vorstieg)", "Vorstieg sichern von Vorteil"], "equipment": ["Gurt", "Einfachseil", "Sicherungsgerät (Autotuber, Halbautomat)", "Eventuell Reibungsassistent"], "hinweis": "Hast du noch keine langjährige Erfahrung, schreibe das bitte bei der Anmeldung dazu – dann telefonieren wir vorher. Anmelden kannst du dich trotzdem."}, {"id": "update", "title": "Sicherungs-Update", "level": "Auffrischung", "dauer": "3 Stunden", "price": 75, "img": "kurs-update.jpg", "date": "16.01.2027", "ort": "Kletterhalle No Limit", "teaser": "Aktuelle Lehrmeinung, Gewohnheiten-Check und Sicherungsmythen aufgedeckt – mit Zertifikat.", "beschreibung": "Du bist dir unsicher, ob du alles richtig machst? In diesem Kurs bringen wir dich auf den aktuellen Stand der Lehrmeinung. Wir betrachten deine Gewohnheiten und decken eventuelle Sicherungs-Mythen auf.", "lernziel": "Nach dem Kurs kennst du die aktuelle Lehrmeinung und hast deine Sicherungspraxis nachhaltig verbessert.", "inhalte": ["Übung der Sicherungspraxis", "Vermittlung der aktuellen Lehrmeinung", "Gewohnheiten-Check mit individueller Rückmeldung", "Zertifikat Sicherungsupdate"], "voraussetzungen": ["Vorstieg klettern im 5. Grad in der Kletterhalle", "Erfahrungen im Vorstieg sichern"], "equipment": ["Seil", "Sicherungsgerät", "Gurt"], "hinweis": ""}, {"id": "sturz", "title": "Sturz- und Sicherungstraining", "level": "Alle Level", "dauer": "3 Stunden", "price": 75, "img": "kurs-sturz.jpg", "date": "Termin auf Anfrage", "ort": "Kletterhalle", "teaser": "Weich sichern, Gewichtsunterschiede verstehen und Stürze ohne Verletzung erlernen.", "beschreibung": "Angst ist ein wichtiger Teil des Kletterns, jedoch ist der Umgang mit diesem Gefühl manchmal schwer. Wir schauen uns diese Ängste an und behandeln sie mit praxisnahen Übungen.", "lernziel": "Nach dem Kurs verstehst du, wie du weich sichern kannst, wie sich ein Gewichtsunterschied auf Stürze auswirkt und was NoGos sind. Du verstehst viele Zusammenhänge zwischen Sturz, Sichern und externen sowie internen Faktoren.", "inhalte": ["Umgang mit dem Sicherungsgerät", "Sturztraining (mit Aufbau für das private Üben)", "Umgang mit Gewichtsunterschieden", "Gefahrenanalyse (interne und externe Faktoren)", "Individuelles Coaching und Empfehlungen", "Kommunikation in einer Seilschaft", "Fallen ohne Verletzung", "Weiches Sichern"], "voraussetzungen": ["Vorstieg sichern (idealerweise bereits Stürze gehalten)", "Routinierter Umgang mit deinem Sicherungsgerät"], "equipment": ["Gurt", "Seil", "Sicherungsgerät (Halbautomat o. Autotuber)"], "hinweis": ""}, {"id": "paket-basis", "title": "Jahresausbildung Basis", "price": 799, "date": "Einstieg jederzeit · nächster Zyklus ab März", "ort": "Leipzig, Elbsandstein und Umgebung", "level": "Stufe 1–3", "dauer": "1 Jahr"}, {"id": "paket-komplett", "title": "Jahresausbildung Komplett", "price": 1490, "date": "Einstieg jederzeit · nächster Zyklus ab März", "ort": "Leipzig, Elbsandstein, Ausbildungswoche outdoor", "level": "Stufe 1–3 + Woche", "dauer": "1 Jahr"}];
 (function(){
   let step = 1;
-  const f = { courseId: null, level: '', gear: [], discount: 'none' };
+  const f = { courseIds: [], level: '', gear: [], discount: 'none', discountReason: '', voucher: '' };
+  const VOUCHERS = { BETAMOVE15: 15 };
   const nextLabels = {1:'Weiter zu deinen Daten', 2:'Weiter zu Erfahrung', 3:'Zur Übersicht'};
 
-  function course() { return ALL_COURSES.find(c => c.id === f.courseId); }
-  function eur(n) { return n.toLocaleString('de-DE') + ' €'; }
+  function eur(n) { return window.BM_EUR(n); }
+  function selectedCourses() { return f.courseIds.map(id => window.BM_COURSES.find(c => c.id === id)).filter(Boolean); }
+  function voucherDiscount() {
+    const code = (f.voucher || '').trim().toUpperCase();
+    return code && VOUCHERS[code] ? VOUCHERS[code] : 0;
+  }
+
+  function optBtnHtml(c) {
+    return '<button type="button" class="opt-btn" data-course="'+c.id+'" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">'
+      + '<span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>'
+      + '<span style="flex:1;min-width:0"><span style="display:block;font-family:var(--font-heading);font-size:19px">'+c.title+'</span><span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">'+c.date+' · '+c.ort+'</span></span>'
+      + '<span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">'+eur(c.price)+'</span>'
+      + '</button>';
+  }
+
+  function renderOptions() {
+    const courses = window.BM_COURSES_BY_DATE(window.BM_COURSES.filter(c => !c.isPaket));
+    const pakete = window.BM_COURSES.filter(c => c.isPaket);
+    document.getElementById('courseOptions').innerHTML = courses.map(optBtnHtml).join('');
+    document.getElementById('paketOptions').innerHTML = pakete.map(optBtnHtml).join('');
+    document.querySelectorAll('.opt-btn').forEach(btn => {
+      btn.dataset.active = String(f.courseIds.includes(btn.dataset.course));
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.course;
+        const i = f.courseIds.indexOf(id);
+        if (i > -1) f.courseIds.splice(i, 1); else f.courseIds.push(id);
+        btn.dataset.active = String(f.courseIds.includes(id));
+        render();
+        if (window.innerWidth <= 640) {
+          setTimeout(() => {
+            const target = document.getElementById('nextBtn');
+            if (target) target.scrollIntoView({behavior:'smooth', block:'center'});
+          }, 80);
+        }
+      });
+    });
+  }
+
+  // ?kurs=id oder ?kurs=id1,id2 aus dem "Anmelden"-Button auf kurse
+  // übernimmt die Vorauswahl, damit man den Kurs nicht doppelt wählen muss.
+  (function preselectFromQuery() {
+    const param = new URLSearchParams(location.search).get('kurs');
+    if (!param) return;
+    const ids = param.split(',').map(s => s.trim()).filter(id => window.BM_COURSES.some(c => c.id === id));
+    f.courseIds = ids;
+  })();
 
   function valid(n) {
-    if (n === 1) return !!f.courseId;
+    if (n === 1) return f.courseIds.length > 0;
     if (n === 2) return document.getElementById('fn').value && document.getElementById('ln').value && /.+@.+\..+/.test(document.getElementById('em').value);
-    if (n === 3) return !!f.level;
+    if (n === 3) return !!f.level && (f.discount !== 'student' || !!f.discountReason);
     return true;
   }
 
   function updateAside() {
-    const c = course();
-    document.getElementById('selTitle').textContent = c ? c.title : 'Noch kein Kurs gewählt';
-    document.getElementById('selMeta').textContent = c ? (c.date + ' · ' + c.ort) : '';
-    const base = c ? c.price : 0;
-    const disc = f.discount === 'student' ? Math.round(base * 0.15) : 0;
+    const list = selectedCourses();
+    document.getElementById('selTitle').textContent = list.length ? (list.length === 1 ? list[0].title : list.length + ' Kurse ausgewählt') : 'Noch kein Kurs gewählt';
+    document.getElementById('selMeta').textContent = list.map(c => c.title + ' · ' + c.date).join(' • ');
+    const base = list.reduce((sum, c) => sum + c.price, 0);
+    const pctDisc = f.discount === 'student' ? Math.round(base * 0.15) : 0;
+    const vDisc = list.length ? voucherDiscount() : 0;
     let rows = '';
-    if (c) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Kursgebühr</span><span>'+eur(base)+'</span></div>';
-    if (disc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Rabatt (15 %)</span><span>−'+eur(disc)+'</span></div>';
+    list.forEach(c => { rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">'+c.title+'</span><span>'+eur(c.price)+'</span></div>'; });
+    if (pctDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Ausbildungsrabatt (15 %)</span><span>−'+eur(pctDisc)+'</span></div>';
+    if (vDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Gutschein</span><span>−'+eur(vDisc)+'</span></div>';
     document.getElementById('priceRows').innerHTML = rows;
-    document.getElementById('totalLabel').textContent = c ? eur(base - disc) : '— €';
+    const total = Math.max(0, base - pctDisc - vDisc);
+    document.getElementById('totalLabel').textContent = list.length ? eur(total) : '— €';
   }
 
   function updateSummary() {
-    const c = course();
+    const list = selectedCourses();
     const rows = [
-      ['Kurs', c ? c.title : '—'],
-      ['Termin', c ? c.date : '—'],
-      ['Ort', c ? c.ort : '—'],
+      ['Kurse', list.length ? list.map(c => c.title).join(', ') : '—'],
+      ['Termine', list.length ? list.map(c => c.title + ': ' + c.date).join('<br>') : '—'],
+      ['Orte', list.length ? Array.from(new Set(list.map(c => c.ort))).join(', ') : '—'],
       ['Name', ((document.getElementById('fn').value||'')+' '+(document.getElementById('ln').value||'')).trim() || '—'],
       ['E-Mail', document.getElementById('em').value || '—'],
       ['Telefon', document.getElementById('ph').value || '—'],
       ['Level', f.level || '—'],
       ['Leihmaterial', f.gear.length ? f.gear.join(', ') : 'Keine Angabe'],
-      ['Rabatt', f.discount === 'student' ? 'Studierend / Azubi' : 'Kein Rabatt'],
+      ['Rabatt', f.discount === 'student' ? ('Studierend / Azubi (' + (f.discountReason || '–') + ')') : 'Kein Rabatt'],
+      ['Gutschein', f.voucher.trim() ? (voucherDiscount() > 0 ? f.voucher.trim() + ' (gültig)' : f.voucher.trim() + ' (nicht erkannt)') : '—'],
       ['Anmerkungen', document.getElementById('nt').value || '—'],
     ];
     document.getElementById('summaryRows').innerHTML = rows.map(r =>
@@ -365,7 +364,7 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.getElementById('submitBtn').hidden = step !== 4;
     document.getElementById('nextBtn').textContent = nextLabels[step] || '';
     document.getElementById('nextBtn').disabled = !valid(step);
-    document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level.');
+    document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle mindestens einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level (und ggf. die Ausbildungsart).');
     updateAside();
     if (step === 4) { updateSummary(); syncSubmit(); }
     document.querySelector('[data-r="2col"]').scrollIntoView({behavior:'smooth', block:'start'});
@@ -378,15 +377,10 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
   // nie abschließbar.
   function revalidateNext() {
     document.getElementById('nextBtn').disabled = !valid(step);
-    document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level.');
+    document.getElementById('hintText').textContent = valid(step) ? '' : (step===1?'Wähle mindestens einen Kurs.':step===2?'Name und E-Mail fehlen noch.':'Wähle dein Level (und ggf. die Ausbildungsart).');
   }
   ['fn','ln','em','ph'].forEach(id => document.getElementById(id).addEventListener('input', revalidateNext));
 
-  document.querySelectorAll('.opt-btn').forEach(btn => btn.addEventListener('click', () => {
-    f.courseId = btn.dataset.course;
-    document.querySelectorAll('.opt-btn').forEach(b => b.dataset.active = String(b === btn));
-    render();
-  }));
   document.querySelectorAll('.level-opt').forEach(btn => btn.addEventListener('click', () => {
     f.level = btn.dataset.level;
     document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b === btn));
@@ -401,8 +395,24 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
   document.querySelectorAll('.discount-opt').forEach(btn => btn.addEventListener('click', () => {
     f.discount = btn.dataset.discount;
     document.querySelectorAll('.discount-opt').forEach(b => b.dataset.active = String(b === btn));
+    document.getElementById('discountReasonBox').hidden = f.discount !== 'student';
+    if (f.discount !== 'student') { f.discountReason = ''; document.querySelectorAll('.reason-opt').forEach(b => b.dataset.active = 'false'); }
     render();
   }));
+  document.querySelectorAll('.reason-opt').forEach(btn => btn.addEventListener('click', () => {
+    f.discountReason = btn.dataset.reason;
+    document.querySelectorAll('.reason-opt').forEach(b => b.dataset.active = String(b === btn));
+    render();
+  }));
+  document.getElementById('voucher').addEventListener('input', (e) => {
+    f.voucher = e.target.value;
+    const hint = document.getElementById('voucherHint');
+    const trimmed = f.voucher.trim();
+    if (!trimmed) { hint.textContent = 'Optional — falls du einen Gutscheincode hast.'; hint.style.color = ''; }
+    else if (voucherDiscount() > 0) { hint.textContent = '✓ Gutschein gültig: ' + eur(voucherDiscount()) + ' Rabatt.'; hint.style.color = 'var(--color-accent-2-700)'; }
+    else { hint.textContent = 'Code nicht erkannt — prüfe die Schreibweise.'; hint.style.color = 'var(--color-accent-700)'; }
+    updateAside();
+  });
 
   document.getElementById('nextBtn').addEventListener('click', () => { if (valid(step) && step < 4) { step++; render(); } });
   document.getElementById('backBtn').addEventListener('click', () => { if (step > 1) { step--; render(); } });
@@ -419,8 +429,9 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
   }
   document.getElementById('agb') && document.getElementById('agb').addEventListener('change', syncSubmit);
 
-  function showSuccess(c) {
-    document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + (c ? c.title : 'deinen Kurs') + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + document.getElementById('em').value + ' mit der Bestätigung und allen Details.';
+  function showSuccess(list) {
+    const names = list.length ? list.map(c => c.title).join(', ') : 'deinen Kurs';
+    document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + names + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + document.getElementById('em').value + ' mit der Bestätigung und allen Details.';
     document.getElementById('formPanel').hidden = true;
     document.getElementById('successPanel').hidden = false;
     window.scrollTo(0,0);
@@ -441,14 +452,14 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     const errorBox = document.getElementById('submitError');
     errorBox.hidden = true;
 
-    const c = course();
+    const list = selectedCourses();
 
     // Honeypot ausgefüllt -> vermutlich ein Bot. Wir verwerfen die Anmeldung
     // still (kein Insert), zeigen dem Absender aber ganz normal den
     // Erfolgs-Screen, damit ein Bot keinen Hinweis bekommt, dass er erkannt wurde.
     const honeypot = document.getElementById('hpWebsite');
     if (honeypot && honeypot.value.trim()) {
-      showSuccess(c);
+      showSuccess(list);
       return;
     }
 
@@ -471,16 +482,18 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
         nachname: document.getElementById('ln').value.trim(),
         email: document.getElementById('em').value.trim(),
         telefon: document.getElementById('ph').value.trim() || null,
-        kurs_id: f.courseId,
-        kurs_titel: c ? c.title : '',
+        kurs_id: f.courseIds.join(','),
+        kurs_titel: list.map(c => c.title).join(', '),
         level: f.level,
         leihmaterial: f.gear,
         rabatt_typ: f.discount,
+        rabatt_art: f.discount === 'student' ? f.discountReason : null,
+        gutschein_code: f.voucher.trim() || null,
         anmerkungen: document.getElementById('nt').value.trim() || null,
         agb_akzeptiert: true,
       });
       if (error) throw error;
-      showSuccess(c);
+      showSuccess(list);
     } catch (err) {
       showSubmitError('Anmeldung konnte leider nicht gesendet werden.' + FALLBACK_EMAIL_HINT);
     } finally {
@@ -493,15 +506,19 @@ const ALL_COURSES = [{"id": "halle", "title": "Von der Halle an den Fels", "leve
     document.getElementById('successPanel').hidden = true;
     document.getElementById('formPanel').hidden = false;
     step = 1;
-    f.courseId = null; f.level = ''; f.gear = []; f.discount = 'none';
-    document.querySelectorAll('.opt-btn,.level-opt,.discount-opt').forEach(b => b.dataset.active = 'false');
-    ['fn','ln','em','ph','nt'].forEach(id => document.getElementById(id).value = '');
+    f.courseIds = []; f.level = ''; f.gear = []; f.discount = 'none'; f.discountReason = ''; f.voucher = '';
+    renderOptions();
+    document.querySelectorAll('.level-opt,.discount-opt,.reason-opt').forEach(b => b.dataset.active = 'false');
+    document.getElementById('discountReasonBox').hidden = true;
+    ['fn','ln','em','ph','nt','voucher'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('voucherHint').textContent = 'Optional — falls du einen Gutscheincode hast.';
     document.getElementById('agb').checked = false;
     document.getElementById('hpWebsite').value = '';
     document.getElementById('submitError').hidden = true;
     render();
   });
 
+  renderOptions();
   render();
 })();
 </script>

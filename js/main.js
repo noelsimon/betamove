@@ -97,92 +97,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // bmChatReply — regelbasierte Antwortlogik für das Chat-Widget
 // ============================================================================
 // Kein KI-Modell, keine Serveranfrage: reines Keyword-Matching gegen den
-// tatsächlichen Kurskatalog (siehe kurse). Läuft komplett im Browser,
-// verursacht keine laufenden Kosten. Wird der Kurskatalog auf kurse
-// geändert (neuer Kurs, neuer Preis), bitte auch COURSES hier unten pflegen.
-const COURSES = [
-  {
-    id: 'halle',
-    name: 'Von der Halle an den Fels',
-    level: 'Einstieg Fels',
-    dauer: '2 Tage',
-    preis: '75 €',
-    kurz: 'Der Einstieg vom Hallen- ins Felsklettern: Vorsteigen und Sichern am Naturfels, Routenauswahl, Abbauen und Abseilen.',
-    voraussetzung: 'Vorstieg klettern im 5. Grad in der Kletterhalle sowie Erfahrung im Vorstiegsichern (auch Stürze).',
-    equipment: 'Helm, Gurt, Seil, Sicherungsgerät (Halbautomat oder Autotuber), Exen. Equipment kann ausgeliehen werden, bitte anfragen.',
-    keywords: ['halle an den fels', 'halle-fels', 'von der halle', 'zum fels', 'naturfels', 'erster felskurs']
-  },
-  {
-    id: 'msl',
-    name: 'Mehrseillängen für Fortgeschrittene',
-    level: 'Fortgeschritten',
-    dauer: '2 Tage',
-    preis: '169 €',
-    kurz: 'Standplatzbau, behelfsmäßige Bergrettung und individuelles Feedback zu deinen Gewohnheiten in der Mehrseillänge.',
-    voraussetzung: 'Erfahrung im Mehrseillängenklettern, Umgang mit dem Alpin-Tuber, Erfahrung im Abseilen.',
-    equipment: 'Gurt, Halbseile, Alpin-Tuber, 5–10 Karabiner, Helm, Alpinexen, Reepschnur/Prusikschnur, Bandschlingen, Adjust. Kann teilweise ausgeliehen werden, bitte anfragen.',
-    keywords: ['mehrseillänge', 'mehrseillaenge', 'msl', 'alpin', 'standplatz']
-  },
-  {
-    id: 'mobil',
-    name: 'Keile, Friends und Co. – Mobile Sicherung',
-    level: 'Fortgeschritten',
-    dauer: '1 Tag',
-    preis: '149 €',
-    kurz: 'Cams und Keile legen, testen und vertrauen lernen – inklusive Trainingsaufbau für dein eigenes Üben.',
-    voraussetzung: 'Sicheres Vorstiegsklettern im 5. Grad am Naturfels, gute Sicherungspraxis.',
-    equipment: 'Klettergurt, Helm, mobile Sicherungen (Cams, Keile), Einfachseil, Sicherungsgerät. Kann ausgeliehen werden, bitte anfragen.',
-    keywords: ['mobile sicherung', 'cam', 'friend', 'keil', 'trad klettern', 'clean klettern']
-  },
-  {
-    id: 'technik',
-    name: 'Besser Klettern – Bewegungstechnik',
-    level: 'Alle Level',
-    dauer: '1 Tag',
-    preis: '99 €',
-    kurz: 'Bewegungsanalyse mit individuellem Feedback statt Schema F – wir finden heraus, was dich bremst.',
-    voraussetzung: 'Ideal ab Bewegungserfahrung im 6. Grad, aber offen für alle Level – bei wenig Erfahrung bitte bei der Anmeldung angeben.',
-    equipment: 'Gurt, Einfachseil, Sicherungsgerät, eventuell Reibungsassistent. Kann ausgeliehen werden, bitte anfragen.',
-    keywords: ['bewegungstechnik', 'besser klettern', 'technik verbessern', 'bewegungsanalyse']
-  },
-  {
-    id: 'update',
-    name: 'Sicherungs-Update',
-    level: 'Auffrischung',
-    dauer: '3 Stunden',
-    preis: '75 €',
-    kurz: 'Aktuelle Lehrmeinung, Gewohnheiten-Check und Sicherungsmythen aufgedeckt – mit Zertifikat.',
-    voraussetzung: 'Vorstieg klettern im 5. Grad in der Kletterhalle, Erfahrung im Vorstiegsichern.',
-    equipment: 'Seil, Sicherungsgerät, Gurt. Kann ausgeliehen werden, bitte anfragen.',
-    keywords: ['sicherungs-update', 'sicherungsupdate', 'auffrischung', 'lange nicht mehr geklettert', 'aktueller stand']
-  },
-  {
-    id: 'sturz',
-    name: 'Sturz- und Sicherungstraining',
-    level: 'Alle Level',
-    dauer: '3 Stunden',
-    preis: '75 €',
-    kurz: 'Weich sichern, Gewichtsunterschiede verstehen und Stürze ohne Verletzung erlernen.',
-    voraussetzung: 'Vorstiegsichern (idealerweise bereits Stürze gehalten), Routine mit dem eigenen Sicherungsgerät.',
-    equipment: 'Gurt, Seil, Sicherungsgerät (Halbautomat oder Autotuber). Kann ausgeliehen werden, bitte anfragen.',
-    keywords: ['sturztraining', 'sturz', 'angst vorm stürzen', 'angst vorm sturz', 'weich sichern']
-  }
-];
+// tatsächlichen Kurskatalog. Läuft komplett im Browser, verursacht keine
+// laufenden Kosten. Die Kursdaten kommen aus js/courses-data.js (gemeinsame
+// Quelle mit kurse und anmeldung) — hier nichts mehr doppelt pflegen.
 
 function bmChatReply(raw) {
   const t = raw.toLowerCase();
   const has = (...words) => words.some(w => t.indexOf(w) > -1);
+  const COURSES = window.BM_COURSES.filter(c => !c.isPaket);
 
   function courseLine(c) {
-    return c.name + ' (' + c.level + ', ' + c.dauer + ', ' + c.preis + ')';
+    return c.title + ' (' + c.level + ', ' + c.dauer + ', ' + window.BM_EUR(c.price) + ')';
   }
-  function courseUrl() { return 'kurse'; }
 
   // 1) Konkreter Kurs + Material/Ausrüstungsfrage
   const materialFrage = has('material', 'ausrüstung', 'ausruestung', 'equipment', 'mitbringen', 'was brauche', 'brauche ich');
   const genannterKurs = COURSES.find(c => has(...c.keywords));
   if (materialFrage && genannterKurs) {
-    return 'Für „' + genannterKurs.name + '“ brauchst du: ' + genannterKurs.equipment + '\n\nMehr Details findest du auf kurse unter „Alle Details“.';
+    return 'Für „' + genannterKurs.title + '“ brauchst du: ' + genannterKurs.equipment.join(', ') + '.\n\nMehr Details findest du auf kurse unter „Alle Details“.';
   }
 
   // 2) Bildungsurlaub
@@ -201,45 +133,46 @@ function bmChatReply(raw) {
   const hallenErfahrung = has('vorstieg', 'kletterhalle', 'in der halle', 'schon erfahrung', 'halle klettere', '5. grad', 'fünften grad');
   const empfehlungsFrage = has('kurs empfehlen', 'welcher kurs', 'welchen kurs', 'kurs passt', 'kurs würdest du', 'kurs wuerdest du', 'was empfiehlst du');
   if (neuSignal || nullErfahrung || empfehlungsFrage) {
+    const halleCourse = COURSES.find(c => c.id === 'halle');
     if (nullErfahrung && !hallenErfahrung) {
-      return 'Ehrlich gesagt: Unsere aktuellen Kurse setzen etwas Vorerfahrung voraus (mindestens Vorstiegsklettern im 5. Grad in der Kletterhalle). Hast du noch nie geklettert, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle vor Ort, um Grundtechnik und Vorstieg zu lernen. Sobald du dort sicher im Vorstieg kletterst, ist „Von der Halle an den Fels“ (2 Tage, 75 €) genau dein nächster Schritt zu uns – meld dich dann gerne nochmal über kontakt.';
+      return 'Ehrlich gesagt: Unsere aktuellen Kurse setzen etwas Vorerfahrung voraus (mindestens Vorstiegsklettern im 5. Grad in der Kletterhalle). Hast du noch nie geklettert, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle vor Ort, um Grundtechnik und Vorstieg zu lernen. Sobald du dort sicher im Vorstieg kletterst, ist „' + halleCourse.title + '“ (' + halleCourse.dauer + ', ' + window.BM_EUR(halleCourse.price) + ') genau dein nächster Schritt zu uns – meld dich dann gerne nochmal über kontakt.';
     }
-    return 'Kletterst du schon im Vorstieg in der Kletterhalle, ist „Von der Halle an den Fels“ dein perfekter Einstieg bei uns (2 Tage, 75 €, Klettergarten um Leipzig) – der Klassiker für alle, die von drinnen nach draußen wollen. Hast du dagegen noch gar keine Klettererfahrung, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle, bevor unsere Kurse Sinn ergeben. Details und Anmeldung: kurse.';
+    return 'Kletterst du schon im Vorstieg in der Kletterhalle, ist „' + halleCourse.title + '“ dein perfekter Einstieg bei uns (' + halleCourse.dauer + ', ' + window.BM_EUR(halleCourse.price) + ', ' + halleCourse.ort + ') – der Klassiker für alle, die von drinnen nach draußen wollen. Hast du dagegen noch gar keine Klettererfahrung, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle, bevor unsere Kurse Sinn ergeben. Details und Anmeldung: kurse.';
   }
 
   // 5) Sicherungs-Update / Auffrischung
   const updateCourse = COURSES.find(c => c.id === 'update');
   if (has(...updateCourse.keywords)) {
-    return updateCourse.kurz + ' (' + updateCourse.dauer + ', ' + updateCourse.preis + '). Voraussetzung: ' + updateCourse.voraussetzung + ' Mehr auf kurse.';
+    return updateCourse.teaser + ' (' + updateCourse.dauer + ', ' + window.BM_EUR(updateCourse.price) + ', ' + updateCourse.date + '). Voraussetzung: ' + updateCourse.voraussetzungen.join(', ') + '. Mehr auf kurse.';
   }
 
   // 6) Sturz / Angst
   const sturzCourse = COURSES.find(c => c.id === 'sturz');
   if (has(...sturzCourse.keywords)) {
-    return sturzCourse.kurz + ' (' + sturzCourse.dauer + ', ' + sturzCourse.preis + '). Voraussetzung: ' + sturzCourse.voraussetzung + ' Mehr auf kurse.';
+    return sturzCourse.teaser + ' (' + sturzCourse.dauer + ', ' + window.BM_EUR(sturzCourse.price) + ', ' + sturzCourse.date + '). Voraussetzung: ' + sturzCourse.voraussetzungen.join(', ') + '. Mehr auf kurse.';
   }
 
   // 7) Mobile Sicherung / Cams
   const mobilCourse = COURSES.find(c => c.id === 'mobil');
   if (has(...mobilCourse.keywords)) {
-    return mobilCourse.kurz + ' (' + mobilCourse.dauer + ', ' + mobilCourse.preis + '). Voraussetzung: ' + mobilCourse.voraussetzung + ' Mehr auf kurse.';
+    return mobilCourse.teaser + ' (' + mobilCourse.dauer + ', ' + window.BM_EUR(mobilCourse.price) + '). Voraussetzung: ' + mobilCourse.voraussetzungen.join(', ') + '. Mehr auf kurse.';
   }
 
   // 8) Bewegungstechnik
   const technikCourse = COURSES.find(c => c.id === 'technik');
   if (has(...technikCourse.keywords)) {
-    return technikCourse.kurz + ' (' + technikCourse.dauer + ', ' + technikCourse.preis + '). Offen für alle Level. Mehr auf kurse.';
+    return technikCourse.teaser + ' (' + technikCourse.dauer + ', ' + window.BM_EUR(technikCourse.price) + ', ' + technikCourse.date + '). Offen für alle Level. Mehr auf kurse.';
   }
 
   // 9) Mehrseillängen (ohne "neu", s.o.)
   const mslCourse = COURSES.find(c => c.id === 'msl');
   if (has(...mslCourse.keywords)) {
-    return mslCourse.kurz + ' (' + mslCourse.dauer + ', ' + mslCourse.preis + '). Voraussetzung: ' + mslCourse.voraussetzung + ' Mehr auf kurse.';
+    return mslCourse.teaser + ' (' + mslCourse.dauer + ', ' + window.BM_EUR(mslCourse.price) + '). Voraussetzung: ' + mslCourse.voraussetzungen.join(', ') + '. Mehr auf kurse.';
   }
 
   // 10) Irgendein anderer Kurs beim Namen genannt (allgemeine Infofrage)
   if (genannterKurs) {
-    return genannterKurs.kurz + ' (' + genannterKurs.dauer + ', ' + genannterKurs.preis + '). Voraussetzung: ' + genannterKurs.voraussetzung + ' Mehr auf kurse.';
+    return genannterKurs.teaser + ' (' + genannterKurs.dauer + ', ' + window.BM_EUR(genannterKurs.price) + '). Voraussetzung: ' + genannterKurs.voraussetzungen.join(', ') + '. Mehr auf kurse.';
   }
 
   // 11) Preise generell
@@ -247,9 +180,15 @@ function bmChatReply(raw) {
     return 'Unsere Kurspreise im Überblick:\n' + COURSES.map(c => '• ' + courseLine(c)).join('\n') + '\n\nStudierende und Azubis bekommen Rabatt (Nachweis vor Ort). Alle Details: kurse.';
   }
 
-  // 12) Termine generell
+  // 12) Termine generell — dynamisch aus den echten Kursdaten, damit die
+  // Antwort nie wieder veraltet, wenn sich ein Termin ändert.
   if (has('termin', 'wann ist', 'nächste kurs', 'naechste kurs', 'wann findet')) {
-    return '„Von der Halle an den Fels“ hat feste Termine (aktuell 06.–07.06.2026), das „Sicherungs-Update“ ebenfalls (16.01.2027). Die anderen Kurse sind „Termin auf Anfrage“ – wir stimmen den Termin individuell mit dir ab. Aktuelle Termine und Buchung: kurse bzw. direkt anmeldung.';
+    const terminiert = COURSES.filter(c => c.sortDate).sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+    const ohneTermin = COURSES.filter(c => !c.sortDate);
+    let antwort = 'Feste Termine: ' + terminiert.map(c => '„' + c.title + '“ (' + c.date + ')').join(', ') + '.';
+    if (ohneTermin.length) antwort += ' Bei ' + ohneTermin.map(c => '„' + c.title + '“').join(' und ') + ' stimmen wir den Termin individuell mit dir ab.';
+    antwort += ' Aktuelle Termine und Buchung: kurse bzw. direkt anmeldung.';
+    return antwort;
   }
 
   // 13) Kontakt / Team
