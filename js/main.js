@@ -16,11 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
-  // Aktuelle Seite in der Navigation hervorheben
-  const here = location.pathname.split('/').pop() || 'index.html';
+  // Aktuelle Seite in der Navigation hervorheben (funktioniert mit und
+  // ohne ".html" in der URL, da GitHub Pages beide Formen bedient).
+  let here = location.pathname.split('/').pop() || '';
+  here = /^index\.html$/i.test(here) ? '' : here.replace(/\.html$/i, '');
   document.querySelectorAll('[data-r="navlinks"] a').forEach(a => {
     const href = a.getAttribute('href');
-    if (href === here || (here === '' && href === 'index.html')) {
+    if (href === here || (here === '' && href === '/')) {
       a.setAttribute('aria-current', 'page');
     }
   });
@@ -95,8 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // bmChatReply — regelbasierte Antwortlogik für das Chat-Widget
 // ============================================================================
 // Kein KI-Modell, keine Serveranfrage: reines Keyword-Matching gegen den
-// tatsächlichen Kurskatalog (siehe kurse.html). Läuft komplett im Browser,
-// verursacht keine laufenden Kosten. Wird der Kurskatalog auf kurse.html
+// tatsächlichen Kurskatalog (siehe kurse). Läuft komplett im Browser,
+// verursacht keine laufenden Kosten. Wird der Kurskatalog auf kurse
 // geändert (neuer Kurs, neuer Preis), bitte auch COURSES hier unten pflegen.
 const COURSES = [
   {
@@ -174,18 +176,18 @@ function bmChatReply(raw) {
   function courseLine(c) {
     return c.name + ' (' + c.level + ', ' + c.dauer + ', ' + c.preis + ')';
   }
-  function courseUrl() { return 'kurse.html'; }
+  function courseUrl() { return 'kurse'; }
 
   // 1) Konkreter Kurs + Material/Ausrüstungsfrage
   const materialFrage = has('material', 'ausrüstung', 'ausruestung', 'equipment', 'mitbringen', 'was brauche', 'brauche ich');
   const genannterKurs = COURSES.find(c => has(...c.keywords));
   if (materialFrage && genannterKurs) {
-    return 'Für „' + genannterKurs.name + '“ brauchst du: ' + genannterKurs.equipment + '\n\nMehr Details findest du auf kurse.html unter „Alle Details“.';
+    return 'Für „' + genannterKurs.name + '“ brauchst du: ' + genannterKurs.equipment + '\n\nMehr Details findest du auf kurse unter „Alle Details“.';
   }
 
   // 2) Bildungsurlaub
   if (has('bildungsurlaub', 'bildungszeit', 'bildungsfreistellung', 'arbeitgeber bezahlt')) {
-    return 'Bildungsurlaub ist gesetzlicher Extraurlaub für Weiterbildung, zusätzlich zum normalen Urlaub – geregelt pro Bundesland, entscheidend ist dein Arbeitsort. Unsere Wochenkurse (5 Tage, mind. 6 Unterrichtsstunden/Tag) erfüllen die üblichen Anforderungen der Landesgesetze. Alle Infos, den Anspruch je Bundesland und die Unterlagen für deinen Arbeitgeber findest du auf bildungsurlaub.html.';
+    return 'Bildungsurlaub ist gesetzlicher Extraurlaub für Weiterbildung, zusätzlich zum normalen Urlaub – geregelt pro Bundesland, entscheidend ist dein Arbeitsort. Unsere Wochenkurse (5 Tage, mind. 6 Unterrichtsstunden/Tag) erfüllen die üblichen Anforderungen der Landesgesetze. Alle Infos, den Anspruch je Bundesland und die Unterlagen für deinen Arbeitgeber findest du auf bildungsurlaub.';
   }
 
   // 3) Rabatt / Studierende / Azubis
@@ -200,68 +202,68 @@ function bmChatReply(raw) {
   const empfehlungsFrage = has('kurs empfehlen', 'welcher kurs', 'welchen kurs', 'kurs passt', 'kurs würdest du', 'kurs wuerdest du', 'was empfiehlst du');
   if (neuSignal || nullErfahrung || empfehlungsFrage) {
     if (nullErfahrung && !hallenErfahrung) {
-      return 'Ehrlich gesagt: Unsere aktuellen Kurse setzen etwas Vorerfahrung voraus (mindestens Vorstiegsklettern im 5. Grad in der Kletterhalle). Hast du noch nie geklettert, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle vor Ort, um Grundtechnik und Vorstieg zu lernen. Sobald du dort sicher im Vorstieg kletterst, ist „Von der Halle an den Fels“ (2 Tage, 75 €) genau dein nächster Schritt zu uns – meld dich dann gerne nochmal über kontakt.html.';
+      return 'Ehrlich gesagt: Unsere aktuellen Kurse setzen etwas Vorerfahrung voraus (mindestens Vorstiegsklettern im 5. Grad in der Kletterhalle). Hast du noch nie geklettert, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle vor Ort, um Grundtechnik und Vorstieg zu lernen. Sobald du dort sicher im Vorstieg kletterst, ist „Von der Halle an den Fels“ (2 Tage, 75 €) genau dein nächster Schritt zu uns – meld dich dann gerne nochmal über kontakt.';
     }
-    return 'Kletterst du schon im Vorstieg in der Kletterhalle, ist „Von der Halle an den Fels“ dein perfekter Einstieg bei uns (2 Tage, 75 €, Klettergarten um Leipzig) – der Klassiker für alle, die von drinnen nach draußen wollen. Hast du dagegen noch gar keine Klettererfahrung, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle, bevor unsere Kurse Sinn ergeben. Details und Anmeldung: kurse.html.';
+    return 'Kletterst du schon im Vorstieg in der Kletterhalle, ist „Von der Halle an den Fels“ dein perfekter Einstieg bei uns (2 Tage, 75 €, Klettergarten um Leipzig) – der Klassiker für alle, die von drinnen nach draußen wollen. Hast du dagegen noch gar keine Klettererfahrung, empfehlen wir dir zuerst ein paar Einheiten in einer Kletterhalle, bevor unsere Kurse Sinn ergeben. Details und Anmeldung: kurse.';
   }
 
   // 5) Sicherungs-Update / Auffrischung
   const updateCourse = COURSES.find(c => c.id === 'update');
   if (has(...updateCourse.keywords)) {
-    return updateCourse.kurz + ' (' + updateCourse.dauer + ', ' + updateCourse.preis + '). Voraussetzung: ' + updateCourse.voraussetzung + ' Mehr auf kurse.html.';
+    return updateCourse.kurz + ' (' + updateCourse.dauer + ', ' + updateCourse.preis + '). Voraussetzung: ' + updateCourse.voraussetzung + ' Mehr auf kurse.';
   }
 
   // 6) Sturz / Angst
   const sturzCourse = COURSES.find(c => c.id === 'sturz');
   if (has(...sturzCourse.keywords)) {
-    return sturzCourse.kurz + ' (' + sturzCourse.dauer + ', ' + sturzCourse.preis + '). Voraussetzung: ' + sturzCourse.voraussetzung + ' Mehr auf kurse.html.';
+    return sturzCourse.kurz + ' (' + sturzCourse.dauer + ', ' + sturzCourse.preis + '). Voraussetzung: ' + sturzCourse.voraussetzung + ' Mehr auf kurse.';
   }
 
   // 7) Mobile Sicherung / Cams
   const mobilCourse = COURSES.find(c => c.id === 'mobil');
   if (has(...mobilCourse.keywords)) {
-    return mobilCourse.kurz + ' (' + mobilCourse.dauer + ', ' + mobilCourse.preis + '). Voraussetzung: ' + mobilCourse.voraussetzung + ' Mehr auf kurse.html.';
+    return mobilCourse.kurz + ' (' + mobilCourse.dauer + ', ' + mobilCourse.preis + '). Voraussetzung: ' + mobilCourse.voraussetzung + ' Mehr auf kurse.';
   }
 
   // 8) Bewegungstechnik
   const technikCourse = COURSES.find(c => c.id === 'technik');
   if (has(...technikCourse.keywords)) {
-    return technikCourse.kurz + ' (' + technikCourse.dauer + ', ' + technikCourse.preis + '). Offen für alle Level. Mehr auf kurse.html.';
+    return technikCourse.kurz + ' (' + technikCourse.dauer + ', ' + technikCourse.preis + '). Offen für alle Level. Mehr auf kurse.';
   }
 
   // 9) Mehrseillängen (ohne "neu", s.o.)
   const mslCourse = COURSES.find(c => c.id === 'msl');
   if (has(...mslCourse.keywords)) {
-    return mslCourse.kurz + ' (' + mslCourse.dauer + ', ' + mslCourse.preis + '). Voraussetzung: ' + mslCourse.voraussetzung + ' Mehr auf kurse.html.';
+    return mslCourse.kurz + ' (' + mslCourse.dauer + ', ' + mslCourse.preis + '). Voraussetzung: ' + mslCourse.voraussetzung + ' Mehr auf kurse.';
   }
 
   // 10) Irgendein anderer Kurs beim Namen genannt (allgemeine Infofrage)
   if (genannterKurs) {
-    return genannterKurs.kurz + ' (' + genannterKurs.dauer + ', ' + genannterKurs.preis + '). Voraussetzung: ' + genannterKurs.voraussetzung + ' Mehr auf kurse.html.';
+    return genannterKurs.kurz + ' (' + genannterKurs.dauer + ', ' + genannterKurs.preis + '). Voraussetzung: ' + genannterKurs.voraussetzung + ' Mehr auf kurse.';
   }
 
   // 11) Preise generell
   if (has('preis', 'kosten', 'wie teuer', 'was kostet')) {
-    return 'Unsere Kurspreise im Überblick:\n' + COURSES.map(c => '• ' + courseLine(c)).join('\n') + '\n\nStudierende und Azubis bekommen Rabatt (Nachweis vor Ort). Alle Details: kurse.html.';
+    return 'Unsere Kurspreise im Überblick:\n' + COURSES.map(c => '• ' + courseLine(c)).join('\n') + '\n\nStudierende und Azubis bekommen Rabatt (Nachweis vor Ort). Alle Details: kurse.';
   }
 
   // 12) Termine generell
   if (has('termin', 'wann ist', 'nächste kurs', 'naechste kurs', 'wann findet')) {
-    return '„Von der Halle an den Fels“ hat feste Termine (aktuell 06.–07.06.2026), das „Sicherungs-Update“ ebenfalls (16.01.2027). Die anderen Kurse sind „Termin auf Anfrage“ – wir stimmen den Termin individuell mit dir ab. Aktuelle Termine und Buchung: kurse.html bzw. direkt anmeldung.html.';
+    return '„Von der Halle an den Fels“ hat feste Termine (aktuell 06.–07.06.2026), das „Sicherungs-Update“ ebenfalls (16.01.2027). Die anderen Kurse sind „Termin auf Anfrage“ – wir stimmen den Termin individuell mit dir ab. Aktuelle Termine und Buchung: kurse bzw. direkt anmeldung.';
   }
 
   // 13) Kontakt / Team
   if (has('kontakt', 'team', 'wer seid ihr', 'anrufen', 'telefon', 'email', 'e-mail')) {
-    return 'Am schnellsten erreichst du uns über das Kontaktformular auf kontakt.html oder per E-Mail an info@betamove.de. Wer hinter BETAMOVE steckt, siehst du auf team.html.';
+    return 'Am schnellsten erreichst du uns über das Kontaktformular auf kontakt oder per E-Mail an info@betamove.de. Wer hinter BETAMOVE steckt, siehst du auf team.';
   }
 
   // 14) Reine Begrüßung
   if (/\b(hallo|hi|hey|moin|servus)\b/.test(t) && t.length < 20) {
-    return 'Hi! Frag mich zum Beispiel nach einer Kursempfehlung, nötigem Material, Preisen oder Bildungsurlaub – oder schau direkt auf kurse.html vorbei.';
+    return 'Hi! Frag mich zum Beispiel nach einer Kursempfehlung, nötigem Material, Preisen oder Bildungsurlaub – oder schau direkt auf kurse vorbei.';
   }
 
   // 15) Fallback
-  return 'Dazu habe ich noch keine feste Antwort — ich bin ein einfacher Regel-Assistent, kein freies KI-System. Schau gerne auf kurse.html oder wissen.html vorbei, oder schreib uns direkt über kontakt.html, dann meldet sich ein Mensch bei dir.';
+  return 'Dazu habe ich noch keine feste Antwort — ich bin ein einfacher Regel-Assistent, kein freies KI-System. Schau gerne auf kurse oder wissen vorbei, oder schreib uns direkt über kontakt, dann meldet sich ein Mensch bei dir.';
 }
 
 // Kleine gemeinsame Hilfsfunktion für Lernfortschritt (Wissensplattform),

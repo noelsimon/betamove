@@ -1,6 +1,6 @@
 // BETAMOVE — kleiner Helfer, der aus js/supabase-config.js + dem per CDN
-// geladenen Supabase-JS-SDK einen fertigen Client baut. Wird von anmeldung.html
-// und kontakt.html genutzt. Kein Build-Schritt, kein npm — alles läuft direkt
+// geladenen Supabase-JS-SDK einen fertigen Client baut. Wird von anmeldung
+// und kontakt genutzt. Kein Build-Schritt, kein npm — alles läuft direkt
 // im Browser über <script>-Tags.
 //
 // Absichtlich defensiv: wenn die Konfiguration noch Platzhalterwerte enthält

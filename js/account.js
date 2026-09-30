@@ -10,7 +10,7 @@
 //   profiles         — 1 Zeile pro Konto (Vorname, Nachname, E-Mail, Level)
 //   lernfortschritt  — 1 Zeile pro erledigtem Inhalt (Artikel/Quiz/Prüfung/Kurs)
 //   kursanmeldungen  — bekommt zusätzlich eine user_id, wenn beim Buchen
-//                       eine Person eingeloggt ist (siehe anmeldung.html)
+//                       eine Person eingeloggt ist (siehe anmeldung)
 
 (function () {
   function escapeHtml(value) {
@@ -21,7 +21,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Kurskatalog (Namen zum Anzeigen) — muss zu kurse.html passen.
+  // Kurskatalog (Namen zum Anzeigen) — muss zu kurse passen.
   // --------------------------------------------------------------------
   const COURSE_NAMES = {
     halle: 'Von der Halle an den Fels',
@@ -44,8 +44,8 @@
       level: 'Einstieg',
       text: 'Sicher Toprope sichern, weich fangen und Gewichtsunterschiede einschätzen – die Basis für alles Weitere.',
       requirements: [
-        { id: 'quiz-sichern', kind: 'quiz', label: 'Quiz „Sichern ohne Mythen“ bestehen', url: 'quiz-sichern.html' },
-        { id: 'kurs-sturz', kind: 'kurs', label: 'Kurs „Sturz- und Sicherungstraining“ absolvieren', url: 'kurse.html' }
+        { id: 'quiz-sichern', kind: 'quiz', label: 'Quiz „Sichern ohne Mythen“ bestehen', url: 'quiz-sichern' },
+        { id: 'kurs-sturz', kind: 'kurs', label: 'Kurs „Sturz- und Sicherungstraining“ absolvieren', url: 'kurse' }
       ]
     },
     {
@@ -54,9 +54,9 @@
       level: 'Einstieg',
       text: 'Im Vorstieg klettern und sichern in der Halle, auf aktuellem Stand der Lehrmeinung.',
       requirements: [
-        { id: 'pruefung-sicherungsschein', kind: 'pruefung', label: 'Online-Prüfung Sicherungstheorie bestehen', url: 'pruefung-sicherungsschein.html' },
-        { id: 'sicherungsgeraete', kind: 'artikel', label: 'Artikel „Sicherungsgeräte im Überblick“ durcharbeiten', url: 'artikel-sicherungsgeraete.html' },
-        { id: 'kurs-update', kind: 'kurs', label: 'Kurs „Sicherungs-Update“ absolvieren', url: 'kurse.html' }
+        { id: 'pruefung-sicherungsschein', kind: 'pruefung', label: 'Online-Prüfung Sicherungstheorie bestehen', url: 'pruefung-sicherungsschein' },
+        { id: 'sicherungsgeraete', kind: 'artikel', label: 'Artikel „Sicherungsgeräte im Überblick“ durcharbeiten', url: 'artikel-sicherungsgeraete' },
+        { id: 'kurs-update', kind: 'kurs', label: 'Kurs „Sicherungs-Update“ absolvieren', url: 'kurse' }
       ]
     },
     {
@@ -65,10 +65,10 @@
       level: 'Aufbau',
       text: 'Der erste Schritt vom Hallen- ins Felsklettern, mit dem richtigen Material im Rucksack.',
       requirements: [
-        { id: 'halle-an-den-fels', kind: 'artikel', label: 'Artikel „Halle an den Fels“ durcharbeiten', url: 'artikel-halle-an-den-fels.html' },
-        { id: 'quiz-fels', kind: 'quiz', label: 'Quiz „Der erste Tag am Fels“ bestehen', url: 'quiz-fels.html' },
-        { id: 'kletterschuhe-finden', kind: 'artikel', label: 'Artikel „Kletterschuhe finden“ lesen', url: 'artikel-kletterschuhe-finden.html' },
-        { id: 'kurs-halle', kind: 'kurs', label: 'Kurs „Von der Halle an den Fels“ absolvieren', url: 'kurse.html' }
+        { id: 'halle-an-den-fels', kind: 'artikel', label: 'Artikel „Halle an den Fels“ durcharbeiten', url: 'artikel-halle-an-den-fels' },
+        { id: 'quiz-fels', kind: 'quiz', label: 'Quiz „Der erste Tag am Fels“ bestehen', url: 'quiz-fels' },
+        { id: 'kletterschuhe-finden', kind: 'artikel', label: 'Artikel „Kletterschuhe finden“ lesen', url: 'artikel-kletterschuhe-finden' },
+        { id: 'kurs-halle', kind: 'kurs', label: 'Kurs „Von der Halle an den Fels“ absolvieren', url: 'kurse' }
       ]
     },
     {
@@ -77,8 +77,8 @@
       level: 'Fortgeschritten',
       text: 'Sicher unterwegs auf mehreren Seillängen – Standplatzbau und Taktik inklusive.',
       requirements: [
-        { id: 'mehrseillaengen-taktik', kind: 'artikel', label: 'Artikel „Richtig Mehrseillängen planen“ durcharbeiten', url: 'artikel-mehrseillaengen-taktik.html' },
-        { id: 'kurs-msl', kind: 'kurs', label: 'Kurs „Mehrseillängen für Fortgeschrittene“ absolvieren', url: 'kurse.html' }
+        { id: 'mehrseillaengen-taktik', kind: 'artikel', label: 'Artikel „Richtig Mehrseillängen planen“ durcharbeiten', url: 'artikel-mehrseillaengen-taktik' },
+        { id: 'kurs-msl', kind: 'kurs', label: 'Kurs „Mehrseillängen für Fortgeschrittene“ absolvieren', url: 'kurse' }
       ]
     }
   ];
@@ -186,7 +186,7 @@
     } catch (e) { /* still lokal weiter, kein UI-Fehler nötig */ }
   };
 
-  // Für die Kursbuchung (anmeldung.html): liefert die eingeloggte user_id
+  // Für die Kursbuchung (anmeldung): liefert die eingeloggte user_id
   // oder null, damit die Buchung optional mit dem Konto verknüpft wird.
   window.bmCurrentUserId = async function () {
     const session = await getSession();
@@ -203,7 +203,7 @@
     const navLogin = document.querySelector('.nav-login');
     if (navLogin) {
       if (session) {
-        navLogin.setAttribute('href', 'konto.html');
+        navLogin.setAttribute('href', 'konto');
         const span = navLogin.querySelector('span');
         if (span) span.textContent = 'Mein Konto';
       }
@@ -233,8 +233,8 @@
 
     const session = await getSession();
     if (!session) {
-      const here = location.pathname.split('/').pop() || 'konto.html';
-      location.href = 'login.html?next=' + encodeURIComponent(here);
+      const here = location.pathname.split('/').pop() || 'konto';
+      location.href = 'login?next=' + encodeURIComponent(here);
       return null;
     }
     if (banner) banner.remove();
@@ -264,7 +264,7 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         try { await client.auth.signOut(); } catch (e) {}
-        location.href = 'index.html';
+        location.href = '/';
       });
     }
 
@@ -290,7 +290,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto.html — Übersicht
+  // Seite: konto — Übersicht
   // --------------------------------------------------------------------
   async function renderKonto(ctx) {
     const { progress } = ctx;
@@ -329,7 +329,7 @@
     const qualList = document.getElementById('qualList');
     if (qualList) {
       qualList.innerHTML = qualStats.map(q => `
-        <a href="konto-qualifikationen.html" class="hover-border" style="text-decoration:none;color:inherit;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 26px;display:flex;flex-direction:column;gap:10px">
+        <a href="konto-qualifikationen" class="hover-border" style="text-decoration:none;color:inherit;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 26px;display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <h3 style="margin:0;font-size:20px">${escapeHtml(q.qual.name)}</h3>
             <span style="margin-left:auto;font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:${q.badge.bg};color:${q.badge.fg}">${q.badge.label}</span>
@@ -362,12 +362,12 @@
       const typeLabel = { artikel: 'Artikel', quiz: 'Quiz', pruefung: 'Online-Prüfung' };
       weiterlernenList.innerHTML = open.length ? open.map(c => `
         <a href="${c.url}" style="display:flex;gap:12px;justify-content:space-between;align-items:baseline;text-decoration:none;color:var(--color-text);font-size:15.5px;padding-bottom:10px;border-bottom:1px solid var(--color-divider)"><span>${escapeHtml(c.label)}</span><span style="font-size:13px;opacity:0.6;flex:none">${typeLabel[c.kind] || ''}</span></a>
-      `).join('') : '<p style="margin:0;font-size:15px;opacity:0.7">Alles bearbeitet — schau auf konto-qualifikationen.html, ob noch ein Kurs fehlt.</p>';
+      `).join('') : '<p style="margin:0;font-size:15px;opacity:0.7">Alles bearbeitet — schau auf konto-qualifikationen, ob noch ein Kurs fehlt.</p>';
     }
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-profil.html
+  // Seite: konto-profil
   // --------------------------------------------------------------------
   async function renderProfil(ctx) {
     const { client, session, profile } = ctx;
@@ -415,7 +415,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-lernen.html
+  // Seite: konto-lernen
   // --------------------------------------------------------------------
   async function renderLernen(ctx) {
     const { progress } = ctx;
@@ -434,7 +434,7 @@
         const row = progress[c.id];
         const right = row.score != null ? row.score + '/' + row.total : (typeLabel[c.kind] || 'Erledigt');
         return `<a href="${c.url}" style="display:flex;gap:12px;justify-content:space-between;align-items:baseline;text-decoration:none;color:var(--color-text);font-size:15.5px;padding-bottom:11px;border-bottom:1px solid var(--color-divider)"><span>${escapeHtml(c.label)}</span><span style="font-size:13.5px;opacity:0.65;flex:none">${escapeHtml(right)}</span></a>`;
-      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.7">Noch nichts bearbeitet — schau auf wissen.html vorbei.</p>';
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.7">Noch nichts bearbeitet — schau auf wissen vorbei.</p>';
     }
 
     const coursesList = document.getElementById('kurseList');
@@ -465,7 +465,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-qualifikationen.html
+  // Seite: konto-qualifikationen
   // --------------------------------------------------------------------
   async function renderQualifikationen(ctx) {
     const { progress } = ctx;
@@ -515,7 +515,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-weg.html — dieselben Qualifikationen als Wegkarte
+  // Seite: konto-weg — dieselben Qualifikationen als Wegkarte
   // --------------------------------------------------------------------
   async function renderWeg(ctx) {
     const { progress } = ctx;
@@ -555,13 +555,13 @@
   // Einstieg
   // --------------------------------------------------------------------
   document.addEventListener('DOMContentLoaded', async () => {
-    const page = location.pathname.split('/').pop() || 'index.html';
+    const page = (location.pathname.split('/').pop() || 'index').replace(/\.html$/i, '');
     const accountPages = {
-      'konto.html': renderKonto,
-      'konto-profil.html': renderProfil,
-      'konto-lernen.html': renderLernen,
-      'konto-qualifikationen.html': renderQualifikationen,
-      'konto-weg.html': renderWeg
+      'konto': renderKonto,
+      'konto-profil': renderProfil,
+      'konto-lernen': renderLernen,
+      'konto-qualifikationen': renderQualifikationen,
+      'konto-weg': renderWeg
     };
 
     if (accountPages[page]) {

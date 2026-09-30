@@ -14,8 +14,8 @@
 // Schritt existieren die Tabellen nicht, und jeder Insert schlägt fehl.
 //
 // Falls `url`/`anonKey` doch mal wieder Platzhalter sind (z. B. in einer
-// Kopie dieses Repos), zeigen die Formulare auf anmeldung.html und
-// kontakt.html beim Absenden einen sauberen Hinweis ("nicht verbunden") statt
+// Kopie dieses Repos), zeigen die Formulare auf anmeldung und
+// kontakt beim Absenden einen sauberen Hinweis ("nicht verbunden") statt
 // eines kaputten Fehlers — siehe js/supabase-client.js.
 window.BETAMOVE_SUPABASE = {
   url: 'https://nzmszupobienfwjaqcmw.supabase.co',
