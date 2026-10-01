@@ -188,7 +188,6 @@ textarea.input { resize: vertical; font-family: inherit; }
   [data-r="dash"] { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
   [data-r="dashside"] { position: static !important; top: auto !important; }
   [data-r="trust"] { grid-template-columns: minmax(0, 1fr) !important; gap: 20px !important; padding: 24px 26px !important; }
-  [data-r="medal"] { position: static !important; width: 150px !important; height: 150px !important; margin: -46px auto 0 !important; }
   [data-r="hero"] h1 { font-size: 34px !important; }
   [data-r="summary"] { grid-template-columns: minmax(0, 1fr) !important; }
   [data-r="summary"] dt { padding-bottom: 0 !important; border-top: 1px solid var(--color-divider) !important; }
@@ -204,9 +203,15 @@ textarea.input { resize: vertical; font-family: inherit; }
      ausrichten, Section-Höhe reduzieren, weniger Innenabstand oben. */
   [data-r="herowrap"] { min-height: auto !important; }
   [data-r="hero"] { justify-content: flex-start !important; padding: 16px 18px 26px !important; gap: 10px !important; min-height: 0 !important; }
-  [data-r="hero"] h1 { font-size: 28px !important; }
+  [data-r="hero"] h1 { font-size: 26px !important; max-width: 25ch !important; }
   [data-r="hero"] [data-r="herotext"] { font-size: 15.5px !important; }
   [data-r="hero"] .btn { font-size: 15px !important; padding: 12px 22px !important; }
+
+  /* Floating Chat-Button: als kompakter runder Icon-Button, damit er auf
+     schmalen Screens nicht über die Hero-Buttons rutscht. */
+  .chat-fab-wrap { right: 16px; bottom: 16px; }
+  .chat-fab span { display: none; }
+  .chat-fab { padding: 14px; border-radius: 50%; }
 }
 
 /* Mobile hamburger nav — an addition on top of the canvas export, which did

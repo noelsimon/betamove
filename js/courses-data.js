@@ -93,6 +93,7 @@ window.BM_COURSES = [
     dauer: '3 Stunden',
     price: 75,
     img: 'kurs-update.jpg',
+    imgPosition: 'center 22%',
     date: '16.01.2027',
     sortDate: '2027-01-16',
     ort: 'Kletterhalle No Limit',

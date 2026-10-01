@@ -211,7 +211,7 @@
     const searchBlob = (c.title+' '+c.teaser+' '+c.beschreibung).toLowerCase();
     const badge = c.levelBadge || c.level;
     return '<article class="card elev-sm" data-course-card data-r="card" data-id="'+c.id+'" data-level="'+c.level+'" data-sortdate="'+(c.sortDate||'')+'" data-search="'+searchBlob.replace(/"/g,'&quot;')+'" style="padding:0;overflow:hidden;flex-direction:row;gap:0;align-items:stretch">'
-      + '<div role="img" aria-label="'+c.title+'" style="width:230px;flex:none;align-self:stretch;min-height:200px;background-color:var(--color-neutral-300);background-image:url(\'/assets-min/'+c.img+'\');background-size:cover;background-position:center"></div>'
+      + '<div role="img" aria-label="'+c.title+'" style="width:230px;flex:none;align-self:stretch;min-height:200px;background-color:var(--color-neutral-300);background-image:url(\'/assets-min/'+c.img+'\');background-size:cover;background-position:'+(c.imgPosition||'center')+'"></div>'
       + '<div style="padding:26px 30px;display:flex;flex-direction:column;gap:14px;flex:1;min-width:0">'
       + '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="tag tag-accent" style="font-size:12px">'+badge+'</span><span class="tag tag-neutral" style="font-size:12px">'+c.dauer+'</span><span style="margin-left:auto;font-family:var(--font-heading);font-size:24px;color:var(--color-accent-700)">'+window.BM_EUR(c.price)+'</span></div>'
       + '<h3 style="margin:0;font-size:28px">'+c.title+'</h3>'
