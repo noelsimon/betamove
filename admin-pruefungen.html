@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prüfungen freischalten — BETAMOVE Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+      <a href="admin-kurse">Kursverwaltung</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
+  <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
+  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Prüfungen freischalten</h1>
+  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Jede Online-Prüfung ist erst sichtbar, wenn du sie hier für die jeweilige Person freischaltest.</p>
+
+  <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="adminArea" hidden>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:22px">
+      <input id="searchInput" class="input" style="min-height:42px;font-size:15px;max-width:320px" placeholder="Nach Name oder E-Mail suchen …">
+      <span id="rowCount" style="font-size:14px;opacity:0.65;margin-left:auto"></span>
+    </div>
+    <div id="peopleList" style="display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/main.js"></script>
+<script>
+(function(){
+  // Muss exakt zur ADMIN_EMAIL in js/account.js, admin-kurse.html und den
+  // Admin-Policies in supabase/schema-pruefungen-zertifikate.sql passen.
+  const ADMIN_EMAIL = 'noel.uhlrich@gmail.com';
+
+  const EXAMS = [
+    { id: 'pruefung-sicherungsschein', label: 'Sicherungstheorie' },
+    { id: 'pruefung-sturztraining', label: 'Sturztraining' },
+    { id: 'pruefung-naturfels', label: 'Naturfels' },
+    { id: 'pruefung-mehrseillaengen', label: 'Mehrseillängen' }
+  ];
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function showStatus(html) {
+    const box = document.getElementById('statusBox');
+    box.hidden = false;
+    box.innerHTML = html;
+    document.getElementById('adminArea').hidden = true;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof window.bmGetSupabaseClient !== 'function') { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar.</p>'); return; }
+    const { client, error: cfgErr } = window.bmGetSupabaseClient();
+    if (!client) { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar (' + escapeHtml(cfgErr) + ').</p>'); return; }
+
+    let session = null;
+    try {
+      const { data } = await client.auth.getSession();
+      session = data && data.session ? data.session : null;
+    } catch (e) { /* session bleibt null */ }
+
+    if (!session) {
+      showStatus('<p style="margin:0 0 16px;font-size:15.5px">Bitte melde dich mit deinem Admin-Konto an.</p><a href="login?next=admin-pruefungen" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>');
+      return;
+    }
+    if (session.user.email !== ADMIN_EMAIL) {
+      showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Dieser Bereich ist nur für die Kursleitung zugänglich.</p>');
+      return;
+    }
+
+    document.getElementById('statusBox').hidden = true;
+    document.getElementById('adminArea').hidden = false;
+
+    let people = [];
+    let freigaben = [];
+    try {
+      const [profilesRes, freigabenRes] = await Promise.all([
+        client.from('profiles').select('*').order('vorname', { ascending: true }),
+        client.from('pruefungsfreigaben').select('*')
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (freigabenRes.error) throw freigabenRes.error;
+      people = profilesRes.data || [];
+      freigaben = freigabenRes.data || [];
+    } catch (e) {
+      document.getElementById('peopleList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Konten konnten nicht geladen werden. Bitte Seite neu laden.</p>';
+      return;
+    }
+
+    function isUnlocked(userId, examId) {
+      return freigaben.some(f => f.user_id === userId && f.pruefung_id === examId);
+    }
+
+    function renderPerson(p) {
+      const examButtons = EXAMS.map(exam => {
+        const unlocked = isUnlocked(p.id, exam.id);
+        return `<button type="button" data-exam-btn data-exam="${exam.id}" style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;border:2px solid ${unlocked ? 'var(--color-accent-2-500)' : 'var(--color-divider)'};background:${unlocked ? 'var(--color-accent-2-500)' : '#ffffff'};color:${unlocked ? '#ffffff' : 'var(--color-text)'}">${escapeHtml(exam.label)}${unlocked ? ' ✓' : ''}</button>`;
+      }).join('');
+      return `<div data-person data-id="${p.id}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:16.5px;font-weight:600">${escapeHtml(p.vorname)} ${escapeHtml(p.nachname)}</div>
+          <div style="font-size:13.5px;opacity:0.7;margin-top:2px">${escapeHtml(p.email)}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${examButtons}</div>
+      </div>`;
+    }
+
+    function renderList() {
+      const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const visible = q ? people.filter(p => (p.vorname + ' ' + p.nachname + ' ' + p.email).toLowerCase().includes(q)) : people;
+      document.getElementById('rowCount').textContent = visible.length + ' von ' + people.length + ' Konten';
+      document.getElementById('peopleList').innerHTML = visible.length
+        ? visible.map(renderPerson).join('')
+        : '<p style="margin:0;font-size:15.5px;opacity:0.7">Keine Konten gefunden.</p>';
+      wireButtons();
+    }
+
+    function wireButtons() {
+      document.querySelectorAll('[data-person]').forEach(row => {
+        const userId = row.dataset.id;
+        row.querySelectorAll('[data-exam-btn]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const examId = btn.dataset.exam;
+            const unlocked = isUnlocked(userId, examId);
+            btn.disabled = true;
+            try {
+              if (unlocked) {
+                const row = freigaben.find(f => f.user_id === userId && f.pruefung_id === examId);
+                const { error } = await client.from('pruefungsfreigaben').delete().eq('id', row.id);
+                if (error) throw error;
+                freigaben = freigaben.filter(f => f.id !== row.id);
+              } else {
+                const { data, error } = await client.from('pruefungsfreigaben').insert({ user_id: userId, pruefung_id: examId }).select().single();
+                if (error) throw error;
+                freigaben.push(data);
+              }
+              renderList();
+            } catch (e) {
+              btn.disabled = false;
+              alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+            }
+          });
+        });
+      });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', renderList);
+    renderList();
+  });
+})();
+</script>
+</body>
+</html>

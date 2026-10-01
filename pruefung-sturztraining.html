@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Online-Prüfung Sicherungstheorie — BETAMOVE</title>
-<meta name="description" content="Die Theorieprüfung vor dem Sicherungs-Update: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
-<meta property="og:title" content="Online-Prüfung Sicherungstheorie — BETAMOVE">
-<meta property="og:description" content="Die Theorieprüfung vor dem Sicherungs-Update: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
+<title>Online-Prüfung Sturz- und Sicherungstraining — BETAMOVE</title>
+<meta name="description" content="Die Theorieprüfung für den Sicherungsschein Toprope: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
+<meta property="og:title" content="Online-Prüfung Sturz- und Sicherungstraining — BETAMOVE">
+<meta property="og:description" content="Die Theorieprüfung für den Sicherungsschein Toprope: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://betamove.de/pruefung-sicherungsschein">
+<meta property="og:url" content="https://betamove.de/pruefung-sturztraining">
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
@@ -55,8 +55,8 @@
 
     <div id="examRunning" hidden>
       <span class="tag tag-accent" style="font-size:11.5px;margin-top:4px">Online-Prüfung</span>
-      <h1 style="margin:14px 0 12px;font-size:clamp(30px,3.8vw,44px)">Sicherungstheorie</h1>
-      <p style="max-width:60ch;margin:0 0 28px;font-size:17.5px;opacity:0.85">Acht Fragen zur Sicherungspraxis. Ab sechs richtigen Antworten gilt die Prüfung als bestanden. Du kannst sie beliebig oft wiederholen – jede Antwort wird am Ende erklärt.</p>
+      <h1 style="margin:14px 0 12px;font-size:clamp(30px,3.8vw,44px)">Sturz- und Sicherungstraining</h1>
+      <p style="max-width:60ch;margin:0 0 28px;font-size:17.5px;opacity:0.85">Acht Fragen rund ums weiche Sichern, Gewichtsunterschiede und Sturztraining im Toprope. Ab sechs richtigen Antworten gilt die Prüfung als bestanden. Du kannst sie beliebig oft wiederholen – jede Antwort wird am Ende erklärt.</p>
 
       <div style="position:sticky;top:88px;z-index:5;background:color-mix(in srgb, var(--color-bg) 94%, transparent);backdrop-filter:blur(8px);padding:14px 0;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--color-divider);margin-bottom:26px">
         <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden">
@@ -81,7 +81,7 @@
         <p id="examVerdictText" style="margin:16px auto 0;max-width:52ch;font-size:16.5px;opacity:0.92"></p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px">
           <button type="button" id="examRetryBtn" class="btn btn-onblue" style="font-size:16px;padding:13px 26px">Prüfung wiederholen</button>
-          <a href="anmeldung" class="btn btn-outline-light" style="font-size:16px;padding:13px 26px">Sicherungs-Update buchen</a>
+          <a href="anmeldung?kurs=sturz" class="btn btn-outline-light" style="font-size:16px;padding:13px 26px">Sturz- und Sicherungstraining buchen</a>
         </div>
       </div>
       <h2 style="margin:0 0 18px;font-size:26px">Auswertung Frage für Frage</h2>
@@ -154,9 +154,9 @@
 <script src="js/main.js"></script>
 <script src="js/account.js"></script>
 <script>
-const EXAM = [{"q": "Das Bremsseil wird beim Sichern …", "options": ["bei blockierendem Gerät kurz freigegeben", "ununterbrochen von der Bremshand umschlossen"], "a": 1, "why": "Es gibt keine Situation, in der die Bremshand das Bremsseil verlässt."}, {"q": "Ein Anseilknoten ist korrekt, wenn …", "options": ["er zugezogen ist und ein ausreichender Restfaden bleibt", "er locker sitzt, damit er sich im Sturz setzen kann"], "a": 0, "why": "Achterknoten zugezogen, parallel gelegt, Restfaden mindestens eine Handbreit."}, {"q": "Beim Vorstiegssichern stehst du …", "options": ["direkt an der Wand, seitlich zur ersten Exe versetzt", "zwei Meter hinter der Wand mittig unter der Route"], "a": 0, "why": "Nah an der Wand und leicht versetzt: kurzer Seilweg, freie Sicht, kein Zug in die Wand."}, {"q": "Schlappseil im Vorstieg ist …", "options": ["grundsätzlich gut, damit der Sturz weich wird", "so knapp wie möglich zu halten, ohne den Kletternden zu behindern"], "a": 1, "why": "Schlappseil verlängert die Sturzstrecke. Weichheit kommt aus dem Sicherungsverhalten, nicht aus Schlappseil."}, {"q": "Vor dem Klettern prüfst du im Partnercheck …", "options": ["Gurt, Knoten, Gerät, Seilende", "nur Knoten und Gerät"], "a": 0, "why": "Alle vier Punkte, in fester Reihenfolge, laut und gegenseitig."}, {"q": "Ein Sturz kurz über der ersten Zwischensicherung ist …", "options": ["harmlos, das Seil fängt weich", "kritisch, weil Bodennähe und Seildehnung zusammenfallen"], "a": 1, "why": "Grundfallrisiko: wenig Seil im System, kurze Bremsstrecke, Boden nah. Vorclippen entschärft das."}, {"q": "Wird die sichernde Person deutlich angehoben, …", "options": ["ist das normal und unkritisch", "droht Kontrollverlust über das Bremsseil – Ausgleich nötig"], "a": 1, "why": "Beim Anheben geht die Bremshandposition verloren. Gewichtsunterschiede brauchen eine Lösung."}, {"q": "Ein Helm gehört am Naturfels …", "options": ["nur beim Vorsteigen getragen", "beim Klettern und beim Sichern getragen"], "a": 1, "why": "Steinschlag trifft auch die sichernde Person. Helm auf, sobald du am Wandfuß stehst."}];
+const EXAM = [{"q": "Das Bremsseil wird beim Sichern mit einem Autotuber …", "options": ["bei blockierendem Gerät kurz freigegeben", "ununterbrochen von der Bremshand umschlossen"], "a": 1, "why": "Die Bremshand verlässt das Bremsseil nie – auch nicht bei Halbautomaten."}, {"q": "„Weich sichern“ bedeutet …", "options": ["möglichst viel Schlappseil im System lassen", "den Fangstoß durch kontrolliertes Mitgehen und Seilausgleich verlängern"], "a": 1, "why": "Weichheit kommt aus dem Sicherungsverhalten (Mitgehen, dosiertes Seilausgleichen) – nicht aus Schlappseil oder geöffnetem Gerät."}, {"q": "Der Partnercheck vor dem Klettern prüft …", "options": ["nur Knoten und Gerät", "Gurt, Knoten, Sicherungsgerät und Seilende"], "a": 1, "why": "Alle vier Punkte, in fester Reihenfolge, laut und gegenseitig – jedes Mal."}, {"q": "Bei einem deutlichen Gewichtsunterschied zwischen kletternder und sichernder Person …", "options": ["kann die leichtere Person angehoben werden – Ausgleich vorher einplanen", "regelt das Sicherungsgerät automatisch alles"], "a": 0, "why": "Wird die sichernde Person angehoben, verliert sie Kontrolle über das Bremsseil. Ausgleichssysteme oder Bodenverankerung sind dann Pflicht."}, {"q": "Kontrolliertes Sturztraining übt man am besten …", "options": ["unangekündigt, damit die Reaktion echt ist", "im Toprope mit erfahrener sichernder Person und vorheriger Absprache"], "a": 1, "why": "Absprache vor dem Sturz (Höhe, Zeitpunkt) macht das Training sicher und baut gezielt Vertrauen auf – Überraschung ist kein Lernziel."}, {"q": "Reagiert die Bremshand auf einen plötzlichen Sturz richtig, …", "options": ["schließt sie sich reflexartig um das Bremsseil", "öffnet sie sich kurz, um den Ruck abzufedern"], "a": 0, "why": "Die Bremshand-Reaktion muss zum unbewussten Reflex trainiert werden: Sturz = Hand schließt sich, nie öffnen."}, {"q": "Im Toprope ist die Sturzstrecke bei straff gehaltenem Seil in der Regel …", "options": ["größer als im Vorstieg, weil das Seil von oben kommt", "minimal, solange kaum Schlappseil im System ist"], "a": 1, "why": "Im Toprope läuft das Seil von oben nach unten durch den Umlenker – bei strafferem Seil ist die Sturzstrecke entsprechend kurz."}, {"q": "Direkt nach dem Einstieg (erste Meter über dem Boden) gilt beim Sichern …", "options": ["besonders enge, aufmerksame Führung, da ein Sturz hier bodennah ist", "man kann sich etwas zurücklehnen, der Boden ist ja noch nah"], "a": 0, "why": "Die ersten Meter sind kritisch: wenig Seil im System, kurze Bremsstrecke, Boden nah. Hier ist die Aufmerksamkeit am höchsten gefragt."}];
 const EXAM_PASS = 6;
-const EXAM_ID = 'pruefung-sicherungsschein';
+const EXAM_ID = 'pruefung-sturztraining';
 
 (async function(){
   const loadingBox = document.getElementById('examGateLoading');
@@ -240,7 +240,7 @@ const EXAM_ID = 'pruefung-sicherungsschein';
     document.getElementById('examVerdictLabel').textContent = passed ? 'Bestanden' : 'Nicht bestanden';
     document.getElementById('examScoreLine').textContent = score + ' richtig · ' + Math.round((score/EXAM.length)*100) + ' %';
     document.getElementById('examVerdictText').textContent = passed
-      ? 'Deine Theorie sitzt. Bring dieses Ergebnis zum Sicherungs-Update mit – wir steigen dann direkt in die Praxis ein.'
+      ? 'Deine Theorie sitzt. Bring dieses Ergebnis zum Sturz- und Sicherungstraining mit – wir steigen dann direkt in die Praxis ein.'
       : 'Ab sechs richtigen Antworten ist die Prüfung bestanden. Lies die Erklärungen unten, dann probier es erneut.';
     const review = document.getElementById('examReview');
     review.innerHTML = '';

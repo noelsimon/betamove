@@ -511,6 +511,7 @@
         telefon: document.getElementById('ph').value.trim() || null,
         kurs_id: f.courseIds.join(','),
         kurs_titel: list.map(c => c.title).join(', '),
+        kurs_datum: list.map(c => c.title + ': ' + c.date).join(' | '),
         level: f.level,
         leihmaterial: f.gear,
         rabatt_typ: f.discount,

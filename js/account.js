@@ -49,6 +49,7 @@
       text: 'Sicher Toprope sichern, weich fangen und Gewichtsunterschiede einschätzen – die Basis für alles Weitere.',
       requirements: [
         { id: 'quiz-sichern', kind: 'quiz', label: 'Quiz „Sichern ohne Mythen“ bestehen', url: 'quiz-sichern' },
+        { id: 'pruefung-sturztraining', kind: 'pruefung', label: 'Online-Prüfung Sturz- und Sicherungstraining bestehen', url: 'pruefung-sturztraining' },
         { id: 'kurs-sturz', kind: 'kurs', label: 'Kurs „Sturz- und Sicherungstraining“ absolvieren', url: 'kurse' }
       ]
     },
@@ -72,6 +73,7 @@
         { id: 'halle-an-den-fels', kind: 'artikel', label: 'Artikel „Halle an den Fels“ durcharbeiten', url: 'artikel-halle-an-den-fels' },
         { id: 'quiz-fels', kind: 'quiz', label: 'Quiz „Der erste Tag am Fels“ bestehen', url: 'quiz-fels' },
         { id: 'kletterschuhe-finden', kind: 'artikel', label: 'Artikel „Kletterschuhe finden“ lesen', url: 'artikel-kletterschuhe-finden' },
+        { id: 'pruefung-naturfels', kind: 'pruefung', label: 'Online-Prüfung Naturfels bestehen', url: 'pruefung-naturfels' },
         { id: 'kurs-halle', kind: 'kurs', label: 'Kurs „Von der Halle an den Fels“ absolvieren', url: 'kurse' }
       ]
     },
@@ -82,10 +84,14 @@
       text: 'Sicher unterwegs auf mehreren Seillängen – Standplatzbau und Taktik inklusive.',
       requirements: [
         { id: 'mehrseillaengen-taktik', kind: 'artikel', label: 'Artikel „Richtig Mehrseillängen planen“ durcharbeiten', url: 'artikel-mehrseillaengen-taktik' },
+        { id: 'pruefung-mehrseillaengen', kind: 'pruefung', label: 'Online-Prüfung Mehrseillängen bestehen', url: 'pruefung-mehrseillaengen' },
         { id: 'kurs-msl', kind: 'kurs', label: 'Kurs „Mehrseillängen für Fortgeschrittene“ absolvieren', url: 'kurse' }
       ]
     }
   ];
+
+  // Für die Zertifikat-Seite (zertifikat.html) les- und wiederverwendbar.
+  window.BM_QUALIFICATIONS = QUALIFICATIONS;
 
   // Alle Nicht-Kurs-Inhalte (Artikel/Quiz/Prüfung), dedupliziert — Basis für
   // "Mein Lernstand" / "Weiterlernen".
@@ -195,6 +201,25 @@
   window.bmCurrentUserId = async function () {
     const session = await getSession();
     return session ? session.user.id : null;
+  };
+
+  // Für die Prüfungsseiten: prüft, ob die aktuell eingeloggte Person diese
+  // Prüfung ablegen darf. Prüfungen sind grundsätzlich nur mit Konto nutzbar
+  // und müssen zusätzlich von der Kursleitung freigeschaltet sein (siehe
+  // admin-pruefungen, supabase/schema-pruefungen-zertifikate.sql).
+  // Rückgabe: 'no-client' | 'no-session' | 'locked' | 'unlocked' | 'error'.
+  window.bmCheckExamGate = async function (examId) {
+    const client = getClient();
+    if (!client) return 'no-client';
+    const session = await getSession();
+    if (!session) return 'no-session';
+    try {
+      const { data, error } = await client.from('pruefungsfreigaben').select('id').eq('user_id', session.user.id).eq('pruefung_id', examId).maybeSingle();
+      if (error) throw error;
+      return data ? 'unlocked' : 'locked';
+    } catch (e) {
+      return 'error';
+    }
   };
 
   // --------------------------------------------------------------------
@@ -540,9 +565,10 @@
       }).join('');
       const footer = p.done >= p.total
         ? `<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-wrap:wrap;gap:16px;align-items:center">
-            <p style="margin:0;flex:1;min-width:240px;font-size:15.5px;color:var(--color-accent-2-800)">Alle Anforderungen erfüllt – Nachweis folgt bald als Download.</p>
+            <p style="margin:0;flex:1;min-width:240px;font-size:15.5px;color:var(--color-accent-2-800)">Alle Anforderungen erfüllt — dein Zertifikat ist fertig.</p>
+            <a href="zertifikat?q=${encodeURIComponent(q.id)}" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px;flex:none">Zertifikat ansehen</a>
           </div>`
-        : `<p style="margin:18px 0 0;font-size:14.5px;opacity:0.6">Das Zertifikat wird freigeschaltet, sobald alle Anforderungen erfüllt sind.</p>`;
+        : `<p style="margin:18px 0 0;font-size:14.5px;opacity:0.6">Das Zertifikat steht zum Download bereit, sobald alle Anforderungen erfüllt sind.</p>`;
       return `<div style="background:#ffffff;border:2px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 32px">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
           <span class="tag tag-neutral" style="font-size:11.5px">${escapeHtml(q.level)}</span>

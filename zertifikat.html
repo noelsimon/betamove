@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zertifikat — BETAMOVE Konto</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  @media print {
+    .site-header, .site-footer, .chat-fab-wrap, #backLink, #printBtn { display: none !important; }
+    body { background: #ffffff !important; }
+    main { padding: 0 !important; max-width: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:760px;margin:0 auto;padding:48px 28px 96px">
+  <a id="backLink" href="konto-qualifikationen" style="font-size:14px;letter-spacing:0.08em;text-transform:uppercase">← Qualifikationen</a>
+
+  <div id="statusBox" style="margin-top:26px;background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:30px 32px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="certArea" hidden>
+    <div id="certCard" style="margin-top:26px;background:#ffffff;border:2px solid var(--color-accent-300);border-radius:calc(var(--radius-lg) * 1.2);padding:48px 44px;box-shadow:var(--shadow-md)">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:30px">
+        <img src="assets-min/logo.png" alt="BETAMOVE" style="height:52px;width:auto">
+        <div>
+          <div style="font-family:var(--font-heading);font-size:20px;line-height:1.2">BETAMOVE</div>
+          <div style="font-size:13px;opacity:0.65">Zertifikat &amp; Nachweis</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:34px">
+        <span class="tag tag-accent" id="certLevel" style="font-size:11.5px"></span>
+        <h1 id="certName" style="margin:14px 0 8px;font-size:clamp(28px,3.6vw,38px)"></h1>
+        <p id="certPerson" style="margin:0;font-size:18px;opacity:0.85"></p>
+      </div>
+      <div style="height:1px;background:var(--color-divider);margin:0 0 28px"></div>
+      <h2 style="margin:0 0 16px;font-size:17px;letter-spacing:0.04em;text-transform:uppercase;opacity:0.7">Erfüllte Anforderungen</h2>
+      <div id="certRows" style="display:flex;flex-direction:column;gap:12px;margin-bottom:30px"></div>
+      <div style="height:1px;background:var(--color-divider);margin:0 0 20px"></div>
+      <p id="certIssued" style="margin:0;font-size:14.5px;opacity:0.65"></p>
+    </div>
+    <div style="text-align:center;margin-top:26px">
+      <button type="button" id="printBtn" class="btn btn-primary" style="font-size:15px;padding:13px 26px">Drucken / Als PDF speichern</button>
+    </div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse">Kurse</a>
+      <a href="ausbildung">Ausbildungsprogramm</a>
+      <a href="anmeldung">Anmeldung</a>
+      <a href="team">Team</a>
+      <a href="ueber-uns">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen">Wissen</a>
+      <a href="konto">Mein Konto</a>
+      <a href="kontakt">Kontakt</a>
+      <a href="agb">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum">Impressum</a>
+      <a href="datenschutz">Datenschutz</a>
+      <a href="widerruf">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+<script>
+(function(){
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  function formatDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch (e) { return ''; }
+  }
+  function courseName(id) {
+    const c = (window.BM_COURSES || []).find(c => c.id === id);
+    return c ? c.title : id;
+  }
+
+  function showStatus(html) {
+    document.getElementById('statusBox').hidden = false;
+    document.getElementById('statusBox').innerHTML = html;
+    document.getElementById('certArea').hidden = true;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const qId = new URLSearchParams(location.search).get('q');
+    const quals = window.BM_QUALIFICATIONS || [];
+    const qual = quals.find(q => q.id === qId);
+    if (!qual) { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Unbekannte Qualifikation.</p>'); return; }
+
+    if (typeof window.bmGetSupabaseClient !== 'function') { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Gerade nicht erreichbar.</p>'); return; }
+    const { client } = window.bmGetSupabaseClient();
+    if (!client) { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Gerade nicht erreichbar.</p>'); return; }
+
+    let session = null;
+    try {
+      const { data } = await client.auth.getSession();
+      session = data && data.session ? data.session : null;
+    } catch (e) { /* bleibt null */ }
+    if (!session) {
+      showStatus('<p style="margin:0 0 16px;font-size:15.5px">Bitte melde dich an, um dein Zertifikat zu sehen.</p><a href="login?next=' + encodeURIComponent('zertifikat?q=' + qId) + '" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>');
+      return;
+    }
+
+    let profile = null, progressRows = [], bookings = [];
+    try {
+      const [profileRes, progressRes, bookingsRes] = await Promise.all([
+        client.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
+        client.from('lernfortschritt').select('*').eq('user_id', session.user.id),
+        client.from('kursanmeldungen').select('*').eq('user_id', session.user.id)
+      ]);
+      profile = profileRes.data || null;
+      progressRows = progressRes.data || [];
+      bookings = bookingsRes.data || [];
+    } catch (e) {
+      showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>');
+      return;
+    }
+
+    const progress = {};
+    progressRows.forEach(row => { progress[row.item_id] = row; });
+
+    // Kursteilnahme kommt aus bestätigten Buchungen, nicht aus lernfortschritt
+    // (siehe js/account.js, gleiche Logik wie auf den Konto-Seiten).
+    bookings.forEach(b => {
+      if (b.teilnahme_bestaetigt) {
+        progress['kurs-' + b.kurs_id] = { passed: true, created_at: b.teilnahme_bestaetigt_at || b.created_at };
+      }
+    });
+
+    const rows = qual.requirements.map(r => {
+      const row = progress[r.id];
+      const done = !!(row && row.passed);
+      return { req: r, row, done };
+    });
+
+    const allDone = rows.every(r => r.done);
+    if (!allDone) {
+      showStatus('<p style="margin:0 0 10px;font-size:15.5px">Noch nicht alle Anforderungen für „' + escapeHtml(qual.name) + '" erfüllt.</p><p style="margin:0;font-size:14.5px;opacity:0.7">Schau auf der Qualifikationen-Seite, was dir noch fehlt.</p>');
+      return;
+    }
+
+    document.getElementById('statusBox').hidden = true;
+    document.getElementById('certArea').hidden = false;
+
+    const vorname = (profile && profile.vorname) || session.user.user_metadata.vorname || '';
+    const nachname = (profile && profile.nachname) || session.user.user_metadata.nachname || '';
+
+    document.getElementById('certLevel').textContent = qual.level;
+    document.getElementById('certName').textContent = qual.name;
+    document.getElementById('certPerson').textContent = (vorname + ' ' + nachname).trim();
+
+    const typeLabel = { artikel: 'Durchgearbeitet', quiz: 'Quiz bestanden', pruefung: 'Prüfung bestanden', kurs: 'Kursteilnahme bestätigt' };
+    let latest = null;
+    const rowsHtml = rows.map(({ req, row }) => {
+      const date = row.created_at ? formatDate(row.created_at) : '';
+      if (row.created_at && (!latest || row.created_at > latest)) latest = row.created_at;
+      let detail = typeLabel[req.kind] || 'Erledigt';
+      if (req.kind === 'kurs') {
+        const courseId = req.id.replace(/^kurs-/, '');
+        const booking = bookings.find(b => b.kurs_id === courseId && b.teilnahme_bestaetigt);
+        detail = 'Kursdatum: ' + escapeHtml((booking && booking.kurs_datum) || courseName(courseId));
+      } else if (row.score != null && row.total != null) {
+        detail = row.score + '/' + row.total + ' richtig';
+      }
+      return `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
+        <span style="width:24px;height:24px;flex:none;border-radius:50%;background:var(--color-accent-2-500);color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">✓</span>
+        <span style="flex:1;min-width:200px;font-size:15.5px;font-weight:600">${escapeHtml(req.label)}</span>
+        <span style="font-size:13.5px;opacity:0.7">${escapeHtml(detail)}${date ? ' · ' + date : ''}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('certRows').innerHTML = rowsHtml;
+    document.getElementById('certIssued').textContent = 'Ausgestellt von BETAMOVE am ' + formatDate(latest || new Date().toISOString()) + '.';
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+  });
+})();
+</script>
+</body>
+</html>

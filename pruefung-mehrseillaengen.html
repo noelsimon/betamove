@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Online-Prüfung Sicherungstheorie — BETAMOVE</title>
-<meta name="description" content="Die Theorieprüfung vor dem Sicherungs-Update: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
-<meta property="og:title" content="Online-Prüfung Sicherungstheorie — BETAMOVE">
-<meta property="og:description" content="Die Theorieprüfung vor dem Sicherungs-Update: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
+<title>Online-Prüfung Mehrseillängen — BETAMOVE</title>
+<meta name="description" content="Die Theorieprüfung für die Mehrseillängen-Kompetenz: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
+<meta property="og:title" content="Online-Prüfung Mehrseillängen — BETAMOVE">
+<meta property="og:description" content="Die Theorieprüfung für die Mehrseillängen-Kompetenz: acht Fragen, direkte Auswertung, jede Antwort erklärt.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://betamove.de/pruefung-sicherungsschein">
+<meta property="og:url" content="https://betamove.de/pruefung-mehrseillaengen">
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
@@ -55,8 +55,8 @@
 
     <div id="examRunning" hidden>
       <span class="tag tag-accent" style="font-size:11.5px;margin-top:4px">Online-Prüfung</span>
-      <h1 style="margin:14px 0 12px;font-size:clamp(30px,3.8vw,44px)">Sicherungstheorie</h1>
-      <p style="max-width:60ch;margin:0 0 28px;font-size:17.5px;opacity:0.85">Acht Fragen zur Sicherungspraxis. Ab sechs richtigen Antworten gilt die Prüfung als bestanden. Du kannst sie beliebig oft wiederholen – jede Antwort wird am Ende erklärt.</p>
+      <h1 style="margin:14px 0 12px;font-size:clamp(30px,3.8vw,44px)">Mehrseillängen</h1>
+      <p style="max-width:60ch;margin:0 0 28px;font-size:17.5px;opacity:0.85">Acht Fragen zu Seilschaft, Taktik und Kommunikation am Mehrseillängen-Fels. Ab sechs richtigen Antworten gilt die Prüfung als bestanden. Du kannst sie beliebig oft wiederholen – jede Antwort wird am Ende erklärt.</p>
 
       <div style="position:sticky;top:88px;z-index:5;background:color-mix(in srgb, var(--color-bg) 94%, transparent);backdrop-filter:blur(8px);padding:14px 0;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--color-divider);margin-bottom:26px">
         <div style="flex:1;height:9px;border-radius:999px;background:var(--color-surface);overflow:hidden">
@@ -81,7 +81,7 @@
         <p id="examVerdictText" style="margin:16px auto 0;max-width:52ch;font-size:16.5px;opacity:0.92"></p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px">
           <button type="button" id="examRetryBtn" class="btn btn-onblue" style="font-size:16px;padding:13px 26px">Prüfung wiederholen</button>
-          <a href="anmeldung" class="btn btn-outline-light" style="font-size:16px;padding:13px 26px">Sicherungs-Update buchen</a>
+          <a href="anmeldung?kurs=msl" class="btn btn-outline-light" style="font-size:16px;padding:13px 26px">Mehrseillängen-Kurs buchen</a>
         </div>
       </div>
       <h2 style="margin:0 0 18px;font-size:26px">Auswertung Frage für Frage</h2>
@@ -154,9 +154,9 @@
 <script src="js/main.js"></script>
 <script src="js/account.js"></script>
 <script>
-const EXAM = [{"q": "Das Bremsseil wird beim Sichern …", "options": ["bei blockierendem Gerät kurz freigegeben", "ununterbrochen von der Bremshand umschlossen"], "a": 1, "why": "Es gibt keine Situation, in der die Bremshand das Bremsseil verlässt."}, {"q": "Ein Anseilknoten ist korrekt, wenn …", "options": ["er zugezogen ist und ein ausreichender Restfaden bleibt", "er locker sitzt, damit er sich im Sturz setzen kann"], "a": 0, "why": "Achterknoten zugezogen, parallel gelegt, Restfaden mindestens eine Handbreit."}, {"q": "Beim Vorstiegssichern stehst du …", "options": ["direkt an der Wand, seitlich zur ersten Exe versetzt", "zwei Meter hinter der Wand mittig unter der Route"], "a": 0, "why": "Nah an der Wand und leicht versetzt: kurzer Seilweg, freie Sicht, kein Zug in die Wand."}, {"q": "Schlappseil im Vorstieg ist …", "options": ["grundsätzlich gut, damit der Sturz weich wird", "so knapp wie möglich zu halten, ohne den Kletternden zu behindern"], "a": 1, "why": "Schlappseil verlängert die Sturzstrecke. Weichheit kommt aus dem Sicherungsverhalten, nicht aus Schlappseil."}, {"q": "Vor dem Klettern prüfst du im Partnercheck …", "options": ["Gurt, Knoten, Gerät, Seilende", "nur Knoten und Gerät"], "a": 0, "why": "Alle vier Punkte, in fester Reihenfolge, laut und gegenseitig."}, {"q": "Ein Sturz kurz über der ersten Zwischensicherung ist …", "options": ["harmlos, das Seil fängt weich", "kritisch, weil Bodennähe und Seildehnung zusammenfallen"], "a": 1, "why": "Grundfallrisiko: wenig Seil im System, kurze Bremsstrecke, Boden nah. Vorclippen entschärft das."}, {"q": "Wird die sichernde Person deutlich angehoben, …", "options": ["ist das normal und unkritisch", "droht Kontrollverlust über das Bremsseil – Ausgleich nötig"], "a": 1, "why": "Beim Anheben geht die Bremshandposition verloren. Gewichtsunterschiede brauchen eine Lösung."}, {"q": "Ein Helm gehört am Naturfels …", "options": ["nur beim Vorsteigen getragen", "beim Klettern und beim Sichern getragen"], "a": 1, "why": "Steinschlag trifft auch die sichernde Person. Helm auf, sobald du am Wandfuß stehst."}];
+const EXAM = [{"q": "In einer Seilschaft übernimmt die vorsteigende Person …", "options": ["nur das Klettern, der Rest liegt bei der nachsteigenden Person", "das Klettern, Absichern der Route und den Aufbau des Standplatzes"], "a": 1, "why": "Die vorsteigende Person klettert voraus, sichert mit Zwischensicherungen ab und baut den Standplatz auf. Die nachsteigende Person folgt und nimmt das Material wieder ab."}, {"q": "Bei der Wechselführung …", "options": ["steigt eine Person über mehrere Seillängen am Stück vor", "wechseln sich die Partner nach jeder Seillänge ab, ohne Umbau am Stand"], "a": 1, "why": "Wechselführung bringt Tempo und Flexibilität – hat aber den Nachteil, dass schwächere Kletternde nicht vorsteigen können, wenn die nächste Seillänge zu schwer ist."}, {"q": "Das Raupenprinzip eignet sich besonders, wenn …", "options": ["eine Person deutlich schwächer oder unsicherer ist als die andere", "beide Personen gleich stark klettern und schnell vorankommen wollen"], "a": 0, "why": "Beim Raupenprinzip behält eine Person die Vorstiegsrolle über mehrere Seillängen bei – vorteilhaft bei Stärkeunterschied, aber zeitaufwändiger durch den Rollenwechsel am Stand."}, {"q": "Im Vergleich zum Sportklettern braucht Mehrseillängen-Klettern …", "options": ["meist nur eine Handvoll Expressen, mehr nicht", "typischerweise Tube/HMS, umfangreicheres Knotenkönnen und meist mehr Sicherungsmaterial"], "a": 1, "why": "Sportklettern kommt meist mit Expressen und einem Sicherungsknoten aus. Mehrseillängen verlangt mehr Technik, mehr Material und oft weniger gut sanierte Routen."}, {"q": "Die Kommunikation in einer Mehrseillängen-Seilschaft sollte …", "options": ["symmetrisch sein – jede Meinung und jedes Signal gleichwertig gehört", "asymmetrisch sein, die vorsteigende Person entscheidet und sagt an"], "a": 0, "why": "Anders als die eher knappen Kommandos beim Sportklettern braucht Mehrseillängen eine symmetrische Kommunikation auf Augenhöhe – inklusive offener Worte zu Ängsten und Bedenken."}, {"q": "Bei der Routenwahl empfiehlt sich eine Schwierigkeit …", "options": ["auf dem persönlichen Sportkletter-Limit, um die Zeit zu nutzen", "etwa zwei Grade unter dem persönlichen Sportkletter-Niveau"], "a": 1, "why": "Mehrseillängen verlangt mehr als reine Kraft: Ausdauer, Kopf, Taktik. Ein Sicherheitsabstand zum eigenen Limit lässt Reserven für diese Faktoren."}, {"q": "Die Checkpunkt-Methode während der Tour bedeutet …", "options": ["sich regelmäßig zu Zeitplan, Kraftreserven und Rückzugsmöglichkeiten abzustimmen", "nur am Einstieg einmal den Plan zu besprechen und dann durchzuziehen"], "a": 0, "why": "Regelmäßige Selbst-Checks (Zeitplan, Kräfte, Wetter, Rückzugsoptionen) helfen, rechtzeitig umzusteuern statt erst in der Krise zu reagieren."}, {"q": "Das „Risiko-Schub-Phänomen“ beschreibt, dass …", "options": ["Gruppen tendenziell mehr Risiko eingehen, weil sich die Verantwortung diffus verteilt", "größere Gruppen automatisch sicherer unterwegs sind"], "a": 0, "why": "In Gruppen wird Verantwortung geteilt – dadurch steigt paradoxerweise die Bereitschaft, Risiken einzugehen. Bewusstsein dafür ist gerade in der kleinen Seilschaft wichtig."}];
 const EXAM_PASS = 6;
-const EXAM_ID = 'pruefung-sicherungsschein';
+const EXAM_ID = 'pruefung-mehrseillaengen';
 
 (async function(){
   const loadingBox = document.getElementById('examGateLoading');
@@ -240,7 +240,7 @@ const EXAM_ID = 'pruefung-sicherungsschein';
     document.getElementById('examVerdictLabel').textContent = passed ? 'Bestanden' : 'Nicht bestanden';
     document.getElementById('examScoreLine').textContent = score + ' richtig · ' + Math.round((score/EXAM.length)*100) + ' %';
     document.getElementById('examVerdictText').textContent = passed
-      ? 'Deine Theorie sitzt. Bring dieses Ergebnis zum Sicherungs-Update mit – wir steigen dann direkt in die Praxis ein.'
+      ? 'Deine Theorie sitzt. Bring dieses Ergebnis zum Mehrseillängen-Kurs mit – wir steigen dann direkt in die Praxis ein.'
       : 'Ab sechs richtigen Antworten ist die Prüfung bestanden. Lies die Erklärungen unten, dann probier es erneut.';
     const review = document.getElementById('examReview');
     review.innerHTML = '';
