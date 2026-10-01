@@ -139,6 +139,8 @@
       return;
     }
 
+    if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
+
     let profile = null, progressRows = [], bookings = [];
     try {
       const [profileRes, progressRes, bookingsRes] = await Promise.all([

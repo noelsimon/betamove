@@ -77,7 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!value) return;
     addChatMsg(value, 'user');
     if (chatInput) chatInput.value = '';
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
       addChatMsg(bmChatReply(value), 'bot');
     }, 350);
   }

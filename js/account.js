@@ -25,16 +25,13 @@
   }
 
   // --------------------------------------------------------------------
-  // Kurskatalog (Namen zum Anzeigen) — muss zu kurse passen.
+  // Kursname zu einer kurs_id — liest live aus der Kurse-Tabelle
+  // (window.BM_COURSES), damit hier nichts doppelt gepflegt werden muss.
   // --------------------------------------------------------------------
-  const COURSE_NAMES = {
-    halle: 'Von der Halle an den Fels',
-    msl: 'Mehrseillängen für Fortgeschrittene',
-    mobil: 'Keile, Friends und Co. – Mobile Sicherung',
-    technik: 'Besser Klettern – Bewegungstechnik',
-    update: 'Sicherungs-Update',
-    sturz: 'Sturz- und Sicherungstraining'
-  };
+  function courseTitle(id) {
+    const c = (window.BM_COURSES || []).find(c => c.id === id);
+    return c ? c.title : null;
+  }
 
   // --------------------------------------------------------------------
   // Qualifikationen — einzige Quelle der Wahrheit für Fortschritt & Zertifikate.
@@ -270,6 +267,7 @@
     }
     if (banner) banner.remove();
     syncNavHeader(session);
+    if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
 
     await ensureProfile(client, session.user);
     // Gäste-Buchungen mit der gleichen E-Mail nachträglich mit diesem Konto
@@ -492,12 +490,13 @@
 
     const coursesList = document.getElementById('kurseList');
     if (coursesList) {
-      coursesList.innerHTML = Object.keys(COURSE_NAMES).map(id => {
+      const courseIds = (window.BM_COURSES || []).filter(c => !c.isPaket).map(c => c.id);
+      coursesList.innerHTML = courseIds.map(id => {
         const itemId = 'kurs-' + id;
         const doneRow = progress[itemId];
         return `<div class="toggle-course" data-course="${id}" style="display:flex;gap:12px;align-items:center;background:#ffffff;border-radius:var(--radius-md);padding:14px 16px;width:100%">
           <span class="toggle-course-mark" style="width:22px;height:22px;flex:none;border-radius:6px;border:2px solid var(--color-divider);display:grid;place-items:center;font-size:12px;font-weight:700;color:#ffffff"></span>
-          <span style="flex:1;min-width:0"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(COURSE_NAMES[id])}</span><span style="display:block;font-size:13px;opacity:0.6">${doneRow ? 'Bestätigt von der Kursleitung' : 'Noch offen'}</span></span>
+          <span style="flex:1;min-width:0"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(courseTitle(id))}</span><span style="display:block;font-size:13px;opacity:0.6">${doneRow ? 'Bestätigt von der Kursleitung' : 'Noch offen'}</span></span>
         </div>`;
       }).join('');
       paintCourseStatus(progress);
@@ -520,7 +519,7 @@
     }
 
     function row(b) {
-      const title = COURSE_NAMES[b.kurs_id] || b.kurs_titel || b.kurs_id;
+      const title = courseTitle(b.kurs_id) || b.kurs_titel || b.kurs_id;
       const date = b.created_at ? new Date(b.created_at).toLocaleDateString('de-DE') : '';
       if (b.storniert) {
         const cancelDate = b.storniert_at ? new Date(b.storniert_at).toLocaleDateString('de-DE') : '';
@@ -545,7 +544,7 @@
         btn.addEventListener('click', async () => {
           const b = bookings.find(x => x.id === el.dataset.id);
           if (!b) return;
-          const title = COURSE_NAMES[b.kurs_id] || b.kurs_titel || b.kurs_id;
+          const title = courseTitle(b.kurs_id) || b.kurs_titel || b.kurs_id;
           if (!confirm('„' + title + '" wirklich stornieren?')) return;
           btn.disabled = true;
           try {

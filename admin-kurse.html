@@ -18,6 +18,7 @@
       <a href="/">Home</a>
       <a href="kurse">Kurse</a>
       <a href="konto">Mein Konto</a>
+      <a href="admin-kurse-verwaltung">Kurse &amp; Termine</a>
       <a href="admin-pruefungen">Prüfungen</a>
     </nav>
     <div data-r="navactions">
@@ -107,6 +108,8 @@
       showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Dieser Bereich ist nur für die Kursleitung zugänglich.</p>');
       return;
     }
+
+    if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
 
     document.getElementById('statusBox').hidden = true;
     document.getElementById('adminArea').hidden = false;

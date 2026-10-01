@@ -281,9 +281,13 @@
   }
 
   function optBtnHtml(c) {
-    return '<button type="button" class="opt-btn" data-course="'+c.id+'" style="text-align:left;cursor:pointer;display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%">'
+    const full = c.ausgebucht && !f.courseIds.includes(c.id);
+    const capacityTag = c.maxTeilnehmer
+      ? '<span style="display:block;font-size:13px;margin-top:3px;color:'+(c.ausgebucht?'var(--color-accent-700)':'inherit')+';opacity:'+(c.ausgebucht?'1':'0.7')+'">'+(c.ausgebucht?'Ausgebucht':c.plaetzeFrei+' Plätze frei')+'</span>'
+      : '';
+    return '<button type="button" class="opt-btn" data-course="'+c.id+'"'+(full?' data-full="true" disabled':'')+' style="text-align:left;cursor:'+(full?'not-allowed':'pointer')+';display:flex;gap:16px;align-items:center;padding:16px 20px;border-radius:calc(var(--radius-lg) * 1.15);border:2px solid var(--color-divider);font:inherit;color:inherit;background:#fff;width:100%;opacity:'+(full?'0.55':'1')+'">'
       + '<span class="opt-dot" style="width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--color-neutral-400);display:grid;place-items:center;font-size:12px;color:#fff"></span>'
-      + '<span style="flex:1;min-width:0"><span style="display:block;font-family:var(--font-heading);font-size:19px">'+c.title+'</span><span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">'+c.date+' · '+c.ort+'</span></span>'
+      + '<span style="flex:1;min-width:0"><span style="display:block;font-family:var(--font-heading);font-size:19px">'+c.title+'</span><span style="display:block;font-size:14px;opacity:0.7;margin-top:3px">'+c.date+' · '+c.ort+'</span>'+capacityTag+'</span>'
       + '<span style="font-family:var(--font-heading);font-size:20px;color:var(--color-accent-700);flex:none">'+eur(c.price)+'</span>'
       + '</button>';
   }
@@ -295,6 +299,7 @@
     document.getElementById('paketOptions').innerHTML = pakete.map(optBtnHtml).join('');
     document.querySelectorAll('.opt-btn').forEach(btn => {
       btn.dataset.active = String(f.courseIds.includes(btn.dataset.course));
+      if (btn.dataset.full === 'true') return;
       btn.addEventListener('click', () => {
         const id = btn.dataset.course;
         const i = f.courseIds.indexOf(id);
@@ -313,12 +318,12 @@
 
   // ?kurs=id oder ?kurs=id1,id2 aus dem "Anmelden"-Button auf kurse
   // übernimmt die Vorauswahl, damit man den Kurs nicht doppelt wählen muss.
-  (function preselectFromQuery() {
+  function preselectFromQuery() {
     const param = new URLSearchParams(location.search).get('kurs');
     if (!param) return;
     const ids = param.split(',').map(s => s.trim()).filter(id => window.BM_COURSES.some(c => c.id === id));
     f.courseIds = ids;
-  })();
+  }
 
   function valid(n) {
     if (n === 1) return f.courseIds.length > 0;
@@ -546,8 +551,11 @@
     render();
   });
 
-  renderOptions();
-  render();
+  window.BM_COURSES_READY.then(() => {
+    preselectFromQuery();
+    renderOptions();
+    render();
+  });
 })();
 </script>
 </body>
