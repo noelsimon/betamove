@@ -2,9 +2,9 @@
 // ============================================================================
 // Wofür: Wird von einem Supabase Database Webhook aufgerufen, sobald eine neue
 // Zeile in der Tabelle `kontaktanfragen` eingefügt wird (Event: INSERT).
-// Verschickt eine Benachrichtigung an die Betreiberin (OWNER_EMAIL unten).
-// Anders als bei der Kursanmeldung gibt es hier keine automatische
-// Bestätigungsmail an die absendende Person (nicht gefordert).
+// Verschickt zwei E-Mails über die Resend-API:
+//   1. eine Benachrichtigung an die Betreiberin (OWNER_EMAIL unten)
+//   2. eine Bestätigungsmail an die absendende Person (Feld `email` der Zeile)
 //
 // Einrichtung: siehe supabase/EMAIL-SETUP.md (gilt für beide Functions).
 // ============================================================================
@@ -68,6 +68,42 @@ function formatDate(iso?: string): string {
   }
 }
 
+// Gemeinsamer, schlichter E-Mail-Rahmen im Ton der Website (freundlich, klar,
+// wenig Schnickschnack).
+function emailLayout(title: string, bodyHtml: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f3f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f3f0;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="background:#1c1c1a;padding:24px 28px;">
+              <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.02em;">BETAMOVE</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;">${title}</h1>
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 28px;background:#f4f3f0;font-size:12.5px;color:#6b6b66;">
+              Diese E-Mail wurde automatisch von der BETAMOVE-Website versendet.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 function ownerEmailHtml(r: KontaktanfrageRecord): string {
   const rows: Array<[string, string]> = [
     ["Name", escapeHtml(r.name)],
@@ -86,41 +122,32 @@ function ownerEmailHtml(r: KontaktanfrageRecord): string {
     )
     .join("");
 
-  return `
-<!DOCTYPE html>
-<html lang="de">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f4f3f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1a;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f3f0;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;">
-          <tr>
-            <td style="background:#1c1c1a;padding:24px 28px;">
-              <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.02em;">BETAMOVE</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px;">
-              <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;">Neue Kontaktanfrage</h1>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;">
-                ${tableRows}
-              </table>
-              <p style="margin:20px 0 0;font-size:15px;color:#3a3a36;white-space:pre-wrap;">${escapeHtml(r.nachricht)}</p>
-              <p style="margin:20px 0 0;font-size:13.5px;color:#6b6b66;">Alle Anfragen findest du außerdem jederzeit im Supabase-Dashboard (Tabelle „kontaktanfragen").</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:18px 28px;background:#f4f3f0;font-size:12.5px;color:#6b6b66;">
-              Diese E-Mail wurde automatisch von der BETAMOVE-Website versendet.
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`.trim();
+  const body = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;">
+      ${tableRows}
+    </table>
+    <p style="margin:20px 0 0;font-size:15px;color:#3a3a36;white-space:pre-wrap;">${escapeHtml(r.nachricht)}</p>
+    <p style="margin:20px 0 0;font-size:13.5px;color:#6b6b66;">Alle Anfragen findest du außerdem jederzeit im Supabase-Dashboard (Tabelle „kontaktanfragen").</p>`;
+
+  return emailLayout("Neue Kontaktanfrage", body);
+}
+
+function customerEmailHtml(r: KontaktanfrageRecord): string {
+  const body = `
+    <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">Danke, ${escapeHtml(r.name)}! Wir haben deine Nachricht erhalten und melden uns so schnell wie möglich bei dir zurück.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;margin:18px 0;">
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eceae5;font-size:14px;color:#6b6b66;white-space:nowrap;vertical-align:top;">Betreff</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eceae5;font-size:14px;color:#1c1c1a;">${r.betreff ? escapeHtml(r.betreff) : "—"}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-size:14px;color:#6b6b66;white-space:nowrap;vertical-align:top;">Deine Nachricht</td>
+        <td style="padding:8px 12px;font-size:14px;color:#1c1c1a;white-space:pre-wrap;">${escapeHtml(r.nachricht)}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:14px;color:#6b6b66;">Das ist eine automatische Bestätigung, dass deine Nachricht bei uns angekommen ist. Fragen in der Zwischenzeit? Antworte einfach auf diese E-Mail.</p>`;
+
+  return emailLayout("Deine Nachricht ist bei uns angekommen", body);
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
@@ -178,16 +205,27 @@ Deno.serve(async (req: Request) => {
 
   // Wie bei notify-kursanmeldung: ein Mailfehler darf den bereits erfolgten
   // Insert nicht blockieren, deshalb immer Status 200, Fehler nur geloggt.
-  const result = await sendEmail(
+  const results: Record<string, { ok: boolean; error?: string }> = {};
+
+  results.owner = await sendEmail(
     OWNER_EMAIL,
     `Neue Kontaktanfrage: ${record.betreff || record.name}`,
     ownerEmailHtml(record),
   );
-  if (!result.ok) {
-    console.error("notify-kontaktanfrage: Benachrichtigung an Betreiberin fehlgeschlagen:", result.error);
+  if (!results.owner.ok) {
+    console.error("notify-kontaktanfrage: Benachrichtigung an Betreiberin fehlgeschlagen:", results.owner.error);
   }
 
-  return new Response(JSON.stringify({ ok: true, result }), {
+  results.customer = await sendEmail(
+    record.email,
+    "Deine Nachricht ist bei uns angekommen",
+    customerEmailHtml(record),
+  );
+  if (!results.customer.ok) {
+    console.error("notify-kontaktanfrage: Bestätigungsmail an absendende Person fehlgeschlagen:", results.customer.error);
+  }
+
+  return new Response(JSON.stringify({ ok: true, results }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
