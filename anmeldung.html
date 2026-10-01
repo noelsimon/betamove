@@ -60,6 +60,10 @@
       <div style="width:72px;height:72px;margin:0 auto 22px;border-radius:50%;background:var(--color-accent-2-500);color:#fff;display:grid;place-items:center;font-size:34px">✓</div>
       <h1 style="margin:0 0 12px;font-size:36px">Anmeldung abgeschickt!</h1>
       <p id="successText" style="font-size:17px;opacity:0.85"></p>
+      <div id="accountNudge" hidden style="text-align:left;background:#ffffff;border:2px dashed var(--color-accent-300);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 26px;margin-top:26px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+        <p style="margin:0;flex:1;min-width:250px;font-size:15.5px;color:var(--color-accent-900)">Willst du Zugriff auf die Lernplattform und deine gebuchten Kurse sehen? Melde dich mit der gleichen E-Mail-Adresse an, dann verknüpfen wir diese Buchung automatisch mit deinem Konto.</p>
+        <a id="accountNudgeLink" href="login" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Konto erstellen</a>
+      </div>
       <div style="display:flex;gap:12px;justify-content:center;margin-top:22px;flex-wrap:wrap">
         <a href="kurse" class="btn btn-secondary" style="font-size:16px;padding:13px 24px">Weitere Kurse</a>
         <button type="button" id="resetForm" class="btn btn-primary" style="font-size:16px;padding:13px 24px">Neue Anmeldung</button>
@@ -445,9 +449,16 @@
   }
   document.getElementById('agb') && document.getElementById('agb').addEventListener('change', syncSubmit);
 
-  function showSuccess(list) {
+  function showSuccess(list, loggedIn) {
+    const email = document.getElementById('em').value;
     const names = list.length ? list.map(c => c.title).join(', ') : 'deinen Kurs';
-    document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + names + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + document.getElementById('em').value + ' mit der Bestätigung und allen Details.';
+    document.getElementById('successText').textContent = 'Danke, ' + (document.getElementById('fn').value || '') + '! Wir haben deine Anmeldung für ' + names + ' erhalten und melden uns innerhalb von 48 Stunden per E-Mail an ' + email + ' mit der Bestätigung und allen Details.';
+    const nudge = document.getElementById('accountNudge');
+    if (nudge) {
+      nudge.hidden = !!loggedIn;
+      const link = document.getElementById('accountNudgeLink');
+      if (link) link.href = 'login?next=konto&email=' + encodeURIComponent(email);
+    }
     document.getElementById('formPanel').hidden = true;
     document.getElementById('successPanel').hidden = false;
     window.scrollTo(0,0);
@@ -509,7 +520,7 @@
         agb_akzeptiert: true,
       });
       if (error) throw error;
-      showSuccess(list);
+      showSuccess(list, !!userId);
     } catch (err) {
       showSubmitError('Anmeldung konnte leider nicht gesendet werden.' + FALLBACK_EMAIL_HINT);
     } finally {

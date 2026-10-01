@@ -55,6 +55,30 @@ create policy "kursanmeldungen_admin_update"
   using (auth.jwt() ->> 'email' = 'noel.uhlrich@gmail.com')
   with check (auth.jwt() ->> 'email' = 'noel.uhlrich@gmail.com');
 
+-- Gäste-Buchung nachträglich mit einem Konto verknüpfen ("claimen"): wer
+-- sich einloggt, soll seine vorher ohne Konto gemachten Buchungen (gleiche
+-- E-Mail) automatisch in "Mein Lernstand" sehen. Das passiert NICHT über
+-- eine direkte Tabellen-Policy fürs Frontend (eine UPDATE-Policy könnte
+-- darüber missbraucht werden, auch gleich teilnahme_bestaetigt selbst zu
+-- setzen), sondern über diese Funktion: sie läuft mit erhöhten Rechten
+-- (security definer) und ändert ausschließlich user_id auf die eigene ID,
+-- nur für Zeilen mit passender E-Mail und ohne bisheriges Konto.
+create or replace function public.claim_kursanmeldungen_by_email()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.kursanmeldungen
+  set user_id = auth.uid()
+  where user_id is null
+    and email = (auth.jwt() ->> 'email');
+end;
+$$;
+
+grant execute on function public.claim_kursanmeldungen_by_email() to authenticated;
+
 
 -- ============================================================================
 -- 2) kommentare — "Fragen & Kommentare" unter Wissensartikeln

@@ -192,6 +192,14 @@
     document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b===btn));
   }));
 
+  // Kommt der Link von der Kursbuchung (anmeldung), ist die E-Mail schon
+  // bekannt und "Konto erstellen" die naheliegende Wahl.
+  const prefillEmail = new URLSearchParams(location.search).get('email');
+  if (prefillEmail) {
+    document.getElementById('rg-em').value = prefillEmail;
+    tabRegister.click();
+  }
+
   function nextUrl() {
     const n = new URLSearchParams(location.search).get('next');
     return (n && /^[a-z0-9-]+(\.html)?$/i.test(n)) ? n : 'konto';

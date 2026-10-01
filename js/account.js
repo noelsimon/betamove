@@ -244,6 +244,10 @@
     if (banner) banner.remove();
 
     await ensureProfile(client, session.user);
+    // Gäste-Buchungen mit der gleichen E-Mail nachträglich mit diesem Konto
+    // verknüpfen (siehe claim_kursanmeldungen_by_email in
+    // supabase/schema-admin-kommentare.sql).
+    try { await client.rpc('claim_kursanmeldungen_by_email'); } catch (e) { /* Funktion evtl. noch nicht angelegt — Seite bleibt trotzdem nutzbar */ }
     const [profile, progress, bookings] = await Promise.all([
       fetchProfile(client, session.user.id),
       fetchProgress(client, session.user.id),
