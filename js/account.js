@@ -344,18 +344,20 @@
   // Seite: konto — Übersicht
   // --------------------------------------------------------------------
   async function renderKonto(ctx) {
-    const { progress } = ctx;
+    const { progress, bookings } = ctx;
     const qualStats = QUALIFICATIONS.map(q => Object.assign({ qual: q }, qualProgress(q, progress)));
     const qualDone = qualStats.filter(q => q.done >= q.total).length;
-    const contentDone = CONTENT_ITEMS.filter(c => progress[c.id] && progress[c.id].passed).length;
+    const activeBookings = bookings.filter(b => !b.storniert).length;
     const examCount = CONTENT_ITEMS.filter(c => c.kind === 'pruefung' && progress[c.id] && progress[c.id].passed).length;
 
     const statQual = document.getElementById('statQual');
     if (statQual) statQual.textContent = qualDone + '/' + QUALIFICATIONS.length;
     const statContent = document.getElementById('statContent');
-    if (statContent) statContent.textContent = contentDone + '/' + CONTENT_ITEMS.length;
+    if (statContent) statContent.textContent = String(activeBookings);
     const statExams = document.getElementById('statExams');
     if (statExams) statExams.textContent = String(examCount);
+
+    renderGebuchteKurse(ctx);
 
     // Nächster offener Schritt: erste offene Anforderung über alle Qualifikationen
     const nextBox = document.getElementById('nextStepBox');
