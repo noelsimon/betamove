@@ -13,6 +13,10 @@
 //                       eine Person eingeloggt ist (siehe anmeldung)
 
 (function () {
+  // Login-Adresse der Kursleitung — muss exakt zu den Admin-Policies in
+  // supabase/schema-admin-kommentare.sql passen (auth.jwt() ->> 'email').
+  const ADMIN_EMAIL = 'noel.uhlrich@gmail.com';
+
   function escapeHtml(value) {
     if (value === null || value === undefined) return '';
     return String(value)
@@ -246,6 +250,28 @@
       fetchBookings(client, session.user.id)
     ]);
 
+    // Kursteilnahme kommt nicht mehr aus einem Selbst-Toggle, sondern aus der
+    // Bestätigung der Kursleitung auf der jeweiligen Buchung (siehe
+    // admin-kurse). Alte, selbst gesetzte "kurs-*"-Einträge aus der Zeit vor
+    // dieser Umstellung werden hier bewusst verworfen und komplett durch den
+    // aktuellen Buchungsstatus ersetzt.
+    Object.keys(progress).forEach(key => { if (key.indexOf('kurs-') === 0) delete progress[key]; });
+    bookings.forEach(b => {
+      if (b.teilnahme_bestaetigt) {
+        progress['kurs-' + b.kurs_id] = { passed: true, created_at: b.teilnahme_bestaetigt_at || b.created_at };
+      }
+    });
+
+    const navEl = document.querySelector('[data-r="konto-nav"]');
+    if (navEl && session.user.email === ADMIN_EMAIL && !navEl.querySelector('[data-admin-link]')) {
+      const adminLink = document.createElement('a');
+      adminLink.href = 'admin-kurse';
+      adminLink.dataset.adminLink = 'true';
+      adminLink.style.cssText = 'text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-accent-700);border:2px dashed var(--color-accent-300);display:flex;align-items:center;gap:10px';
+      adminLink.textContent = 'Kursverwaltung (Admin)';
+      navEl.appendChild(adminLink);
+    }
+
     const vorname = (profile && profile.vorname) || session.user.user_metadata.vorname || 'Kletterer*in';
     const nachname = (profile && profile.nachname) || session.user.user_metadata.nachname || '';
     const email = (profile && profile.email) || session.user.email || '';
@@ -271,21 +297,14 @@
     return { client, session, profile: profile || { vorname, nachname, email, level }, progress, bookings };
   }
 
-  function wireCourseToggles(progress) {
-    document.querySelectorAll('.toggle-course[data-course]').forEach(btn => {
-      const courseId = btn.dataset.course;
+  // Kursteilnahme ist nicht mehr klickbar — die Bestätigung kommt von der
+  // Kursleitung (siehe admin-kurse), hier wird nur noch der Status angezeigt.
+  function paintCourseStatus(progress) {
+    document.querySelectorAll('.toggle-course[data-course]').forEach(el => {
+      const courseId = el.dataset.course;
       const itemId = 'kurs-' + courseId;
-      function paint() {
-        const done = !!(progress[itemId] && progress[itemId].passed);
-        btn.dataset.active = String(done);
-      }
-      paint();
-      btn.addEventListener('click', async () => {
-        const nowDone = btn.dataset.active !== 'true';
-        progress[itemId] = nowDone ? { passed: true } : undefined;
-        btn.dataset.active = String(nowDone);
-        await window.bmSyncLernfortschritt(itemId, 'kurs', { passed: nowDone });
-      });
+      const done = !!(progress[itemId] && progress[itemId].passed);
+      el.dataset.active = String(done);
     });
   }
 
@@ -442,14 +461,40 @@
       coursesList.innerHTML = Object.keys(COURSE_NAMES).map(id => {
         const itemId = 'kurs-' + id;
         const doneRow = progress[itemId];
-        return `<button type="button" class="toggle-course" data-course="${id}" style="cursor:pointer;font:inherit;text-align:left;display:flex;gap:12px;align-items:center;background:#ffffff;border:0;border-radius:var(--radius-md);padding:14px 16px;width:100%">
+        return `<div class="toggle-course" data-course="${id}" style="display:flex;gap:12px;align-items:center;background:#ffffff;border-radius:var(--radius-md);padding:14px 16px;width:100%">
           <span class="toggle-course-mark" style="width:22px;height:22px;flex:none;border-radius:6px;border:2px solid var(--color-divider);display:grid;place-items:center;font-size:12px;font-weight:700;color:#ffffff"></span>
-          <span style="flex:1;min-width:0"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(COURSE_NAMES[id])}</span><span style="display:block;font-size:13px;opacity:0.6">${doneRow ? 'Bestätigt' : 'Noch offen'}</span></span>
-        </button>`;
+          <span style="flex:1;min-width:0"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(COURSE_NAMES[id])}</span><span style="display:block;font-size:13px;opacity:0.6">${doneRow ? 'Bestätigt von der Kursleitung' : 'Noch offen'}</span></span>
+        </div>`;
       }).join('');
-      wireCourseToggles(progress);
+      paintCourseStatus(progress);
       paintCourseToggles();
     }
+
+    renderGebuchteKurse(ctx);
+  }
+
+  // Eigene gebuchte Kurse (aus kursanmeldungen, über user_id verknüpft) —
+  // unabhängig vom Bestätigungsstatus, damit auch offene/anstehende
+  // Buchungen sichtbar sind.
+  function renderGebuchteKurse(ctx) {
+    const list = document.getElementById('gebuchteKurseList');
+    if (!list) return;
+    const { bookings } = ctx;
+    if (!bookings.length) {
+      list.innerHTML = '<p style="margin:0;font-size:15px;opacity:0.7">Noch keine Buchung über dieses Konto — <a href="anmeldung">jetzt einen Kurs buchen</a>.</p>';
+      return;
+    }
+    list.innerHTML = bookings.map(b => {
+      const title = COURSE_NAMES[b.kurs_id] || b.kurs_titel || b.kurs_id;
+      const date = b.created_at ? new Date(b.created_at).toLocaleDateString('de-DE') : '';
+      const status = b.teilnahme_bestaetigt
+        ? { label: 'Bestätigt', bg: 'var(--color-accent-2-500)', fg: '#ffffff' }
+        : { label: 'Gebucht', bg: 'var(--color-neutral-200)', fg: 'var(--color-neutral-800)' };
+      return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#ffffff;border-radius:var(--radius-md);padding:14px 16px">
+        <span style="flex:1;min-width:150px"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(title)}</span><span style="display:block;font-size:13px;opacity:0.6">Gebucht am ${escapeHtml(date)}</span></span>
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:${status.bg};color:${status.fg};flex:none">${status.label}</span>
+      </div>`;
+    }).join('');
   }
 
   function paintCourseToggles() {
@@ -476,12 +521,10 @@
       const rows = q.requirements.map(r => {
         const done = !!(progress[r.id] && progress[r.id].passed);
         if (r.kind === 'kurs') {
-          const courseId = r.id.replace(/^kurs-/, '');
           return `<div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
             <span style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};background:${done ? 'var(--color-accent)' : 'var(--color-neutral-300)'};color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">${done ? '✓' : ''}</span>
             <span style="flex:1;min-width:180px;font-size:16px">${escapeHtml(r.label)}</span>
-            <span style="font-size:13.5px;font-weight:600;color:${done ? 'var(--color-accent-2-700)' : 'var(--color-text)'};flex:none">${done ? 'Bestätigt' : 'Offen'}</span>
-            <button type="button" class="toggle-course" data-course="${courseId}" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:2px solid var(--color-accent);background:#ffffff;color:var(--color-accent);flex:none">Teilnahme umschalten</button>
+            <span style="font-size:13.5px;font-weight:600;color:${done ? 'var(--color-accent-2-700)' : 'var(--color-text)'};flex:none">${done ? 'Bestätigt von der Kursleitung' : 'Bestätigung steht noch aus'}</span>
           </div>`;
         }
         return `<div style="display:flex;gap:13px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px">
@@ -511,7 +554,7 @@
         ${footer}
       </div>`;
     }).join('');
-    wireCourseToggles(progress);
+    paintCourseStatus(progress);
   }
 
   // --------------------------------------------------------------------
@@ -532,12 +575,11 @@
       const nodes = q.requirements.map(r => {
         const done = !!(progress[r.id] && progress[r.id].passed);
         const isKurs = r.kind === 'kurs';
-        const courseAttr = isKurs ? ` data-course="${r.id.replace(/^kurs-/, '')}"` : '';
-        const tag = isKurs ? 'button' : 'a';
-        const openAttr = isKurs ? ' type="button" class="toggle-course"' : ` href="${r.url}"`;
-        return `<${tag}${openAttr}${courseAttr} style="cursor:pointer;font:inherit;text-align:left;text-decoration:none;color:inherit;display:flex;gap:12px;align-items:flex-start;background:${done ? 'var(--color-accent-100)' : '#ffffff'};border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};border-radius:var(--radius-md);padding:16px 18px;width:100%">
-          <span class="toggle-course-mark" style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};background:${done ? 'var(--color-accent)' : 'var(--color-neutral-300)'};color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px">${done ? '✓' : ''}</span>
-          <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">${escapeHtml(r.label.replace(/^(Artikel|Quiz|Online-Prüfung|Kurs) „?/, '').replace(/[“"]? (bestehen|durcharbeiten|lesen|absolvieren)$/, ''))}</span></span>
+        const tag = isKurs ? 'div' : 'a';
+        const openAttr = isKurs ? '' : ` href="${r.url}"`;
+        return `<${tag}${openAttr} style="font:inherit;text-align:left;text-decoration:none;color:inherit;display:flex;gap:12px;align-items:flex-start;background:${done ? 'var(--color-accent-100)' : '#ffffff'};border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};border-radius:var(--radius-md);padding:16px 18px;width:100%">
+          <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};background:${done ? 'var(--color-accent)' : 'var(--color-neutral-300)'};color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px">${done ? '✓' : ''}</span>
+          <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">${escapeHtml(r.label.replace(/^(Artikel|Quiz|Online-Prüfung|Kurs) „?/, '').replace(/[“"]? (bestehen|durcharbeiten|lesen|absolvieren)$/, ''))}</span>${isKurs ? `<span style="display:block;font-size:13px;opacity:0.65;margin-top:2px">${done ? 'Bestätigt von der Kursleitung' : 'Bestätigung steht noch aus'}</span>` : ''}</span>
         </${tag}>`;
       }).join('');
       return `<div style="display:flex;flex-direction:column;gap:12px">
@@ -548,7 +590,76 @@
         ${nodes}
       </div>`;
     }).join('');
-    wireCourseToggles(progress);
+  }
+
+  // --------------------------------------------------------------------
+  // Kommentare unter Wissensartikeln ("Fragen & Kommentare")
+  // --------------------------------------------------------------------
+  function formatCommentDate(iso) {
+    try { return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+    catch (e) { return ''; }
+  }
+
+  async function wireComments() {
+    const root = document.querySelector('[data-comments-for]');
+    if (!root) return;
+    const articleId = root.dataset.commentsFor;
+    const loginBox = document.getElementById('commentLoginBox');
+    const form = document.getElementById('commentForm');
+    const list = document.getElementById('commentList');
+    if (!list) return;
+
+    const client = getClient();
+    if (!client) { list.innerHTML = '<p style="margin:0;font-size:15px;opacity:0.7">Kommentare sind gerade nicht erreichbar.</p>'; return; }
+
+    async function loadComments() {
+      list.innerHTML = '<p style="margin:0;font-size:15px;opacity:0.55">Lädt …</p>';
+      let rows = [];
+      try {
+        const { data } = await client.from('kommentare').select('*').eq('artikel_id', articleId).order('created_at', { ascending: true });
+        rows = data || [];
+      } catch (e) { /* bleibt leer */ }
+      if (!rows.length) {
+        list.innerHTML = '<p style="margin:0;font-size:16px;opacity:0.6">Noch keine Kommentare – stell die erste Frage.</p>';
+        return;
+      }
+      list.innerHTML = rows.map(c => `
+        <div style="border-bottom:1px solid var(--color-divider);padding-bottom:16px">
+          <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:6px">
+            <span style="font-size:15px;font-weight:600">${escapeHtml(c.autor_name)}</span>
+            <span style="font-size:13px;opacity:0.55">${formatCommentDate(c.created_at)}</span>
+          </div>
+          <p style="margin:0;font-size:15.5px;white-space:pre-wrap;opacity:0.9">${escapeHtml(c.text)}</p>
+        </div>`).join('');
+    }
+
+    const session = await getSession();
+    if (session && form) {
+      if (loginBox) loginBox.hidden = true;
+      form.hidden = false;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const textEl = document.getElementById('commentText');
+        const text = textEl.value.trim();
+        if (!text) return;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        const profile = await fetchProfile(client, session.user.id);
+        const autorName = (profile && profile.vorname) || session.user.user_metadata.vorname || 'Kletterer*in';
+        try {
+          await client.from('kommentare').insert({ artikel_id: articleId, user_id: session.user.id, autor_name: autorName, text });
+          textEl.value = '';
+          await loadComments();
+        } catch (e) { /* stiller Fehlschlag, Formular bleibt ausgefüllt */ }
+        submitBtn.disabled = false;
+      });
+    } else if (loginBox) {
+      loginBox.hidden = false;
+      const link = loginBox.querySelector('a');
+      if (link) link.href = 'login?next=' + encodeURIComponent((location.pathname.split('/').pop() || '').replace(/\.html$/i, '') || 'wissen');
+    }
+
+    await loadComments();
   }
 
   // --------------------------------------------------------------------
@@ -571,6 +682,8 @@
     }
 
     // Alle anderen Seiten: nur stiller Abgleich (Header-Link, gelesen-Status)
+    // plus Kommentare, falls die Seite einen Kommentarbereich hat.
     syncHeaderAndLocalProgress();
+    wireComments();
   });
 })();

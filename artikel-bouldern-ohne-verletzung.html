@@ -149,17 +149,17 @@
       <div style="border-top:1px solid var(--color-divider);padding-top:36px">
         <h2 style="margin:0 0 6px;font-size:28px">Fragen &amp; Kommentare</h2>
         <p style="margin:0 0 20px;font-size:16.5px;opacity:0.78">Etwas unklar geblieben oder eine Erfahrung zum Thema? Schreib es hier – wir und andere Teilnehmende lesen mit.</p>
-<div class="preview-banner">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-  <span>Vorschau — diese Seite zeigt das Design, ist aber noch nicht mit echten Nutzerkonten verbunden (folgt mit Supabase-Anbindung).</span>
-</div>
-
-        <div style="background:var(--color-accent-100);border:2px dashed var(--color-accent-300);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
-          <p style="margin:0;flex:1;min-width:250px;font-size:16px;color:var(--color-accent-900)">Mit einem kostenlosen Konto kannst du Fragen stellen und Kommentare schreiben.</p>
-          <a href="login" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>
+<div data-comments-for="bouldern-ohne-verletzung">
+          <div id="commentLoginBox" style="background:var(--color-accent-100);border:2px dashed var(--color-accent-300);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+            <p style="margin:0;flex:1;min-width:250px;font-size:16px;color:var(--color-accent-900)">Mit einem kostenlosen Konto kannst du Fragen stellen und Kommentare schreiben.</p>
+            <a href="login" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>
+          </div>
+          <form id="commentForm" hidden style="display:flex;flex-direction:column;gap:12px;margin-bottom:28px">
+            <textarea id="commentText" class="input" rows="3" style="font-size:15.5px" placeholder="Deine Frage oder dein Kommentar …"></textarea>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:15px;padding:12px 22px">Kommentar absenden</button>
+          </form>
+          <div id="commentList" style="display:flex;flex-direction:column;gap:18px"></div>
         </div>
-        <form id="commentForm" style="display:none"></form>
-        <p style="margin:0;font-size:16px;opacity:0.6">Noch keine Kommentare – stell die erste Frage.</p>
       </div>
     </section>
     <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:64px 28px 96px">

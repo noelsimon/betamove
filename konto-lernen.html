@@ -55,7 +55,7 @@
           <div data-acc="email" style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word"></div>
           <div data-acc="level" hidden style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block"></div>
         </div>
-        <nav style="display:flex;flex-direction:column;gap:6px">
+        <nav data-r="konto-nav" style="display:flex;flex-direction:column;gap:6px">
 <a href="konto" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Übersicht</a>
 <a href="konto-weg" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Mein Ausbildungsweg</a>
 <a href="konto-qualifikationen" style="text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-text);border:2px solid var(--color-divider);display:flex;align-items:center;gap:10px">Qualifikationen</a>
@@ -70,13 +70,20 @@
         <div style="height:11px;border-radius:999px;background:var(--color-surface);overflow:hidden;margin-bottom:10px"><div id="lernenBar" style="height:100%;width:0%;background:var(--color-accent);border-radius:999px"></div></div>
         <p id="lernenLabel" style="margin:0 0 32px;font-size:15.5px;opacity:0.75"></p>
         <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start">
-          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 16px;font-size:21px">Bearbeitet</h3>
-            <div id="bearbeitetList" style="display:flex;flex-direction:column;gap:11px"></div>
+          <div style="display:flex;flex-direction:column;gap:26px">
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 16px;font-size:21px">Bearbeitet</h3>
+              <div id="bearbeitetList" style="display:flex;flex-direction:column;gap:11px"></div>
+            </div>
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 6px;font-size:21px">Gebuchte Kurse</h3>
+              <p style="margin:0 0 16px;font-size:14.5px;opacity:0.75">Kurse, die du über dieses Konto gebucht hast.</p>
+              <div id="gebuchteKurseList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </div>
           </div>
           <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
             <h3 style="margin:0 0 6px;font-size:21px">Absolvierte Kurse</h3>
-            <p style="margin:0 0 16px;font-size:14.5px;opacity:0.75">Kursteilnahmen bestätigen wir aktuell noch nicht selbst als Kursleitung — bis dahin ist das Umschalten hier eine ehrliche Selbstauskunft.</p>
+            <p style="margin:0 0 16px;font-size:14.5px;opacity:0.75">Die Kursleitung bestätigt deine Teilnahme nach dem Kurs — du musst hier nichts selbst eintragen.</p>
             <div id="kurseList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
         </div>
