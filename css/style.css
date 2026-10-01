@@ -207,6 +207,12 @@ textarea.input { resize: vertical; font-family: inherit; }
   [data-r="hero"] [data-r="herotext"] { font-size: 15.5px !important; }
   [data-r="hero"] .btn { font-size: 15px !important; padding: 12px 22px !important; }
 
+  /* Die weiße "Trust"-Karte zieht sich per negativem margin-top über den
+     unteren Rand des Hero (funktioniert bei hohem Desktop-Hero). Auf dem
+     kompakten Mobile-Hero landet dieser Überlapp sonst direkt auf den
+     Buttons. Auf Mobile daher ohne Überlapp, mit normalem Abstand. */
+  [data-r2="trustwrap"] { margin-top: 18px !important; }
+
   /* Floating Chat-Button: als kompakter runder Icon-Button, damit er auf
      schmalen Screens nicht über die Hero-Buttons rutscht. */
   .chat-fab-wrap { right: 16px; bottom: 16px; }
