@@ -227,16 +227,18 @@
   // der lokal gespeicherten "gelesen"-Markierungen (bmProgress) auf jeder
   // Seite, nicht nur im Konto-Bereich.
   // --------------------------------------------------------------------
+  function syncNavHeader(session) {
+    const navLogin = document.querySelector('.nav-login');
+    if (navLogin && session) {
+      navLogin.setAttribute('href', 'konto');
+      const span = navLogin.querySelector('span');
+      if (span) span.textContent = 'Mein Konto';
+    }
+  }
+
   async function syncHeaderAndLocalProgress() {
     const session = await getSession();
-    const navLogin = document.querySelector('.nav-login');
-    if (navLogin) {
-      if (session) {
-        navLogin.setAttribute('href', 'konto');
-        const span = navLogin.querySelector('span');
-        if (span) span.textContent = 'Mein Konto';
-      }
-    }
+    syncNavHeader(session);
     if (!session) return;
     const client = getClient();
     if (!client) return;
@@ -267,6 +269,7 @@
       return null;
     }
     if (banner) banner.remove();
+    syncNavHeader(session);
 
     await ensureProfile(client, session.user);
     // Gäste-Buchungen mit der gleichen E-Mail nachträglich mit diesem Konto
@@ -286,7 +289,7 @@
     // aktuellen Buchungsstatus ersetzt.
     Object.keys(progress).forEach(key => { if (key.indexOf('kurs-') === 0) delete progress[key]; });
     bookings.forEach(b => {
-      if (b.teilnahme_bestaetigt) {
+      if (b.teilnahme_bestaetigt && !b.storniert) {
         progress['kurs-' + b.kurs_id] = { passed: true, created_at: b.teilnahme_bestaetigt_at || b.created_at };
       }
     });
@@ -508,22 +511,56 @@
   function renderGebuchteKurse(ctx) {
     const list = document.getElementById('gebuchteKurseList');
     if (!list) return;
-    const { bookings } = ctx;
+    const { client, bookings } = ctx;
     if (!bookings.length) {
       list.innerHTML = '<p style="margin:0;font-size:15px;opacity:0.7">Noch keine Buchung über dieses Konto — <a href="anmeldung">jetzt einen Kurs buchen</a>.</p>';
       return;
     }
-    list.innerHTML = bookings.map(b => {
+
+    function row(b) {
       const title = COURSE_NAMES[b.kurs_id] || b.kurs_titel || b.kurs_id;
       const date = b.created_at ? new Date(b.created_at).toLocaleDateString('de-DE') : '';
-      const status = b.teilnahme_bestaetigt
-        ? { label: 'Bestätigt', bg: 'var(--color-accent-2-500)', fg: '#ffffff' }
-        : { label: 'Gebucht', bg: 'var(--color-neutral-200)', fg: 'var(--color-neutral-800)' };
-      return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#ffffff;border-radius:var(--radius-md);padding:14px 16px">
+      if (b.storniert) {
+        const cancelDate = b.storniert_at ? new Date(b.storniert_at).toLocaleDateString('de-DE') : '';
+        return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;opacity:0.65">
+          <span style="flex:1;min-width:150px"><span style="display:block;font-size:15.5px;font-weight:600;text-decoration:line-through">${escapeHtml(title)}</span><span style="display:block;font-size:13px;opacity:0.7">Storniert am ${escapeHtml(cancelDate)}</span></span>
+        </div>`;
+      }
+      return `<div data-booking-row data-id="${b.id}" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#ffffff;border-radius:var(--radius-md);padding:14px 16px">
         <span style="flex:1;min-width:150px"><span style="display:block;font-size:15.5px;font-weight:600">${escapeHtml(title)}</span><span style="display:block;font-size:13px;opacity:0.6">Gebucht am ${escapeHtml(date)}</span></span>
-        <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:${status.bg};color:${status.fg};flex:none">${status.label}</span>
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-neutral-200);color:var(--color-neutral-800);flex:none">Gebucht</span>
+        ${b.teilnahme_bestaetigt ? '<span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-2-500);color:#ffffff;flex:none">Teilnahme bestätigt</span>' : ''}
+        <button type="button" data-cancel-btn style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);flex:none">Stornieren</button>
       </div>`;
-    }).join('');
+    }
+
+    function paint() { list.innerHTML = bookings.map(row).join(''); wireCancelButtons(); }
+
+    function wireCancelButtons() {
+      list.querySelectorAll('[data-booking-row]').forEach(el => {
+        const btn = el.querySelector('[data-cancel-btn]');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+          const b = bookings.find(x => x.id === el.dataset.id);
+          if (!b) return;
+          const title = COURSE_NAMES[b.kurs_id] || b.kurs_titel || b.kurs_id;
+          if (!confirm('„' + title + '" wirklich stornieren?')) return;
+          btn.disabled = true;
+          try {
+            const { error } = await client.rpc('cancel_kursanmeldung', { p_booking_id: b.id });
+            if (error) throw error;
+            b.storniert = true;
+            b.storniert_at = new Date().toISOString();
+            paint();
+          } catch (e) {
+            btn.disabled = false;
+            alert('Stornieren hat gerade nicht geklappt. Bitte später erneut versuchen.');
+          }
+        });
+      });
+    }
+
+    paint();
   }
 
   function paintCourseToggles() {

@@ -160,7 +160,7 @@
     // Kursteilnahme kommt aus bestätigten Buchungen, nicht aus lernfortschritt
     // (siehe js/account.js, gleiche Logik wie auf den Konto-Seiten).
     bookings.forEach(b => {
-      if (b.teilnahme_bestaetigt) {
+      if (b.teilnahme_bestaetigt && !b.storniert) {
         progress['kurs-' + b.kurs_id] = { passed: true, created_at: b.teilnahme_bestaetigt_at || b.created_at };
       }
     });
@@ -195,7 +195,7 @@
       let detail = typeLabel[req.kind] || 'Erledigt';
       if (req.kind === 'kurs') {
         const courseId = req.id.replace(/^kurs-/, '');
-        const booking = bookings.find(b => b.kurs_id === courseId && b.teilnahme_bestaetigt);
+        const booking = bookings.find(b => b.kurs_id === courseId && b.teilnahme_bestaetigt && !b.storniert);
         detail = 'Kursdatum: ' + escapeHtml((booking && booking.kurs_datum) || courseName(courseId));
       } else if (row.score != null && row.total != null) {
         detail = row.score + '/' + row.total + ' richtig';

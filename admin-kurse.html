@@ -38,8 +38,14 @@
 
   <div id="adminArea" hidden>
     <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:22px">
-      <label for="courseFilter" style="font-size:14.5px;font-weight:600">Kurs filtern:</label>
-      <select id="courseFilter" class="input" style="min-height:42px;font-size:15px;max-width:320px"></select>
+      <label for="courseFilter" style="font-size:14.5px;font-weight:600">Kurs:</label>
+      <select id="courseFilter" class="input" style="min-height:42px;font-size:15px;max-width:280px"></select>
+      <label for="statusFilter" style="font-size:14.5px;font-weight:600">Status:</label>
+      <select id="statusFilter" class="input" style="min-height:42px;font-size:15px;max-width:200px">
+        <option value="aktiv">Aktiv</option>
+        <option value="alle">Alle</option>
+        <option value="storniert">Storniert</option>
+      </select>
       <span id="rowCount" style="font-size:14px;opacity:0.65;margin-left:auto"></span>
     </div>
     <div id="bookingsList" style="display:flex;flex-direction:column;gap:14px"></div>
@@ -116,67 +122,170 @@
     }
 
     const filterEl = document.getElementById('courseFilter');
+    const statusFilterEl = document.getElementById('statusFilter');
     const courseIds = Array.from(new Set(bookings.map(b => b.kurs_id)));
     filterEl.innerHTML = '<option value="">Alle Kurse</option>' + courseIds.map(id => `<option value="${escapeHtml(id)}">${escapeHtml(courseName(id))}</option>`).join('');
+
+    let editingId = null;
+
+    async function patchBooking(id, patch) {
+      const { error } = await client.from('kursanmeldungen').update(patch).eq('id', id);
+      if (error) throw error;
+      Object.assign(bookings.find(b => b.id === id), patch);
+    }
 
     function renderRow(b) {
       const date = b.created_at ? new Date(b.created_at).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '';
       const confirmedAt = b.teilnahme_bestaetigt_at ? new Date(b.teilnahme_bestaetigt_at).toLocaleDateString('de-DE') : '';
-      return `<div data-row data-id="${b.id}" data-kurs="${escapeHtml(b.kurs_id)}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
-        <div style="flex:1;min-width:220px">
-          <div style="font-size:16.5px;font-weight:600">${escapeHtml(b.vorname)} ${escapeHtml(b.nachname)}</div>
-          <div style="font-size:13.5px;opacity:0.7;margin-top:2px">${escapeHtml(b.email)}${b.telefon ? ' · ' + escapeHtml(b.telefon) : ''}</div>
+      const cancelledAt = b.storniert_at ? new Date(b.storniert_at).toLocaleDateString('de-DE') : '';
+
+      if (editingId === b.id) {
+        return `<div data-row data-id="${b.id}" style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+            <div class="field"><label>Vorname</label><input data-field="vorname" class="input" value="${escapeHtml(b.vorname)}"></div>
+            <div class="field"><label>Nachname</label><input data-field="nachname" class="input" value="${escapeHtml(b.nachname)}"></div>
+            <div class="field"><label>E-Mail</label><input data-field="email" class="input" value="${escapeHtml(b.email)}"></div>
+            <div class="field"><label>Telefon</label><input data-field="telefon" class="input" value="${escapeHtml(b.telefon || '')}"></div>
+          </div>
+          <div class="field"><label>Anmerkungen</label><textarea data-field="anmerkungen" class="input" rows="2">${escapeHtml(b.anmerkungen || '')}</textarea></div>
+          <div style="display:flex;gap:10px">
+            <button type="button" data-save-edit class="btn btn-primary" style="font-size:13.5px;padding:9px 18px">Speichern</button>
+            <button type="button" data-cancel-edit style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:9px 18px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+          </div>
+        </div>`;
+      }
+
+      return `<div data-row data-id="${b.id}" data-kurs="${escapeHtml(b.kurs_id)}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px;display:flex;flex-direction:column;gap:14px;${b.storniert ? 'opacity:0.65' : ''}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:16.5px;font-weight:600;${b.storniert ? 'text-decoration:line-through' : ''}">${escapeHtml(b.vorname)} ${escapeHtml(b.nachname)}</div>
+            <div style="font-size:13.5px;opacity:0.7;margin-top:2px">${escapeHtml(b.email)}${b.telefon ? ' · ' + escapeHtml(b.telefon) : ''}</div>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:15px;font-weight:600">${escapeHtml(courseName(b.kurs_id))}</div>
+            <div style="font-size:13px;opacity:0.65;margin-top:2px">Gebucht ${escapeHtml(date)}${b.rabatt_typ === 'student' ? ' · Studierenden-Rabatt' : ''}</div>
+            ${b.anmerkungen ? `<div style="font-size:13px;opacity:0.65;margin-top:4px;white-space:pre-wrap">${escapeHtml(b.anmerkungen)}</div>` : ''}
+          </div>
+          <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            ${b.storniert
+              ? `<span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--color-accent-600);color:#ffffff">Storniert${cancelledAt ? ' · ' + cancelledAt : ''}</span>`
+              : `<span style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:${b.teilnahme_bestaetigt ? 'var(--color-accent-2-500)' : 'var(--color-neutral-200)'};color:${b.teilnahme_bestaetigt ? '#ffffff' : 'var(--color-neutral-800)'}">${b.teilnahme_bestaetigt ? 'Teilnahme bestätigt' + (confirmedAt ? ' · ' + confirmedAt : '') : 'Teilnahme offen'}</span>`}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              ${b.storniert
+                ? `<button type="button" data-reactivate-btn style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Reaktivieren</button>`
+                : `<button type="button" data-edit-btn style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+                   <button type="button" data-confirm-btn class="${b.teilnahme_bestaetigt ? '' : 'btn btn-primary'}" style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;${b.teilnahme_bestaetigt ? 'border:2px solid var(--color-divider);background:transparent;color:var(--color-text)' : ''}">${b.teilnahme_bestaetigt ? 'Bestätigung zurücknehmen' : 'Teilnahme bestätigen'}</button>
+                   <button type="button" data-cancel-booking-btn style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">Stornieren</button>`}
+            </div>
+          </div>
         </div>
-        <div style="flex:1;min-width:180px">
-          <div style="font-size:15px;font-weight:600">${escapeHtml(courseName(b.kurs_id))}</div>
-          <div style="font-size:13px;opacity:0.65;margin-top:2px">Gebucht ${escapeHtml(date)}${b.rabatt_typ === 'student' ? ' · Studierenden-Rabatt' : ''}</div>
-          ${b.anmerkungen ? `<div style="font-size:13px;opacity:0.65;margin-top:4px;white-space:pre-wrap">${escapeHtml(b.anmerkungen)}</div>` : ''}
-        </div>
-        <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-          <span data-badge style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:${b.teilnahme_bestaetigt ? 'var(--color-accent-2-500)' : 'var(--color-neutral-200)'};color:${b.teilnahme_bestaetigt ? '#ffffff' : 'var(--color-neutral-800)'}">${b.teilnahme_bestaetigt ? 'Bestätigt' + (confirmedAt ? ' · ' + confirmedAt : '') : 'Offen'}</span>
-          <button type="button" data-confirm-btn class="${b.teilnahme_bestaetigt ? '' : 'btn btn-primary'}" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:9px 18px;border-radius:999px;${b.teilnahme_bestaetigt ? 'border:2px solid var(--color-divider);background:transparent;color:var(--color-text)' : ''}">${b.teilnahme_bestaetigt ? 'Bestätigung zurücknehmen' : 'Teilnahme bestätigen'}</button>
+        <div style="border-top:1px solid var(--color-divider);padding-top:12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <textarea data-field="admin_notiz" class="input" rows="1" placeholder="Notiz für dich (nicht sichtbar für die Buchungsperson) …" style="flex:1;min-width:220px;font-size:13.5px">${escapeHtml(b.admin_notiz || '')}</textarea>
+          <button type="button" data-save-note style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);flex:none">Notiz speichern</button>
         </div>
       </div>`;
     }
 
     function renderList() {
-      const filter = filterEl.value;
-      const visible = filter ? bookings.filter(b => b.kurs_id === filter) : bookings;
+      const courseFilterVal = filterEl.value;
+      const statusFilterVal = statusFilterEl.value;
+      let visible = bookings;
+      if (courseFilterVal) visible = visible.filter(b => b.kurs_id === courseFilterVal);
+      if (statusFilterVal === 'aktiv') visible = visible.filter(b => !b.storniert);
+      if (statusFilterVal === 'storniert') visible = visible.filter(b => b.storniert);
       document.getElementById('rowCount').textContent = visible.length + ' von ' + bookings.length + ' Buchungen';
       document.getElementById('bookingsList').innerHTML = visible.length
         ? visible.map(renderRow).join('')
-        : '<p style="margin:0;font-size:15.5px;opacity:0.7">Keine Buchungen für diesen Kurs.</p>';
+        : '<p style="margin:0;font-size:15.5px;opacity:0.7">Keine Buchungen für diese Auswahl.</p>';
       wireButtons();
     }
 
     function wireButtons() {
       document.querySelectorAll('[data-row]').forEach(row => {
-        const btn = row.querySelector('[data-confirm-btn]');
-        if (!btn) return;
-        btn.addEventListener('click', async () => {
-          const id = row.dataset.id;
+        const id = row.dataset.id;
+
+        const editBtn = row.querySelector('[data-edit-btn]');
+        if (editBtn) editBtn.addEventListener('click', () => { editingId = id; renderList(); });
+
+        const cancelEditBtn = row.querySelector('[data-cancel-edit]');
+        if (cancelEditBtn) cancelEditBtn.addEventListener('click', () => { editingId = null; renderList(); });
+
+        const saveEditBtn = row.querySelector('[data-save-edit]');
+        if (saveEditBtn) saveEditBtn.addEventListener('click', async () => {
+          const patch = {};
+          row.querySelectorAll('[data-field]').forEach(el => { patch[el.dataset.field] = el.value.trim() || null; });
+          if (!patch.vorname || !patch.nachname || !patch.email) { alert('Vorname, Nachname und E-Mail dürfen nicht leer sein.'); return; }
+          saveEditBtn.disabled = true;
+          try {
+            await patchBooking(id, patch);
+            editingId = null;
+            renderList();
+          } catch (e) {
+            saveEditBtn.disabled = false;
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+
+        const confirmBtn = row.querySelector('[data-confirm-btn]');
+        if (confirmBtn) confirmBtn.addEventListener('click', async () => {
           const booking = bookings.find(b => b.id === id);
           if (!booking) return;
           const nowConfirmed = !booking.teilnahme_bestaetigt;
-          btn.disabled = true;
+          confirmBtn.disabled = true;
           try {
-            const { error } = await client.from('kursanmeldungen').update({
-              teilnahme_bestaetigt: nowConfirmed,
-              teilnahme_bestaetigt_at: nowConfirmed ? new Date().toISOString() : null
-            }).eq('id', id);
-            if (error) throw error;
-            booking.teilnahme_bestaetigt = nowConfirmed;
-            booking.teilnahme_bestaetigt_at = nowConfirmed ? new Date().toISOString() : null;
+            await patchBooking(id, { teilnahme_bestaetigt: nowConfirmed, teilnahme_bestaetigt_at: nowConfirmed ? new Date().toISOString() : null });
             renderList();
           } catch (e) {
-            btn.disabled = false;
+            confirmBtn.disabled = false;
             alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+
+        const cancelBookingBtn = row.querySelector('[data-cancel-booking-btn]');
+        if (cancelBookingBtn) cancelBookingBtn.addEventListener('click', async () => {
+          const booking = bookings.find(b => b.id === id);
+          if (!booking || !confirm('Buchung von ' + booking.vorname + ' ' + booking.nachname + ' wirklich stornieren?')) return;
+          cancelBookingBtn.disabled = true;
+          try {
+            await patchBooking(id, { storniert: true, storniert_at: new Date().toISOString() });
+            renderList();
+          } catch (e) {
+            cancelBookingBtn.disabled = false;
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+
+        const reactivateBtn = row.querySelector('[data-reactivate-btn]');
+        if (reactivateBtn) reactivateBtn.addEventListener('click', async () => {
+          reactivateBtn.disabled = true;
+          try {
+            await patchBooking(id, { storniert: false, storniert_at: null });
+            renderList();
+          } catch (e) {
+            reactivateBtn.disabled = false;
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+
+        const saveNoteBtn = row.querySelector('[data-save-note]');
+        if (saveNoteBtn) saveNoteBtn.addEventListener('click', async () => {
+          const textarea = row.querySelector('[data-field="admin_notiz"]');
+          saveNoteBtn.disabled = true;
+          const original = saveNoteBtn.textContent;
+          try {
+            await patchBooking(id, { admin_notiz: textarea.value.trim() || null });
+            saveNoteBtn.textContent = 'Gespeichert ✓';
+            setTimeout(() => { saveNoteBtn.textContent = original; saveNoteBtn.disabled = false; }, 1500);
+          } catch (e) {
+            saveNoteBtn.disabled = false;
+            alert('Notiz konnte nicht gespeichert werden.');
           }
         });
       });
     }
 
     filterEl.addEventListener('change', renderList);
+    statusFilterEl.addEventListener('change', renderList);
     renderList();
   });
 })();
