@@ -256,7 +256,6 @@
     <span>Chat</span>
   </button>
 </div>
-<script src="js/courses-data.js"></script>
 <script src="js/main.js"></script>
 <!-- Supabase-JS per CDN (kein Build-Schritt/npm nötig). Version bewusst fest
      gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
@@ -265,6 +264,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
+<!-- courses-data.js braucht bmGetSupabaseClient (aus supabase-client.js) schon
+     beim Laden, deshalb muss es NACH den Supabase-Skripten stehen. -->
+<script src="js/courses-data.js"></script>
 <script src="js/account.js"></script>
 <script>
 (function(){

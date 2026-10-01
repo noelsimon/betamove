@@ -14,6 +14,12 @@
 // `await window.BM_COURSES_READY` (oder `.then(...)`), bevor darauf
 // zugegriffen wird — die Daten kommen jetzt per Fetch aus der Datenbank,
 // nicht mehr synchron aus einem festen Array.
+//
+// WICHTIG für die Script-Reihenfolge im <head>/Body: diese Datei muss NACH
+// supabase-config.js und supabase-client.js eingebunden werden, da sie beim
+// Laden sofort window.bmGetSupabaseClient() aufruft. Steht sie davor, bricht
+// sie den Fetch still ab und BM_COURSES bleibt für immer leer (kein Fehler
+// in der Konsole, nur eine leere Kursliste auf der Seite).
 
 window.BM_COURSES = [];
 
