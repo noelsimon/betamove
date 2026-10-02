@@ -12,8 +12,7 @@
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -64,6 +63,7 @@
             <label for="khpWebsite">Bitte leer lassen</label>
             <input type="text" id="khpWebsite" name="website" tabindex="-1" autocomplete="off">
           </div>
+          <p style="margin:0;font-size:13.5px;opacity:0.7">Wir verwenden deine Angaben ausschließlich, um deine Anfrage zu beantworten. Mehr dazu in der <a href="datenschutz">Datenschutzerklärung</a>.</p>
           <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:16px;padding:14px 28px">Nachricht senden</button>
           <div id="formError" class="form-error" role="alert" hidden></div>
         </form>
@@ -141,7 +141,7 @@
      gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
      der Seite nicht unbemerkt ändert, wenn Supabase eine neue Version
      veröffentlicht. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <!-- courses-data.js braucht bmGetSupabaseClient (aus supabase-client.js) schon

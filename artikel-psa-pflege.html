@@ -12,8 +12,7 @@
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -181,6 +180,7 @@
           </div>
           <form id="commentForm" hidden style="display:flex;flex-direction:column;gap:12px;margin-bottom:28px">
             <textarea id="commentText" class="input" rows="3" style="font-size:15.5px" placeholder="Deine Frage oder dein Kommentar …"></textarea>
+            <p style="margin:0;font-size:13.5px;opacity:0.7">Dein Kommentar ist öffentlich sichtbar – zusammen mit deinem Vornamen. Bitte keine Telefonnummern, Adressen oder Gesundheitsdaten posten. Mehr in der <a href="datenschutz">Datenschutzerklärung</a>.</p>
             <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:15px;padding:12px 22px">Kommentar absenden</button>
           </form>
           <div id="commentList" style="display:flex;flex-direction:column;gap:18px"></div>
@@ -261,7 +261,7 @@
     <span>Chat</span>
   </button>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/courses-data.js"></script>

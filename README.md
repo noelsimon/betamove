@@ -100,6 +100,18 @@ einzeln nachgezogen werden. Das ist bewusst so gehalten (siehe "Kein Build-Schri
 5. **Datenschutzerklärung/Formular-Text** nochmal von einer Person mit Rechtskenntnis prüfen
    lassen (Pflicht bei Kontakt-/Anmeldeformularen in Deutschland).
 
+## Datenschutz & Informationssicherheit
+
+Konzept, Verarbeitungsverzeichnis, Löschkonzept und offene Befunde: `docs/datenschutz/DATENSCHUTZ-KONZEPT.md`.
+
+- **Keine externen Ressourcen:** Schrift (`fonts/`, Poppins, OFL) und Supabase-Bibliothek
+  (`js/vendor/`) werden lokal ausgeliefert. Neue externe Dienste nur nach Change-Gate (Konzept 6.1).
+- **Bilder vor dem Hochladen bereinigen:** `python3 scripts/bild-metadaten-entfernen.py assets-min/<datei>`
+  (entfernt GPS, Kameradaten, Namen — verlustfrei).
+- **Automatischer Check:** `python3 scripts/datenschutz-check.py` — läuft auch als GitHub Action
+  bei jedem Push und monatlich. Rot = nicht veröffentlichen.
+- Der Deploy-Workflow veröffentlicht nur die Website-Dateien, nicht `supabase/`, `scripts/`, `docs/` oder `*.md`.
+
 ## GitHub Pages aktivieren (einmalig, manuell)
 
 Der Workflow `.github/workflows/deploy-pages.yml` deployt automatisch bei jedem Push auf `main`.
