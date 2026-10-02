@@ -102,7 +102,12 @@
       div.innerHTML = '<span style="width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;background:'+(ok?'var(--color-accent-2-500)':'var(--color-accent-600)')+';color:#fff">'+(ok?'✓':'✕')+'</span><div style="min-width:0"><div style="font-size:16.5px;font-weight:600;margin-bottom:8px">'+q.q+'</div><div style="font-size:15px;opacity:0.75;margin-bottom:3px">Deine Antwort: '+(q.options[picks[i]]||'—')+'</div><div style="font-size:15px;opacity:0.75;margin-bottom:8px">Richtig: '+q.options[q.a]+'</div><p style="margin:0;font-size:15.5px;opacity:0.85">'+q.why+'</p></div>';
       review.appendChild(div);
     });
-    try { bmProgress.markDone(EXAM_ID, 'pruefung', { score, total: EXAM.length, passed }); } catch (e) {}
+    try { bmProgress.markDoneLocal(EXAM_ID); } catch (e) {}
+    // Ergebnis zusätzlich serverseitig auswerten und eintragen lassen (siehe
+    // js/account.js bmSubmitExam) — zählt für Qualifikationen/Zertifikate.
+    if (typeof window.bmSubmitExam === 'function') {
+      window.bmSubmitExam(EXAM_ID, EXAM.map((q, i) => (typeof picks[i] === 'number' ? picks[i] : null))).catch(() => {});
+    }
     window.scrollTo(0,0);
   });
 

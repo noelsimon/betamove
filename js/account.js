@@ -219,6 +219,23 @@
     }
   };
 
+  // Prüfungsergebnis serverseitig auswerten lassen (supabase/schema-
+  // sicherheitsfixes.sql, Funktion submit_pruefung) statt es nur vom Browser
+  // zu übernehmen — die Funktion prüft Freischaltung und Antworten selbst
+  // nach und trägt erst dann ein Ergebnis in lernfortschritt ein.
+  // Rückgabe: { score, total, passed } oder null ohne Konto/Verbindung.
+  window.bmSubmitExam = async function (examId, answers) {
+    const client = getClient();
+    if (!client) return null;
+    try {
+      const { data, error } = await client.rpc('submit_pruefung', { p_pruefung_id: examId, p_answers: answers });
+      if (error) throw error;
+      return (data && data[0]) || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
   // --------------------------------------------------------------------
   // Admin-Seiten (admin-kurse, admin-pruefungen, admin-kurse-verwaltung):
   // gemeinsamer Zugriffsschutz statt pro Seite dupliziertem Code. Erwartet

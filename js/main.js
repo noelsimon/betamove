@@ -227,6 +227,16 @@ const bmProgress = {
     // Ohne Konto passiert hier nichts — rein lokal wie bisher.
     try { if (window.bmSyncLernfortschritt) window.bmSyncLernfortschritt(id, kind || 'artikel', opts); } catch (e) {}
   },
+  // Nur lokal merken, ohne Supabase-Sync — für Prüfungsseiten (js/exam.js),
+  // die ihr Ergebnis stattdessen über die serverseitige Auswertung
+  // (bmSubmitExam/submit_pruefung) eintragen lassen.
+  markDoneLocal(id) {
+    try {
+      const data = this.read();
+      data[id] = true;
+      localStorage.setItem(this.key, JSON.stringify(data));
+    } catch (e) {}
+  },
   isDone(id) {
     return !!this.read()[id];
   }

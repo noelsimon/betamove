@@ -139,18 +139,11 @@ function ownerEmailHtml(r: KontaktanfrageRecord): string {
 }
 
 function customerEmailHtml(r: KontaktanfrageRecord): string {
+  // Absichtlich OHNE Betreff/Nachricht: diese Mail geht an eine frei im
+  // Formular eingetragene Adresse (nicht verifiziert), der Freitext bleibt
+  // deshalb nur in der Benachrichtigung an die Betreiberin.
   const body = `
     <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">Danke, ${escapeHtml(r.name)}! Wir haben deine Nachricht erhalten und melden uns so schnell wie möglich bei dir zurück.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;margin:18px 0;">
-      <tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #eceae5;font-size:14px;color:#6b6b66;white-space:nowrap;vertical-align:top;">Betreff</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eceae5;font-size:14px;color:#1c1c1a;">${r.betreff ? escapeHtml(r.betreff) : "—"}</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 12px;font-size:14px;color:#6b6b66;white-space:nowrap;vertical-align:top;">Deine Nachricht</td>
-        <td style="padding:8px 12px;font-size:14px;color:#1c1c1a;white-space:pre-wrap;">${escapeHtml(r.nachricht)}</td>
-      </tr>
-    </table>
     <p style="margin:0;font-size:14px;color:#6b6b66;">Das ist eine automatische Bestätigung, dass deine Nachricht bei uns angekommen ist. Fragen in der Zwischenzeit? Antworte einfach auf diese E-Mail.</p>`;
 
   return emailLayout("Deine Nachricht ist bei uns angekommen", body);
