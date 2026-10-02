@@ -33,13 +33,45 @@
     showGate('Gerade nicht erreichbar', 'Bitte lade die Seite später erneut.', 'Neu laden', location.href);
     return;
   }
+
+  // Fragen kommen aus der Datenbank (lerninhalt_fragen), nicht mehr fest aus
+  // der Seite, damit sie im Adminbereich (admin-fragen) bearbeitet werden
+  // können.
+  let exam = [];
+  let examPass = 1;
+  try {
+    const { client } = window.bmGetSupabaseClient();
+    const [fragenRes, liRes] = await Promise.all([
+      client.from('lerninhalt_fragen').select('*').eq('lerninhalt_id', window.EXAM_ID).order('sort_order', { ascending: true }),
+      client.from('lerninhalte').select('bestehensgrenze').eq('id', window.EXAM_ID).maybeSingle()
+    ]);
+    if (fragenRes.error) throw fragenRes.error;
+    exam = (fragenRes.data || []).map(f => ({ q: f.frage, options: f.optionen, a: f.richtige_antwort, why: f.erklaerung }));
+    const grenze = liRes.data && liRes.data.bestehensgrenze;
+    examPass = grenze != null ? grenze : Math.ceil(exam.length / 2);
+  } catch (e) { /* exam bleibt leer, siehe Prüfung unten */ }
+
+  if (!exam.length) {
+    showGate('Gerade nicht erreichbar', 'Zu dieser Prüfung sind noch keine Fragen hinterlegt. Bitte später erneut versuchen.', 'Neu laden', location.href);
+    return;
+  }
+
   loadingBox.hidden = true;
   runningBox.hidden = false;
+  window.BM_EXAM_DATA = { exam, examPass };
+  document.dispatchEvent(new CustomEvent('bm-exam-ready'));
 })();
 
 (function(){
-  const EXAM = window.EXAM;
-  const EXAM_PASS = window.EXAM_PASS;
+  if (!window.BM_EXAM_DATA) {
+    document.addEventListener('bm-exam-ready', initExam, { once: true });
+  } else {
+    initExam();
+  }
+
+  function initExam() {
+  const EXAM = window.BM_EXAM_DATA.exam;
+  const EXAM_PASS = window.BM_EXAM_DATA.examPass;
   const EXAM_ID = window.EXAM_ID;
   const EXAM_CONGRATS = window.EXAM_CONGRATS;
 
@@ -92,7 +124,7 @@
     document.getElementById('examScoreLine').textContent = score + ' richtig · ' + Math.round((score/EXAM.length)*100) + ' %';
     document.getElementById('examVerdictText').textContent = passed
       ? EXAM_CONGRATS
-      : 'Ab sechs richtigen Antworten ist die Prüfung bestanden. Lies die Erklärungen unten, dann probier es erneut.';
+      : 'Ab ' + EXAM_PASS + ' richtigen Antworten ist die Prüfung bestanden. Lies die Erklärungen unten, dann probier es erneut.';
     const review = document.getElementById('examReview');
     review.innerHTML = '';
     EXAM.forEach((q, i) => {
@@ -124,4 +156,5 @@
   });
 
   updateProgress();
+  }
 })();

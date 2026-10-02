@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lerninhalte &amp; Fragen — BETAMOVE Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+      <a href="admin-kurse">Buchungen</a>
+      <a href="admin-kurse-verwaltung">Kurse &amp; Termine</a>
+      <a href="admin-pruefungen">Prüfungen</a>
+      <a href="admin-qualifikationen">Qualifikationen</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1000px;margin:0 auto;padding:48px 28px 96px">
+  <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
+  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Lerninhalte &amp; Fragen</h1>
+  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Katalog aller Artikel/Quiz/Prüfungen verwalten und die Fragen zu Quiz &amp; Prüfungen bearbeiten — ohne Code-Änderung.</p>
+
+  <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="adminArea" hidden>
+
+    <section style="margin-bottom:46px">
+      <h2 style="margin:0 0 6px;font-size:22px">Katalog</h2>
+      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Ein neuer Artikel braucht danach noch eine fertige Seite von mir (schick mir Text &amp; Bilder im Chat). Ein neues Quiz/eine neue Prüfung kannst du direkt unten mit Fragen befüllen — für die eigentliche Seiten-URL melde dich kurz bei mir.</p>
+
+      <div id="liFormBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:22px">
+        <h3 id="liFormTitle" style="margin:0 0 18px;font-size:19px">Lerninhalt anlegen</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+          <div class="field"><label>ID (fest, z.B. "quiz-material")</label><input id="li-id" class="input"></div>
+          <div class="field">
+            <label>Art</label>
+            <select id="li-kind" class="input">
+              <option value="artikel">Artikel</option>
+              <option value="quiz">Quiz</option>
+              <option value="pruefung">Prüfung</option>
+            </select>
+          </div>
+          <div class="field"><label>Titel/Label</label><input id="li-label" class="input" placeholder='z.B. Artikel "Material richtig lagern" durcharbeiten'></div>
+          <div class="field"><label>Seiten-URL (Dateiname ohne .html)</label><input id="li-url" class="input" placeholder="z.B. artikel-material-lagern"></div>
+          <div class="field" id="li-grenze-field"><label>Bestehensgrenze (ab wie vielen richtigen Antworten bestanden, leer = die Hälfte)</label><input id="li-grenze" type="number" min="0" class="input"></div>
+        </div>
+        <p id="liFormError" hidden style="margin:0 0 14px;font-size:14.5px;color:var(--color-accent-700)"></p>
+        <div style="display:flex;gap:12px">
+          <button type="button" id="liSaveBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+          <button type="button" id="liCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+        </div>
+      </div>
+
+      <button type="button" id="newLiBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px;margin-bottom:20px">+ Neuen Lerninhalt anlegen</button>
+
+      <div id="liList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+
+    <section>
+      <h2 style="margin:0 0 6px;font-size:22px">Fragen zu Quiz &amp; Prüfungen</h2>
+      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Quiz/Prüfung auswählen, Fragen bearbeiten, hinzufügen oder löschen. Änderungen sind sofort live.</p>
+
+      <div style="margin-bottom:22px">
+        <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Quiz/Prüfung</label>
+        <select id="fragenSelect" class="input" style="max-width:420px"><option value="">— auswählen —</option></select>
+      </div>
+
+      <div id="fragenArea" hidden>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:24px;background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:18px 22px">
+          <div class="field" style="min-width:260px">
+            <label>Bestehensgrenze (ab wie vielen richtigen Antworten bestanden)</label>
+            <input id="grenzeInput" type="number" min="0" class="input" placeholder="leer = die Hälfte der Fragen">
+          </div>
+          <button type="button" id="grenzeSaveBtn" class="btn btn-secondary" style="font-size:14.5px;padding:11px 20px">Bestehensgrenze speichern</button>
+          <span id="grenzeSaved" hidden style="font-size:14px;color:var(--color-accent-2-700);font-weight:600">Gespeichert.</span>
+        </div>
+
+        <div id="fragenList" style="display:flex;flex-direction:column;gap:18px;margin-bottom:22px"></div>
+
+        <button type="button" id="newFrageBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px">+ Frage hinzufügen</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · <a href="impressum">Impressum</a> · <a href="datenschutz">Datenschutz</a> · <a href="agb">AGB</a> · <a href="widerruf">Vertrag widerrufen</a></div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+<script>
+(function(){
+  const escapeHtml = window.bmEscapeHtml;
+  const KIND_LABEL = { artikel: 'Artikel', quiz: 'Quiz', pruefung: 'Prüfung' };
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await window.bmGuardAdminPage();
+    if (!ctx) return;
+    const { client } = ctx;
+
+    let lerninhalte = [];
+    let fragen = []; // Fragen des aktuell ausgewählten Lerninhalts
+
+    async function loadLerninhalte() {
+      const { data, error } = await client.from('lerninhalte').select('*').order('kind', { ascending: true }).order('label', { ascending: true });
+      if (error) throw error;
+      lerninhalte = data || [];
+    }
+
+    try {
+      await loadLerninhalte();
+    } catch (e) {
+      document.getElementById('liList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Katalog konnte nicht geladen werden. Bitte Seite neu laden.</p>';
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // Katalog (lerninhalte)
+    // ------------------------------------------------------------------
+    const liFormBox = document.getElementById('liFormBox');
+    const liFormTitle = document.getElementById('liFormTitle');
+    const liFormError = document.getElementById('liFormError');
+    const liKindSelect = document.getElementById('li-kind');
+    const liGrenzeField = document.getElementById('li-grenze-field');
+    let editingLiId = null;
+
+    function updateLiGrenzeVisibility() {
+      liGrenzeField.style.display = liKindSelect.value === 'artikel' ? 'none' : '';
+    }
+    liKindSelect.addEventListener('change', updateLiGrenzeVisibility);
+
+    function clearLiForm() {
+      document.getElementById('li-id').value = '';
+      document.getElementById('li-id').disabled = false;
+      liKindSelect.value = 'artikel';
+      document.getElementById('li-label').value = '';
+      document.getElementById('li-url').value = '';
+      document.getElementById('li-grenze').value = '';
+      updateLiGrenzeVisibility();
+    }
+
+    function openCreateLiForm() {
+      editingLiId = null;
+      clearLiForm();
+      liFormTitle.textContent = 'Lerninhalt anlegen';
+      liFormError.hidden = true;
+      liFormBox.hidden = false;
+      liFormBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function openEditLiForm(li) {
+      editingLiId = li.id;
+      document.getElementById('li-id').value = li.id;
+      document.getElementById('li-id').disabled = true;
+      liKindSelect.value = li.kind;
+      document.getElementById('li-label').value = li.label || '';
+      document.getElementById('li-url').value = li.url || '';
+      document.getElementById('li-grenze').value = li.bestehensgrenze != null ? li.bestehensgrenze : '';
+      updateLiGrenzeVisibility();
+      liFormTitle.textContent = 'Lerninhalt bearbeiten';
+      liFormError.hidden = true;
+      liFormBox.hidden = false;
+      liFormBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function closeLiForm() {
+      liFormBox.hidden = true;
+      editingLiId = null;
+    }
+
+    function renderLiList() {
+      const list = document.getElementById('liList');
+      if (!lerninhalte.length) {
+        list.innerHTML = '<p style="margin:0;font-size:15.5px;opacity:0.7">Noch keine Lerninhalte angelegt.</p>';
+        return;
+      }
+      list.innerHTML = lerninhalte.map(li => `
+        <div data-li data-id="${escapeHtml(li.id)}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:14px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--color-surface);flex:none">${escapeHtml(KIND_LABEL[li.kind] || li.kind)}</span>
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:15.5px;font-weight:600">${escapeHtml(li.label)}</div>
+            <div style="font-size:13px;opacity:0.65;margin-top:2px">${escapeHtml(li.id)} · ${escapeHtml(li.url)}${li.kind !== 'artikel' ? ' · Bestehensgrenze: ' + (li.bestehensgrenze != null ? li.bestehensgrenze : 'automatisch') : ''}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" data-edit-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+            <button type="button" data-delete-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">Löschen</button>
+          </div>
+        </div>`).join('');
+      list.querySelectorAll('[data-li]').forEach(row => {
+        const id = row.dataset.id;
+        const li = lerninhalte.find(x => x.id === id);
+        row.querySelector('[data-edit-li]').addEventListener('click', () => openEditLiForm(li));
+        row.querySelector('[data-delete-li]').addEventListener('click', async () => {
+          if (!confirm('„' + li.label + '" wirklich löschen? Falls er in einer Qualifikation verwendet wird, bitte dort vorher entfernen.')) return;
+          try {
+            const { error } = await client.from('lerninhalte').delete().eq('id', id);
+            if (error) throw error;
+            await loadLerninhalte();
+            renderLiList();
+            renderFragenSelect();
+          } catch (e) {
+            alert('Konnte nicht gelöscht werden.');
+          }
+        });
+      });
+    }
+
+    function renderFragenSelect() {
+      const select = document.getElementById('fragenSelect');
+      const current = select.value;
+      const items = lerninhalte.filter(li => li.kind === 'quiz' || li.kind === 'pruefung');
+      select.innerHTML = '<option value="">— auswählen —</option>' + items.map(li =>
+        `<option value="${escapeHtml(li.id)}">${escapeHtml(KIND_LABEL[li.kind])}: ${escapeHtml(li.label)}</option>`
+      ).join('');
+      if (items.some(li => li.id === current)) select.value = current;
+    }
+
+    document.getElementById('newLiBtn').addEventListener('click', openCreateLiForm);
+    document.getElementById('liCancelBtn').addEventListener('click', closeLiForm);
+
+    document.getElementById('liSaveBtn').addEventListener('click', async () => {
+      liFormError.hidden = true;
+      const id = document.getElementById('li-id').value.trim();
+      const kind = liKindSelect.value;
+      const label = document.getElementById('li-label').value.trim();
+      const url = document.getElementById('li-url').value.trim();
+      const grenzeRaw = document.getElementById('li-grenze').value.trim();
+
+      if (!id || !/^[a-z0-9-]+$/.test(id)) { liFormError.hidden = false; liFormError.textContent = 'ID ist Pflicht und darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.'; return; }
+      if (!label || !url) { liFormError.hidden = false; liFormError.textContent = 'Titel und Seiten-URL sind Pflichtfelder.'; return; }
+
+      const payload = {
+        kind,
+        label,
+        url,
+        bestehensgrenze: (kind !== 'artikel' && grenzeRaw !== '') ? Number(grenzeRaw) : null
+      };
+
+      const saveBtn = document.getElementById('liSaveBtn');
+      saveBtn.disabled = true;
+      try {
+        if (editingLiId) {
+          const { error } = await client.from('lerninhalte').update(payload).eq('id', editingLiId);
+          if (error) throw error;
+        } else {
+          const { error } = await client.from('lerninhalte').insert({ id, ...payload });
+          if (error) throw error;
+        }
+        await loadLerninhalte();
+        closeLiForm();
+        renderLiList();
+        renderFragenSelect();
+      } catch (e) {
+        liFormError.hidden = false;
+        liFormError.textContent = editingLiId ? 'Konnte nicht gespeichert werden.' : 'Konnte nicht angelegt werden — existiert die ID schon?';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // ------------------------------------------------------------------
+    // Fragen zum ausgewählten Quiz/zur ausgewählten Prüfung
+    // ------------------------------------------------------------------
+    const fragenArea = document.getElementById('fragenArea');
+    const fragenSelect = document.getElementById('fragenSelect');
+    const grenzeInput = document.getElementById('grenzeInput');
+
+    function currentLerninhalt() {
+      return lerninhalte.find(li => li.id === fragenSelect.value) || null;
+    }
+
+    async function loadFragen(lerninhaltId) {
+      const { data, error } = await client.from('lerninhalt_fragen').select('*').eq('lerninhalt_id', lerninhaltId).order('sort_order', { ascending: true });
+      if (error) throw error;
+      fragen = data || [];
+    }
+
+    function renderFrageBlock(f, index) {
+      const options = Array.isArray(f.optionen) ? f.optionen : [];
+      const optionsHtml = options.map((opt, oi) => `
+        <div style="display:flex;gap:10px;align-items:center" data-opt-row>
+          <input type="radio" name="correct-${index}" data-correct-radio value="${oi}" ${f.richtige_antwort === oi ? 'checked' : ''}>
+          <input type="text" class="input" data-opt-input value="${escapeHtml(opt)}" style="flex:1" placeholder="Antwortoption">
+          <button type="button" data-remove-opt style="cursor:pointer;font:inherit;font-size:13px;padding:6px 10px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)" ${options.length <= 2 ? 'disabled' : ''}>−</button>
+        </div>`).join('');
+
+      return `
+      <div data-frage data-id="${f.id || ''}" data-index="${index}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px">
+          <span style="font-size:13px;font-weight:700;opacity:0.6">Frage ${index + 1}</span>
+          <div style="display:flex;gap:8px">
+            <button type="button" data-move-up ${index === 0 ? 'disabled' : ''} style="cursor:pointer;font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">↑</button>
+            <button type="button" data-move-down style="cursor:pointer;font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">↓</button>
+            <button type="button" data-delete-frage style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:6px 14px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">Löschen</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:14px"><label>Frage</label><textarea data-frage-input class="input" rows="2">${escapeHtml(f.frage || '')}</textarea></div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Antwortoptionen (richtige markieren)</label>
+          <div data-opts style="display:flex;flex-direction:column;gap:8px">${optionsHtml}</div>
+          <button type="button" data-add-opt style="margin-top:8px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)" ${options.length >= 6 ? 'disabled' : ''}>+ Option</button>
+        </div>
+        <div class="field" style="margin-bottom:14px"><label>Erklärung (erscheint nach der Antwort)</label><textarea data-erklaerung-input class="input" rows="2">${escapeHtml(f.erklaerung || '')}</textarea></div>
+        <p data-frage-error hidden style="margin:0 0 10px;font-size:14px;color:var(--color-accent-700)"></p>
+        <button type="button" data-save-frage class="btn btn-primary" style="font-size:14.5px;padding:10px 20px">Speichern</button>
+      </div>`;
+    }
+
+    function renderFragenList() {
+      const list = document.getElementById('fragenList');
+      list.innerHTML = fragen.length
+        ? fragen.map((f, i) => renderFrageBlock(f, i)).join('')
+        : '<p style="margin:0;font-size:15.5px;opacity:0.7">Noch keine Fragen hinterlegt.</p>';
+      wireFragenList();
+    }
+
+    function wireFragenList() {
+      document.querySelectorAll('[data-frage]').forEach(block => {
+        const index = Number(block.dataset.index);
+        const f = fragen[index];
+
+        block.querySelectorAll('[data-remove-opt]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const rows = block.querySelectorAll('[data-opt-row]');
+            if (rows.length <= 2) return;
+            btn.closest('[data-opt-row]').remove();
+            reindexRadios(block);
+          });
+        });
+
+        block.querySelector('[data-add-opt]').addEventListener('click', () => {
+          const optsWrap = block.querySelector('[data-opts]');
+          const rows = optsWrap.querySelectorAll('[data-opt-row]');
+          if (rows.length >= 6) return;
+          const div = document.createElement('div');
+          div.setAttribute('data-opt-row', '');
+          div.style.cssText = 'display:flex;gap:10px;align-items:center';
+          div.innerHTML = '<input type="radio" name="correct-' + index + '" data-correct-radio value="' + rows.length + '"><input type="text" class="input" data-opt-input value="" style="flex:1" placeholder="Antwortoption"><button type="button" data-remove-opt style="cursor:pointer;font:inherit;font-size:13px;padding:6px 10px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">−</button>';
+          optsWrap.appendChild(div);
+          div.querySelector('[data-remove-opt]').addEventListener('click', () => {
+            const r = optsWrap.querySelectorAll('[data-opt-row]');
+            if (r.length <= 2) return;
+            div.remove();
+            reindexRadios(block);
+          });
+          const addBtn = block.querySelector('[data-add-opt]');
+          if (optsWrap.querySelectorAll('[data-opt-row]').length >= 6) addBtn.disabled = true;
+          block.querySelectorAll('[data-remove-opt]').forEach(b => b.disabled = optsWrap.querySelectorAll('[data-opt-row]').length <= 2);
+        });
+
+        block.querySelector('[data-move-up]').addEventListener('click', () => moveFrage(index, -1));
+        block.querySelector('[data-move-down]').addEventListener('click', () => moveFrage(index, 1));
+        block.querySelector('[data-delete-frage]').addEventListener('click', () => deleteFrage(index));
+        block.querySelector('[data-save-frage]').addEventListener('click', () => saveFrage(index));
+      });
+      // "Nach unten"-Button der letzten Frage deaktivieren.
+      const blocks = document.querySelectorAll('[data-frage]');
+      if (blocks.length) blocks[blocks.length - 1].querySelector('[data-move-down]').disabled = true;
+    }
+
+    function reindexRadios(block) {
+      const radios = block.querySelectorAll('[data-correct-radio]');
+      radios.forEach((r, i) => { r.value = i; });
+      const addBtn = block.querySelector('[data-add-opt]');
+      if (addBtn) addBtn.disabled = radios.length >= 6;
+      block.querySelectorAll('[data-remove-opt]').forEach(b => b.disabled = radios.length <= 2);
+    }
+
+    async function moveFrage(index, dir) {
+      const other = index + dir;
+      if (other < 0 || other >= fragen.length) return;
+      const a = fragen[index], b = fragen[other];
+      const aOrder = a.sort_order, bOrder = b.sort_order;
+      try {
+        await Promise.all([
+          client.from('lerninhalt_fragen').update({ sort_order: bOrder }).eq('id', a.id),
+          client.from('lerninhalt_fragen').update({ sort_order: aOrder }).eq('id', b.id)
+        ]);
+        await loadFragen(fragenSelect.value);
+        renderFragenList();
+      } catch (e) {
+        alert('Konnte nicht verschoben werden.');
+      }
+    }
+
+    async function deleteFrage(index) {
+      const f = fragen[index];
+      if (!confirm('Frage wirklich löschen?')) return;
+      if (!f.id) { fragen.splice(index, 1); renderFragenList(); return; }
+      try {
+        const { error } = await client.from('lerninhalt_fragen').delete().eq('id', f.id);
+        if (error) throw error;
+        await loadFragen(fragenSelect.value);
+        renderFragenList();
+      } catch (e) {
+        alert('Konnte nicht gelöscht werden.');
+      }
+    }
+
+    async function saveFrage(index) {
+      const block = document.querySelector('[data-frage][data-index="' + index + '"]');
+      const errorEl = block.querySelector('[data-frage-error]');
+      errorEl.hidden = true;
+
+      const frageText = block.querySelector('[data-frage-input]').value.trim();
+      const erklaerung = block.querySelector('[data-erklaerung-input]').value.trim();
+      const optionInputs = Array.from(block.querySelectorAll('[data-opt-input]'));
+      const optionen = optionInputs.map(i => i.value.trim());
+      const correctRadio = block.querySelector('[data-correct-radio]:checked');
+
+      if (!frageText) { errorEl.hidden = false; errorEl.textContent = 'Frage darf nicht leer sein.'; return; }
+      if (optionen.some(o => !o)) { errorEl.hidden = false; errorEl.textContent = 'Alle Antwortoptionen müssen ausgefüllt sein.'; return; }
+      if (optionen.length < 2) { errorEl.hidden = false; errorEl.textContent = 'Mindestens zwei Antwortoptionen nötig.'; return; }
+      if (!correctRadio) { errorEl.hidden = false; errorEl.textContent = 'Bitte die richtige Antwort markieren.'; return; }
+
+      const payload = {
+        lerninhalt_id: fragenSelect.value,
+        frage: frageText,
+        optionen,
+        richtige_antwort: Number(correctRadio.value),
+        erklaerung,
+        sort_order: fragen[index].sort_order != null ? fragen[index].sort_order : (fragen.length ? Math.max(...fragen.map(x => x.sort_order || 0)) + 1 : 1)
+      };
+
+      const saveBtn = block.querySelector('[data-save-frage]');
+      saveBtn.disabled = true;
+      try {
+        const f = fragen[index];
+        if (f.id) {
+          const { error } = await client.from('lerninhalt_fragen').update(payload).eq('id', f.id);
+          if (error) throw error;
+        } else {
+          const { error } = await client.from('lerninhalt_fragen').insert(payload);
+          if (error) throw error;
+        }
+        await loadFragen(fragenSelect.value);
+        renderFragenList();
+      } catch (e) {
+        errorEl.hidden = false;
+        errorEl.textContent = 'Konnte nicht gespeichert werden.';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('newFrageBtn').addEventListener('click', () => {
+      fragen.push({
+        id: null,
+        lerninhalt_id: fragenSelect.value,
+        sort_order: fragen.length ? Math.max(...fragen.map(x => x.sort_order || 0)) + 1 : 1,
+        frage: '',
+        optionen: ['', ''],
+        richtige_antwort: 0,
+        erklaerung: ''
+      });
+      renderFragenList();
+      const blocks = document.querySelectorAll('[data-frage]');
+      blocks[blocks.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('grenzeSaveBtn').addEventListener('click', async () => {
+      const li = currentLerninhalt();
+      if (!li) return;
+      const raw = grenzeInput.value.trim();
+      const value = raw === '' ? null : Number(raw);
+      const btn = document.getElementById('grenzeSaveBtn');
+      btn.disabled = true;
+      try {
+        const { error } = await client.from('lerninhalte').update({ bestehensgrenze: value }).eq('id', li.id);
+        if (error) throw error;
+        li.bestehensgrenze = value;
+        const saved = document.getElementById('grenzeSaved');
+        saved.hidden = false;
+        setTimeout(() => { saved.hidden = true; }, 2000);
+      } catch (e) {
+        alert('Konnte nicht gespeichert werden.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    fragenSelect.addEventListener('change', async () => {
+      const id = fragenSelect.value;
+      if (!id) { fragenArea.hidden = true; return; }
+      const li = currentLerninhalt();
+      grenzeInput.value = li && li.bestehensgrenze != null ? li.bestehensgrenze : '';
+      document.getElementById('grenzeSaved').hidden = true;
+      try {
+        await loadFragen(id);
+        fragenArea.hidden = false;
+        renderFragenList();
+      } catch (e) {
+        document.getElementById('fragenList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Fragen konnten nicht geladen werden.</p>';
+        fragenArea.hidden = false;
+      }
+    });
+
+    renderLiList();
+    renderFragenSelect();
+    updateLiGrenzeVisibility();
+  });
+})();
+</script>
+</body>
+</html>
