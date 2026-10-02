@@ -1,0 +1,10 @@
+# Konfiguration für den Secret-Scan (.github/workflows/security-scan.yml).
+# Standardregeln von gitleaks + Ausnahme für den Supabase-Publishable-Key:
+# der ist absichtlich öffentlich (Browser-Key, Schutz kommt aus RLS).
+# NICHT erweitern, um echte Secrets "wegzuschalten" — die gehören rotiert.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Öffentlicher Supabase Publishable Key"
+regexes = ['''sb_publishable_[A-Za-z0-9_-]+''']

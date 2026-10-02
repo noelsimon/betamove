@@ -137,3 +137,10 @@ Konto-Andocken (Nachweise dauerhaft & geräteübergreifend speichern) fehlt noch
 Für Kursbuchung/Bezahlung und die Kursverwaltung selbst (nicht Teil dieses Repos) bleibt
 zusätzlich ein weiterer Baustein offen, z. B. eine externe Buchungslösung oder ein eigenes
 kleines Backend — je nachdem, was die Betreiberin bevorzugt.
+
+## Informationssicherheit
+
+Meldeweg für Sicherheitslücken: [`SECURITY.md`](SECURITY.md). Bei jedem Push und jeden Montag
+läuft automatisch `.github/workflows/security-scan.yml` (Secret-Scan + `scripts/security-check.sh`).
+Neue oder geänderte SQL-Dateien vor dem Ausführen im Supabase-Dashboard sicherheitlich prüfen
+lassen.
