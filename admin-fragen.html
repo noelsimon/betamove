@@ -31,8 +31,7 @@
 </header>
 <main data-r="pad" style="max-width:1000px;margin:0 auto;padding:48px 28px 96px">
   <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
-  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Lerninhalte &amp; Fragen</h1>
-  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Katalog aller Artikel/Quiz/Prüfungen verwalten und die Fragen zu Quiz &amp; Prüfungen bearbeiten — ohne Code-Änderung.</p>
+  <h1 style="margin:16px 0 30px;font-size:clamp(28px,3.4vw,38px)">Lerninhalte &amp; Fragen</h1>
 
   <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
     <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
@@ -41,8 +40,9 @@
   <div id="adminArea" hidden>
 
     <section style="margin-bottom:46px">
-      <h2 style="margin:0 0 6px;font-size:22px">Katalog</h2>
-      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Bei jedem Artikel gibt es unten den blauen Button <strong>„Inhalt bearbeiten"</strong> — damit änderst du Titel, Bild und Text. Bei jedem Quiz/jeder Prüfung gibt es <strong>„Fragen bearbeiten"</strong> — damit änderst du die Fragen. Die kleinen grauen Buttons daneben sind nur für die technischen Katalog-Daten (ID/Titel/URL), die du normalerweise nicht brauchst. Ein neuer Artikel braucht danach noch eine fertige Seite von mir (schick mir Text &amp; Bilder im Chat) — bei neuem Quiz/neuer Prüfung genügt kurz Bescheid für die Seiten-URL, Fragen kannst du direkt selbst eintragen.</p>
+      <h2 style="margin:0 0 18px;font-size:22px">Katalog</h2>
+
+      <div id="liFilter" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
 
       <div id="liFormBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:22px">
         <h3 id="liFormTitle" style="margin:0 0 18px;font-size:19px">Lerninhalt anlegen</h3>
@@ -86,7 +86,6 @@
         </div>
         <div class="field" style="margin-bottom:8px">
           <label>Inhalt</label>
-          <p style="margin:0 0 8px;font-size:13px;opacity:0.65">Zeilen mit <code>## </code>/<code>### </code> werden Überschriften, <code>- </code> wird eine Liste, <code>&gt; </code> eine Hinweisbox, <code>![Alt](Bildpfad)</code> ein Bild, <code>**fett**</code>/<code>_kursiv_</code>/<code>[Text](Link)</code> funktionieren mitten im Text. Leerzeile = neuer Absatz.</p>
           <textarea id="ai-markdown" class="input" rows="16" style="font-family:monospace;font-size:14.5px"></textarea>
         </div>
         <div style="margin-bottom:18px">
@@ -102,8 +101,7 @@
     </section>
 
     <section>
-      <h2 style="margin:0 0 6px;font-size:22px">Fragen zu Quiz &amp; Prüfungen</h2>
-      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Quiz/Prüfung auswählen, Fragen bearbeiten, hinzufügen oder löschen. Änderungen sind sofort live.</p>
+      <h2 style="margin:0 0 18px;font-size:22px">Fragen zu Quiz &amp; Prüfungen</h2>
 
       <div style="margin-bottom:22px">
         <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Quiz/Prüfung</label>
@@ -111,6 +109,10 @@
       </div>
 
       <div id="fragenArea" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px">
+          <h3 id="fragenAreaTitle" style="margin:0;font-size:19px"></h3>
+          <button type="button" id="fragenCloseBtn" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Schließen</button>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:24px;background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:18px 22px">
           <div class="field" style="min-width:260px">
             <label>Bestehensgrenze (ab wie vielen richtigen Antworten bestanden)</label>
@@ -180,6 +182,29 @@
     const liKindSelect = document.getElementById('li-kind');
     const liGrenzeField = document.getElementById('li-grenze-field');
     let editingLiId = null;
+    let liFilter = 'alle';
+
+    const LI_FILTERS = [
+      { value: 'alle', label: 'Alle' },
+      { value: 'artikel', label: 'Artikel' },
+      { value: 'quiz', label: 'Quiz' },
+      { value: 'pruefung', label: 'Prüfung' }
+    ];
+
+    function renderLiFilter() {
+      const box = document.getElementById('liFilter');
+      box.innerHTML = LI_FILTERS.map(f => {
+        const active = f.value === liFilter;
+        return '<button type="button" data-filter="' + f.value + '" style="cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:9px 18px;border-radius:999px;border:2px solid ' + (active ? 'var(--color-accent)' : 'var(--color-divider)') + ';background:' + (active ? 'var(--color-accent)' : 'transparent') + ';color:' + (active ? '#ffffff' : 'var(--color-text)') + '">' + f.label + '</button>';
+      }).join('');
+      box.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          liFilter = btn.dataset.filter;
+          renderLiFilter();
+          renderLiList();
+        });
+      });
+    }
 
     function updateLiGrenzeVisibility() {
       liGrenzeField.style.display = liKindSelect.value === 'artikel' ? 'none' : '';
@@ -227,11 +252,12 @@
 
     function renderLiList() {
       const list = document.getElementById('liList');
-      if (!lerninhalte.length) {
-        list.innerHTML = '<p style="margin:0;font-size:15.5px;opacity:0.7">Noch keine Lerninhalte angelegt.</p>';
+      const visible = liFilter === 'alle' ? lerninhalte : lerninhalte.filter(li => li.kind === liFilter);
+      if (!visible.length) {
+        list.innerHTML = '<p style="margin:0;font-size:15.5px;opacity:0.7">Keine Lerninhalte in dieser Ansicht.</p>';
         return;
       }
-      list.innerHTML = lerninhalte.map(li => `
+      list.innerHTML = visible.map(li => `
         <div data-li data-id="${escapeHtml(li.id)}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:14px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
           <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--color-surface);flex:none">${escapeHtml(KIND_LABEL[li.kind] || li.kind)}</span>
           <div style="flex:1;min-width:200px">
@@ -625,6 +651,7 @@
       const id = fragenSelect.value;
       if (!id) { fragenArea.hidden = true; return; }
       const li = currentLerninhalt();
+      document.getElementById('fragenAreaTitle').textContent = li ? KIND_LABEL[li.kind] + ': ' + li.label : '';
       grenzeInput.value = li && li.bestehensgrenze != null ? li.bestehensgrenze : '';
       document.getElementById('grenzeSaved').hidden = true;
       try {
@@ -637,12 +664,18 @@
       }
     });
 
+    document.getElementById('fragenCloseBtn').addEventListener('click', () => {
+      fragenArea.hidden = true;
+      fragenSelect.value = '';
+    });
+
     function jumpToFragenEditor(li) {
       fragenSelect.value = li.id;
       fragenSelect.dispatchEvent(new Event('change'));
       fragenSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    renderLiFilter();
     renderLiList();
     renderFragenSelect();
     updateLiGrenzeVisibility();
