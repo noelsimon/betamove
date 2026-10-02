@@ -14,6 +14,17 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  .training-tab { cursor:pointer; font:inherit; font-size:15px; font-weight:600; padding:11px 22px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .training-tab[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent); color: #ffffff; }
+  .wd-pill { cursor:pointer; font:inherit; font-size:13.5px; font-weight:600; padding:8px 14px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .wd-pill[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+  .wp-day { background: var(--color-surface); border-radius: var(--radius-md); padding: 14px 12px; min-height: 90px; }
+  .wp-day[data-today="true"] { background: var(--color-accent-100); }
+  .wp-day h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .wp-day-item { font-size: 13.5px; padding: 5px 0; border-top: 1px solid var(--color-divider); }
+  .wp-day-item:first-of-type { border-top: 0; }
+</style>
 </head>
 <body>
 <header class="site-header">
@@ -66,75 +77,138 @@
       </aside>
       <div>
         <h2 style="margin:0 0 8px;font-size:30px">Training</h2>
-        <p style="max-width:60ch;margin:0 0 32px;font-size:17px;opacity:0.82">Ziele setzen, Einheiten loggen, mit der Stoppuhr Intervalle stoppen. Nur du siehst deine Einträge.</p>
+        <p style="max-width:60ch;margin:0 0 26px;font-size:17px;opacity:0.82">Eigene Übungen auf die Wochentage verteilen, dann Ergebnisse loggen. Nur du siehst deine Einträge.</p>
 
-        <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
-          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 16px;font-size:21px">Ziele</h3>
-            <div id="zieleList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
-            <form id="zielForm" style="display:flex;gap:10px;flex-wrap:wrap">
-              <input id="zielInput" class="input" style="flex:1;min-width:160px" placeholder="z.B. Erste 7a klettern" maxlength="300">
-              <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Hinzufügen</button>
-            </form>
+        <div id="trainingTabs" style="display:flex;gap:10px;margin-bottom:28px">
+          <button type="button" data-tab="plan" class="training-tab">Plan</button>
+          <button type="button" data-tab="logbuch" class="training-tab">Logbuch</button>
+        </div>
+
+        <div id="tabPlan">
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <h3 style="margin:0 0 16px;font-size:21px">Wochenplan</h3>
+            <div id="wochenplanGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px"></div>
           </div>
 
-          <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 16px;font-size:21px">Stoppuhr</h3>
-            <div id="stopwatchDisplay" style="font-family:var(--font-heading);font-size:48px;text-align:center;margin-bottom:18px;font-variant-numeric:tabular-nums">00:00.0</div>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
-              <button type="button" id="swStartBtn" class="btn btn-primary" style="font-size:14.5px;padding:11px 22px">Start</button>
-              <button type="button" id="swLapBtn" class="btn btn-secondary" style="font-size:14.5px;padding:11px 22px" disabled>Runde</button>
-              <button type="button" id="swResetBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:11px 20px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Zurücksetzen</button>
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px">
+              <h3 style="margin:0;font-size:21px">Deine Übungen</h3>
+              <button type="button" id="newUebungBtn" class="btn btn-primary" style="font-size:14.5px;padding:10px 18px">+ Neue Übung</button>
             </div>
-            <div id="swLaps" style="display:flex;flex-direction:column-reverse;gap:6px;max-height:160px;overflow-y:auto"></div>
+
+            <div id="uebungFormBox" hidden style="background:var(--color-surface);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px">
+              <h4 id="uebungFormTitle" style="margin:0 0 14px;font-size:17px">Übung anlegen</h4>
+              <form id="uebungForm" style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                  <div class="field"><label>Name</label><input id="uebung-name" class="input" placeholder="z.B. Fingerhangboard" maxlength="200" required></div>
+                  <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit" class="input" placeholder="z.B. kg, Sek., Wdh." maxlength="40"></div>
+                </div>
+                <div>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Wochentage</label>
+                  <div id="uebungWochentage" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+                </div>
+                <div class="field"><label>Notiz (optional)</label><textarea id="uebung-notiz" class="input" rows="2" maxlength="1000" placeholder="z.B. Zielwert, Ausführungshinweise"></textarea></div>
+                <p id="uebungFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
+                <div style="display:flex;gap:12px">
+                  <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+                  <button type="button" id="uebungCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+                </div>
+              </form>
+            </div>
+
+            <div id="uebungenList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
         </div>
 
-        <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
-          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 16px;font-size:21px">Neue Einheit eintragen</h3>
-            <form id="logForm" style="display:flex;flex-direction:column;gap:14px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
-                <div class="field"><label>Datum</label><input id="log-datum" type="date" class="input" required></div>
+        <div id="tabLogbuch" hidden>
+          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 16px;font-size:21px">Ziele</h3>
+              <div id="zieleList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+              <form id="zielForm" style="display:flex;gap:10px;flex-wrap:wrap">
+                <input id="zielInput" class="input" style="flex:1;min-width:160px" placeholder="z.B. Erste 7a klettern" maxlength="300">
+                <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Hinzufügen</button>
+              </form>
+            </div>
+
+            <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 16px;font-size:21px">Stoppuhr</h3>
+              <div id="stopwatchDisplay" style="font-family:var(--font-heading);font-size:48px;text-align:center;margin-bottom:18px;font-variant-numeric:tabular-nums">00:00.0</div>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
+                <button type="button" id="swStartBtn" class="btn btn-primary" style="font-size:14.5px;padding:11px 22px">Start</button>
+                <button type="button" id="swLapBtn" class="btn btn-secondary" style="font-size:14.5px;padding:11px 22px" disabled>Runde</button>
+                <button type="button" id="swResetBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:11px 20px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Zurücksetzen</button>
+              </div>
+              <div id="swLaps" style="display:flex;flex-direction:column-reverse;gap:6px;max-height:160px;overflow-y:auto"></div>
+            </div>
+          </div>
+
+          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 16px;font-size:21px">Ergebnis eintragen</h3>
+              <form id="logForm" style="display:flex;flex-direction:column;gap:14px">
                 <div class="field">
-                  <label>Art</label>
-                  <select id="log-typ" class="input" required>
-                    <option value="bouldern">Bouldern</option>
-                    <option value="seilklettern">Seilklettern</option>
-                    <option value="fingerkraft">Fingerkraft/Krafttraining</option>
-                    <option value="ausdauer">Ausdauer/Cardio</option>
-                    <option value="mobility">Mobility/Dehnen</option>
-                    <option value="sonstiges">Sonstiges</option>
+                  <label>Übung aus deinem Plan (optional)</label>
+                  <select id="log-uebung" class="input">
+                    <option value="">— Keine, freie Art wählen —</option>
                   </select>
                 </div>
-                <div class="field"><label>Dauer (Min.)</label><input id="log-dauer" type="number" min="1" max="600" class="input" placeholder="z.B. 90"></div>
-                <div class="field"><label>Anstrengung (RPE 1–10)</label><input id="log-anstrengung" type="number" min="1" max="10" class="input" placeholder="z.B. 7"></div>
-              </div>
-              <div class="field"><label>Notiz (optional)</label><textarea id="log-notiz" class="input" rows="2" maxlength="1000" placeholder="Was lief gut, was war schwer?"></textarea></div>
-              <p id="logFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
-              <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:15px;padding:12px 24px">Eintragen</button>
-            </form>
-          </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
+                  <div class="field"><label>Datum</label><input id="log-datum" type="date" class="input" required></div>
+                  <div class="field" id="log-typ-field">
+                    <label>Art</label>
+                    <select id="log-typ" class="input">
+                      <option value="bouldern">Bouldern</option>
+                      <option value="seilklettern">Seilklettern</option>
+                      <option value="fingerkraft">Fingerkraft/Krafttraining</option>
+                      <option value="ausdauer">Ausdauer/Cardio</option>
+                      <option value="mobility">Mobility/Dehnen</option>
+                      <option value="sonstiges">Sonstiges</option>
+                    </select>
+                  </div>
+                  <div class="field" id="log-ergebnis-field" hidden><label id="log-ergebnis-label">Ergebnis</label><input id="log-ergebnis" type="number" step="any" class="input" placeholder="z.B. 20"></div>
+                  <div class="field"><label>Dauer (Min.)</label><input id="log-dauer" type="number" min="1" max="600" class="input" placeholder="z.B. 90"></div>
+                  <div class="field"><label>Anstrengung (RPE 1–10)</label><input id="log-anstrengung" type="number" min="1" max="10" class="input" placeholder="z.B. 7"></div>
+                </div>
+                <div class="field"><label>Notiz (optional)</label><textarea id="log-notiz" class="input" rows="2" maxlength="1000" placeholder="Was lief gut, was war schwer?"></textarea></div>
+                <p id="logFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
+                <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:15px;padding:12px 24px">Eintragen</button>
+              </form>
+            </div>
 
-          <div style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 6px;font-size:21px">Diese Woche</h3>
-            <p style="margin:0 0 18px;font-size:14px;opacity:0.85">Montag bis heute.</p>
-            <div style="display:flex;gap:26px">
-              <div>
-                <div id="weekCount" style="font-family:var(--font-heading);font-size:38px;line-height:1">0</div>
-                <div style="font-size:14px;opacity:0.85;margin-top:4px">Einheiten</div>
-              </div>
-              <div>
-                <div id="weekMinutes" style="font-family:var(--font-heading);font-size:38px;line-height:1">0</div>
-                <div style="font-size:14px;opacity:0.85;margin-top:4px">Minuten</div>
+            <div style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 6px;font-size:21px">Diese Woche</h3>
+              <p style="margin:0 0 18px;font-size:14px;opacity:0.85">Montag bis heute.</p>
+              <div style="display:flex;gap:26px">
+                <div>
+                  <div id="weekCount" style="font-family:var(--font-heading);font-size:38px;line-height:1">0</div>
+                  <div style="font-size:14px;opacity:0.85;margin-top:4px">Einheiten</div>
+                </div>
+                <div>
+                  <div id="weekMinutes" style="font-family:var(--font-heading);font-size:38px;line-height:1">0</div>
+                  <div style="font-size:14px;opacity:0.85;margin-top:4px">Minuten</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-          <h3 style="margin:0 0 16px;font-size:21px">Logbuch</h3>
-          <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 4px;font-size:21px">Einheiten pro Woche</h3>
+              <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Letzte 8 Wochen.</p>
+              <div id="chartWeeks" style="display:flex;gap:8px;align-items:flex-end"></div>
+            </div>
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 4px;font-size:21px">Verteilung</h3>
+              <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Nach Übung bzw. Trainingsart.</p>
+              <div id="chartTypes" style="display:flex;flex-direction:column;gap:10px"></div>
+            </div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+            <h3 style="margin:0 0 16px;font-size:21px">Logbuch</h3>
+            <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -206,6 +280,18 @@
 <script src="js/main.js"></script>
 <script src="js/account.js"></script>
 <script>
+// Plan/Logbuch-Umschalter: rein clientseitig, unabhängig vom Konto-Laden.
+(function () {
+  const tabs = document.querySelectorAll('.training-tab[data-tab]');
+  const panels = { plan: document.getElementById('tabPlan'), logbuch: document.getElementById('tabLogbuch') };
+  function activate(name) {
+    tabs.forEach(t => t.dataset.active = String(t.dataset.tab === name));
+    Object.keys(panels).forEach(k => { if (panels[k]) panels[k].hidden = k !== name; });
+  }
+  tabs.forEach(t => t.addEventListener('click', () => activate(t.dataset.tab)));
+  activate('plan');
+})();
+
 // Stoppuhr: rein clientseitig, keine Datenbank nötig.
 (function () {
   const display = document.getElementById('stopwatchDisplay');

@@ -628,6 +628,7 @@
   // Die Stoppuhr braucht keine Daten und läuft in konto-training.html selbst.
   // --------------------------------------------------------------------
   const TYP_LABEL = { bouldern: 'Bouldern', seilklettern: 'Seilklettern', fingerkraft: 'Fingerkraft/Krafttraining', ausdauer: 'Ausdauer/Cardio', mobility: 'Mobility/Dehnen', sonstiges: 'Sonstiges' };
+  const WOCHENTAGE = [{ n: 1, label: 'Montag', short: 'Mo' }, { n: 2, label: 'Dienstag', short: 'Di' }, { n: 3, label: 'Mittwoch', short: 'Mi' }, { n: 4, label: 'Donnerstag', short: 'Do' }, { n: 5, label: 'Freitag', short: 'Fr' }, { n: 6, label: 'Samstag', short: 'Sa' }, { n: 7, label: 'Sonntag', short: 'So' }];
 
   async function renderTraining(ctx) {
     const { client, session } = ctx;
@@ -638,18 +639,27 @@
 
     let ziele = [];
     let log = [];
+    let uebungen = [];
     try {
-      const [zieleRes, logRes] = await Promise.all([
+      const [zieleRes, logRes, uebungenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
-        client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false })
+        client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false }),
+        client.from('trainingsuebungen').select('*').order('created_at', { ascending: false })
       ]);
       if (zieleRes.error) throw zieleRes.error;
       if (logRes.error) throw logRes.error;
+      if (uebungenRes.error) throw uebungenRes.error;
       ziele = zieleRes.data || [];
       log = logRes.data || [];
+      uebungen = uebungenRes.data || [];
     } catch (e) {
       const el = document.getElementById('zieleList');
       if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
+    }
+
+    function uebungName(id) {
+      const u = uebungen.find(x => x.id === id);
+      return u ? u.name : null;
     }
 
     // ---- Ziele ----
@@ -710,6 +720,144 @@
       });
     }
 
+    // ---- Wochenplan + eigene Übungen ----
+    function renderWochenplan() {
+      const grid = document.getElementById('wochenplanGrid');
+      if (!grid) return;
+      const todayIso = (((new Date()).getDay() + 6) % 7) + 1;
+      grid.innerHTML = WOCHENTAGE.map(wd => {
+        const items = uebungen.filter(u => (u.wochentage || []).includes(wd.n));
+        return `<div class="wp-day" data-today="${wd.n === todayIso}">
+          <h4>${wd.short}</h4>
+          ${items.length ? items.map(u => '<div class="wp-day-item">' + escapeHtml(u.name) + '</div>').join('') : '<div class="wp-day-item" style="opacity:0.4;border-top:0">—</div>'}
+        </div>`;
+      }).join('');
+    }
+    renderWochenplan();
+
+    const uebungFormBox = document.getElementById('uebungFormBox');
+    const uebungForm = document.getElementById('uebungForm');
+    const uebungFormTitle = document.getElementById('uebungFormTitle');
+    const uebungFormError = document.getElementById('uebungFormError');
+    const uebungWochentageEl = document.getElementById('uebungWochentage');
+    const newUebungBtn = document.getElementById('newUebungBtn');
+    const uebungCancelBtn = document.getElementById('uebungCancelBtn');
+    let editingUebungId = null;
+
+    if (uebungWochentageEl && !uebungWochentageEl.children.length) {
+      uebungWochentageEl.innerHTML = WOCHENTAGE.map(wd => `<button type="button" class="wd-pill" data-day="${wd.n}">${wd.short}</button>`).join('');
+      uebungWochentageEl.querySelectorAll('.wd-pill').forEach(btn => {
+        btn.addEventListener('click', () => { btn.dataset.active = String(btn.dataset.active !== 'true'); });
+      });
+    }
+
+    function selectedWochentage() {
+      return Array.from(uebungWochentageEl.querySelectorAll('.wd-pill[data-active="true"]')).map(btn => Number(btn.dataset.day));
+    }
+
+    function setSelectedWochentage(days) {
+      uebungWochentageEl.querySelectorAll('.wd-pill').forEach(btn => {
+        btn.dataset.active = String((days || []).includes(Number(btn.dataset.day)));
+      });
+    }
+
+    function openUebungForm(uebung) {
+      editingUebungId = uebung ? uebung.id : null;
+      uebungFormTitle.textContent = uebung ? 'Übung bearbeiten' : 'Übung anlegen';
+      document.getElementById('uebung-name').value = uebung ? uebung.name : '';
+      document.getElementById('uebung-einheit').value = uebung ? (uebung.einheit || '') : '';
+      document.getElementById('uebung-notiz').value = uebung ? (uebung.notiz || '') : '';
+      setSelectedWochentage(uebung ? uebung.wochentage : []);
+      uebungFormError.hidden = true;
+      uebungFormBox.hidden = false;
+    }
+
+    function closeUebungForm() {
+      uebungFormBox.hidden = true;
+      editingUebungId = null;
+      uebungForm.reset();
+      setSelectedWochentage([]);
+    }
+
+    if (newUebungBtn) newUebungBtn.addEventListener('click', () => openUebungForm(null));
+    if (uebungCancelBtn) uebungCancelBtn.addEventListener('click', closeUebungForm);
+
+    function renderUebungenList() {
+      const list = document.getElementById('uebungenList');
+      if (!list) return;
+      list.innerHTML = uebungen.length ? uebungen.map(u => {
+        const days = (u.wochentage || []).map(n => (WOCHENTAGE.find(w => w.n === n) || {}).short).filter(Boolean).join(', ');
+        return `<div data-uebung data-id="${u.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:15.5px;font-weight:600">${escapeHtml(u.name)}${u.einheit ? ' <span style="font-weight:400;opacity:0.6;font-size:13.5px">(' + escapeHtml(u.einheit) + ')</span>' : ''}</div>
+            <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${days ? days : 'Keinem Wochentag zugeordnet'}</div>
+            ${u.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(u.notiz) + '</p>' : ''}
+          </div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button type="button" data-uebung-edit style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+            <button type="button" data-uebung-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+          </div>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine eigene Übung angelegt.</p>';
+      list.querySelectorAll('[data-uebung]').forEach(row => {
+        const id = row.dataset.id;
+        const uebung = uebungen.find(u => u.id === id);
+        row.querySelector('[data-uebung-edit]').addEventListener('click', () => openUebungForm(uebung));
+        row.querySelector('[data-uebung-delete]').addEventListener('click', async () => {
+          if (!confirm('Übung „' + uebung.name + '" wirklich löschen?')) return;
+          try {
+            const { error } = await client.from('trainingsuebungen').delete().eq('id', id);
+            if (error) throw error;
+            uebungen = uebungen.filter(u => u.id !== id);
+            renderUebungenList();
+            renderWochenplan();
+            populateLogUebungSelect();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderUebungenList();
+
+    if (uebungForm) {
+      uebungForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        uebungFormError.hidden = true;
+        const name = document.getElementById('uebung-name').value.trim();
+        const einheit = document.getElementById('uebung-einheit').value.trim();
+        const notiz = document.getElementById('uebung-notiz').value.trim();
+        if (!name) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte einen Namen eintragen.'; return; }
+        const payload = {
+          user_id: userId,
+          name,
+          einheit: einheit || null,
+          notiz: notiz || null,
+          wochentage: selectedWochentage()
+        };
+        const btn = uebungForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          if (editingUebungId) {
+            const { data, error } = await client.from('trainingsuebungen').update(payload).eq('id', editingUebungId).select().single();
+            if (error) throw error;
+            uebungen = uebungen.map(u => u.id === editingUebungId ? data : u);
+          } else {
+            const { data, error } = await client.from('trainingsuebungen').insert(payload).select().single();
+            if (error) throw error;
+            uebungen.unshift(data);
+          }
+          closeUebungForm();
+          renderUebungenList();
+          renderWochenplan();
+          populateLogUebungSelect();
+        } catch (e) {
+          uebungFormError.hidden = false;
+          uebungFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
     // ---- Logbuch + Diese-Woche-Summe ----
     function startOfWeek() {
       const d = new Date();
@@ -733,7 +881,9 @@
       if (!list) return;
       list.innerHTML = log.length ? log.map(l => {
         const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
-        const meta = [TYP_LABEL[l.typ] || l.typ, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
+        const art = l.uebung_id ? (uebungName(l.uebung_id) || 'Übung') : (TYP_LABEL[l.typ] || l.typ);
+        const ergebnis = l.uebung_id && l.ergebnis_wert != null ? l.ergebnis_wert + (((uebungen.find(u => u.id === l.uebung_id) || {}).einheit) ? ' ' + (uebungen.find(u => u.id === l.uebung_id) || {}).einheit : '') : null;
+        const meta = [art, ergebnis, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
         return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
           <div style="flex:1;min-width:0">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
@@ -755,12 +905,89 @@
             log = log.filter(l => l.id !== id);
             renderLog();
             renderWeekSummary();
+            renderCharts();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
     }
     renderLog();
     renderWeekSummary();
+
+    // ---- Statistik: zwei einfache, eigene Balkendiagramme (kein externes Chart-Script nötig) ----
+    function renderCharts() {
+      const chartWeeks = document.getElementById('chartWeeks');
+      const chartTypes = document.getElementById('chartTypes');
+      if (chartWeeks) {
+        const thisMonday = startOfWeek();
+        const weeks = [];
+        for (let i = 7; i >= 0; i--) {
+          const monday = new Date(thisMonday);
+          monday.setDate(monday.getDate() - i * 7);
+          const nextMonday = new Date(monday);
+          nextMonday.setDate(nextMonday.getDate() + 7);
+          const count = log.filter(l => {
+            if (!l.datum) return false;
+            const d = new Date(l.datum + 'T00:00:00');
+            return d >= monday && d < nextMonday;
+          }).length;
+          weeks.push({ label: monday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }), count });
+        }
+        const max = Math.max(1, ...weeks.map(w => w.count));
+        chartWeeks.innerHTML = weeks.map(w => `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0">
+            <div style="font-size:12px;opacity:0.7">${w.count}</div>
+            <div style="width:100%;height:90px;display:flex;align-items:flex-end">
+              <div style="width:100%;height:${Math.round((w.count / max) * 100)}%;min-height:${w.count ? 4 : 0}px;background:var(--color-accent);border-radius:4px 4px 0 0"></div>
+            </div>
+            <div style="font-size:10.5px;opacity:0.55;white-space:nowrap">${w.label}</div>
+          </div>`).join('');
+      }
+      if (chartTypes) {
+        const counts = {};
+        log.forEach(l => {
+          const key = l.uebung_id ? (uebungName(l.uebung_id) || 'Übung') : (TYP_LABEL[l.typ] || l.typ || 'Sonstiges');
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        const max = Math.max(1, ...entries.map(e => e[1]));
+        chartTypes.innerHTML = entries.length ? entries.map(([name, count]) => `
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:110px;flex:none;font-size:13px;opacity:0.8;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</span>
+            <div style="flex:1;background:var(--color-surface);border-radius:999px;height:16px;overflow:hidden"><div style="height:100%;width:${Math.round((count / max) * 100)}%;background:var(--color-accent-2-500);border-radius:999px"></div></div>
+            <span style="width:20px;flex:none;font-size:13px;opacity:0.65">${count}</span>
+          </div>`).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Daten.</p>';
+      }
+    }
+    renderCharts();
+
+    const logUebungSelect = document.getElementById('log-uebung');
+    function populateLogUebungSelect() {
+      if (!logUebungSelect) return;
+      const current = logUebungSelect.value;
+      logUebungSelect.innerHTML = '<option value="">— Keine, freie Art wählen —</option>' +
+        uebungen.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+      if (uebungen.some(u => u.id === current)) logUebungSelect.value = current;
+      updateLogFieldVisibility();
+    }
+
+    function updateLogFieldVisibility() {
+      const typField = document.getElementById('log-typ-field');
+      const ergField = document.getElementById('log-ergebnis-field');
+      const ergLabel = document.getElementById('log-ergebnis-label');
+      const selectedId = logUebungSelect ? logUebungSelect.value : '';
+      const uebung = selectedId ? uebungen.find(u => u.id === selectedId) : null;
+      if (uebung) {
+        if (typField) typField.hidden = true;
+        if (ergField) ergField.hidden = false;
+        if (ergLabel) ergLabel.textContent = uebung.einheit ? 'Ergebnis (' + uebung.einheit + ')' : 'Ergebnis';
+      } else {
+        if (typField) typField.hidden = false;
+        if (ergField) ergField.hidden = true;
+      }
+    }
+
+    if (logUebungSelect) logUebungSelect.addEventListener('change', updateLogFieldVisibility);
+    populateLogUebungSelect();
 
     const logForm = document.getElementById('logForm');
     const logFormError = document.getElementById('logFormError');
@@ -769,7 +996,9 @@
         e.preventDefault();
         logFormError.hidden = true;
         const datum = document.getElementById('log-datum').value;
-        const typ = document.getElementById('log-typ').value;
+        const uebungId = logUebungSelect ? logUebungSelect.value : '';
+        const typ = uebungId ? null : document.getElementById('log-typ').value;
+        const ergebnisRaw = document.getElementById('log-ergebnis').value;
         const dauerRaw = document.getElementById('log-dauer').value;
         const anstrengungRaw = document.getElementById('log-anstrengung').value;
         const notiz = document.getElementById('log-notiz').value.trim();
@@ -780,6 +1009,8 @@
           user_id: userId,
           datum,
           typ,
+          uebung_id: uebungId || null,
+          ergebnis_wert: uebungId && ergebnisRaw ? Number(ergebnisRaw) : null,
           dauer_minuten: dauerRaw ? Number(dauerRaw) : null,
           anstrengung: anstrengungRaw ? Number(anstrengungRaw) : null,
           notiz: notiz || null
@@ -792,11 +1023,13 @@
           if (error) throw error;
           log.unshift(data);
           log.sort((a, b) => (b.datum + b.created_at).localeCompare(a.datum + a.created_at));
+          document.getElementById('log-ergebnis').value = '';
           document.getElementById('log-dauer').value = '';
           document.getElementById('log-anstrengung').value = '';
           document.getElementById('log-notiz').value = '';
           renderLog();
           renderWeekSummary();
+          renderCharts();
         } catch (e) {
           logFormError.hidden = false;
           logFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
