@@ -12,8 +12,7 @@
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 <style>
   .chip { cursor:pointer; font:inherit; font-size:15px; padding:11px 20px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
@@ -158,7 +157,7 @@
 
             <label class="radio" style="margin-top:26px;font-size:15.5px">
               <input type="checkbox" id="agb"><span class="dot"></span>
-              <span>Ich habe die <a href="agb">AGB</a> und die <a href="datenschutz">Datenschutzerklärung</a> gelesen und akzeptiere sie. Mir ist bewusst, dass Klettern eine Risikosportart ist.</span>
+              <span>Ich akzeptiere die <a href="agb">AGB</a> und habe die <a href="datenschutz">Datenschutzerklärung</a> zur Kenntnis genommen. Mir ist bewusst, dass Klettern eine Risikosportart ist.</span>
             </label>
             <span id="agbHint" style="display:block;margin-top:8px;font-size:14px;opacity:0.6"></span>
           </section>
@@ -261,7 +260,7 @@
      gepinnt statt "@2" (schwimmende Latest-Version), damit sich das Verhalten
      der Seite nicht unbemerkt ändert, wenn Supabase eine neue Version
      veröffentlicht. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <!-- courses-data.js braucht bmGetSupabaseClient (aus supabase-client.js) schon

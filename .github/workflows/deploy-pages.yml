@@ -28,10 +28,22 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      # Nur die öffentliche Website veröffentlichen — interne Dateien (SQL-Schemas,
+      # Edge-Function-Code, Projektplan, Konzepte, Skripte) gehören nicht auf
+      # betamove.de (Informationssicherheit, siehe docs/datenschutz/DATENSCHUTZ-KONZEPT.md).
+      - name: Build site directory
+        run: |
+          mkdir -p _site
+          tar -cf - \
+            --exclude='./.git' --exclude='./.github' --exclude='./_site' \
+            --exclude='./supabase' --exclude='./scripts' --exclude='./docs' \
+            --exclude='*.md' --exclude='*.sql' --exclude='*.ts' \
+            . | tar -xf - -C _site
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
