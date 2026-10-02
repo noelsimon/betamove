@@ -199,6 +199,11 @@ textarea.input { resize: vertical; font-family: inherit; }
   [data-r="path"] { grid-template-columns: minmax(0, 1fr) !important; }
   [data-r="dash"] { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
   [data-r="dashside"] { position: static !important; top: auto !important; }
+  /* Konto-Nav: auf schmalen Screens als horizontal scrollbare Reihe statt
+     als lange Liste übereinandergestapelter Buttons vor dem eigentlichen
+     Inhalt — sonst muss man erst an 5-6 Buttons vorbeiscrollen. */
+  [data-r="konto-nav"] { flex-direction: row !important; flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 2px; margin: 0 -2px; }
+  [data-r="konto-nav"] > a { flex: none !important; white-space: nowrap; font-size: 14.5px !important; padding: 10px 16px !important; }
   [data-r="trust"] { grid-template-columns: minmax(0, 1fr) !important; gap: 20px !important; padding: 24px 26px !important; }
   [data-r="hero"] h1 { font-size: 34px !important; }
   [data-r="summary"] { grid-template-columns: minmax(0, 1fr) !important; }

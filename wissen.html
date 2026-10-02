@@ -17,8 +17,15 @@
 <style>
   .chip { cursor:pointer; font:inherit; font-size:14.5px; font-weight:500; padding:9px 17px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
   .chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
-  .quicktag-light { cursor:pointer; font:inherit; font-size:14px; padding:7px 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:#ffffff; }
-  .quicktag-light:hover { background: rgba(255,255,255,0.15); }
+  .quicktag { cursor:pointer; font:inherit; font-size:14px; padding:7px 14px; border-radius:999px; border:1px solid var(--color-accent-300); background:#fff; color:var(--color-accent-700); }
+  .quicktag:hover { background: var(--color-accent-100); }
+  #filterExtra { display:flex; flex-direction:column; gap:18px; }
+  #filterToggle { display:none; }
+  @media (max-width: 640px) {
+    #filterToggle { display:inline-flex; }
+    #filterExtra { display:none; }
+    #filterExtra[data-open="true"] { display:flex; }
+  }
 </style>
 </head>
 <body>
@@ -48,48 +55,55 @@
 </header>
 <main>
     <section style="background:var(--color-accent-700)">
-      <div data-r="pad" style="max-width:1160px;margin:0 auto;padding:64px 28px 56px">
+      <div data-r="pad" style="max-width:1160px;margin:0 auto;padding:64px 28px 48px">
         <span class="tag" style="background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px">Wissensplattform</span>
         <h1 style="margin:16px 0 14px;font-size:clamp(34px,4.4vw,52px);color:#ffffff">Klettern verstehen, nicht nur nachmachen</h1>
-        <p style="max-width:60ch;margin:0 0 30px;font-size:18px;color:#DEE4EC">Artikel, Quiz und Online-Prüfungen zu Sicherungstechnik, Fels, Alpin und Training. Alles kostenlos, alles auf dem Stand, den wir auch in den Kursen unterrichten.</p>
-        <div style="background:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:10px 10px 10px 20px;display:flex;align-items:center;gap:12px;max-width:640px;box-shadow:var(--shadow-md)">
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-          <input id="wissenSearch" aria-label="Wissensplattform durchsuchen" placeholder="Suche nach Stichwort: Bremshand, Exen, Standplatz …" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font:inherit;font-size:16.5px;color:var(--color-text);padding:12px 0">
-          <button type="button" id="wissenClear" style="cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:11px 18px;border-radius:999px;border:0;background:var(--color-surface);color:var(--color-accent-800);flex:none">Zurücksetzen</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center">
-          <span style="font-size:14px;color:#DEE4EC;opacity:0.85">Häufig gesucht:</span>
-          <button type="button" class="quicktag-light" data-q="Bremshand">Bremshand</button>
-          <button type="button" class="quicktag-light" data-q="Exen">Exen</button>
-          <button type="button" class="quicktag-light" data-q="Standplatz">Standplatz</button>
-          <button type="button" class="quicktag-light" data-q="Sandstein">Sandstein</button>
-          <button type="button" class="quicktag-light" data-q="Training">Training</button>
-          <button type="button" class="quicktag-light" data-q="Naturschutz">Naturschutz</button>
-        </div>
+        <p style="max-width:60ch;margin:0 0 0;font-size:18px;color:#DEE4EC">Artikel, Quiz und Online-Prüfungen zu Sicherungstechnik, Fels, Alpin und Training. Alles kostenlos, alles auf dem Stand, den wir auch in den Kursen unterrichten.</p>
       </div>
     </section>
 
     <section data-r="pad" style="max-width:1160px;margin:0 auto;padding:44px 28px 0">
-      <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:24px 28px;display:flex;flex-direction:column;gap:16px">
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Format</span>
-          <button type="button" class="chip type-chip" data-type="alle" data-active="true">Alles</button>
-          <button type="button" class="chip type-chip" data-type="artikel">Artikel</button>
-          <button type="button" class="chip type-chip" data-type="quiz">Quiz</button>
-          <button type="button" class="chip type-chip" data-type="pruefung">Online-Prüfung</button>
-          <button type="button" class="chip type-chip" data-type="freizeit">Freizeit</button>
+      <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 30px;display:flex;flex-direction:column;gap:18px">
+        <div style="background:#ffffff;border-radius:999px;padding:6px 8px 6px 20px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-sm)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input id="wissenSearch" aria-label="Wissensplattform durchsuchen" placeholder="Suche nach Stichwort: Bremshand, Exen, Standplatz …" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font:inherit;font-size:16.5px;color:var(--color-text);padding:11px 0">
+          <button type="button" id="filterToggle" aria-label="Filter anzeigen" aria-expanded="false" aria-controls="filterExtra" style="cursor:pointer;flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--color-surface);color:var(--color-accent-800);align-items:center;justify-content:center">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"></path></svg>
+          </button>
+          <button type="button" id="wissenClear" aria-label="Filter zurücksetzen" style="cursor:pointer;flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--color-surface);color:var(--color-accent-800);display:flex;align-items:center;justify-content:center">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Thema</span>
-          <button type="button" class="chip topic-chip" data-topic="alle" data-active="true">Alle Themen</button>
-<button type="button" class="chip topic-chip" data-topic="sichern">Sicherungstechnik</button><button type="button" class="chip topic-chip" data-topic="fels">Halle an den Fels</button><button type="button" class="chip topic-chip" data-topic="alpin">Mehrseillänge & Alpin</button><button type="button" class="chip topic-chip" data-topic="training">Technik & Training</button><button type="button" class="chip topic-chip" data-topic="natur">Natur & Verantwortung</button><button type="button" class="chip topic-chip" data-topic="freizeit">Freizeit & Reisen</button>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-          <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Level</span>
-          <button type="button" class="chip level-chip" data-level="alle" data-active="true">Jedes Level</button>
-          <button type="button" class="chip level-chip" data-level="Einstieg">Einstieg</button>
-          <button type="button" class="chip level-chip" data-level="Aufbau">Aufbau</button>
-          <button type="button" class="chip level-chip" data-level="Fortgeschritten">Fortgeschritten</button>
+        <div id="filterExtra">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Format</span>
+            <button type="button" class="chip type-chip" data-type="alle" data-active="true">Alles</button>
+            <button type="button" class="chip type-chip" data-type="artikel">Artikel</button>
+            <button type="button" class="chip type-chip" data-type="quiz">Quiz</button>
+            <button type="button" class="chip type-chip" data-type="pruefung">Online-Prüfung</button>
+            <button type="button" class="chip type-chip" data-type="freizeit">Freizeit</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Thema</span>
+            <button type="button" class="chip topic-chip" data-topic="alle" data-active="true">Alle Themen</button>
+            <button type="button" class="chip topic-chip" data-topic="sichern">Sicherungstechnik</button><button type="button" class="chip topic-chip" data-topic="fels">Halle an den Fels</button><button type="button" class="chip topic-chip" data-topic="alpin">Mehrseillänge & Alpin</button><button type="button" class="chip topic-chip" data-topic="training">Technik & Training</button><button type="button" class="chip topic-chip" data-topic="natur">Natur & Verantwortung</button><button type="button" class="chip topic-chip" data-topic="freizeit">Freizeit & Reisen</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <span style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;color:var(--color-accent-600);width:78px;flex:none">Level</span>
+            <button type="button" class="chip level-chip" data-level="alle" data-active="true">Jedes Level</button>
+            <button type="button" class="chip level-chip" data-level="Einstieg">Einstieg</button>
+            <button type="button" class="chip level-chip" data-level="Aufbau">Aufbau</button>
+            <button type="button" class="chip level-chip" data-level="Fortgeschritten">Fortgeschritten</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:4px;border-top:1px solid var(--color-divider)">
+            <span style="font-size:14px;opacity:0.7;padding-top:8px">Häufig gesucht:</span>
+            <button type="button" class="quicktag" data-q="Bremshand" style="margin-top:8px">Bremshand</button>
+            <button type="button" class="quicktag" data-q="Exen" style="margin-top:8px">Exen</button>
+            <button type="button" class="quicktag" data-q="Standplatz" style="margin-top:8px">Standplatz</button>
+            <button type="button" class="quicktag" data-q="Sandstein" style="margin-top:8px">Sandstein</button>
+            <button type="button" class="quicktag" data-q="Training" style="margin-top:8px">Training</button>
+            <button type="button" class="quicktag" data-q="Naturschutz" style="margin-top:8px">Naturschutz</button>
+          </div>
         </div>
       </div>
     </section>
@@ -502,7 +516,7 @@
   typeChips.forEach(c => c.addEventListener('click', () => { type = c.dataset.type; typeChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
   topicChips.forEach(c => c.addEventListener('click', () => { topic = c.dataset.topic; topicChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
   levelChips.forEach(c => c.addEventListener('click', () => { level = c.dataset.level; levelChips.forEach(x => x.dataset.active = String(x===c)); apply(); }));
-  document.querySelectorAll('.quicktag-light').forEach(btn => btn.addEventListener('click', () => { search.value = btn.dataset.q; apply(); }));
+  document.querySelectorAll('.quicktag').forEach(btn => btn.addEventListener('click', () => { search.value = btn.dataset.q; apply(); search.scrollIntoView({behavior:'smooth', block:'center'}); }));
   function reset() {
     search.value=''; type='alle'; topic='alle'; level='alle';
     typeChips.forEach(x=>x.dataset.active=String(x.dataset.type==='alle'));
@@ -512,6 +526,14 @@
   }
   document.getElementById('wissenClear').addEventListener('click', reset);
   document.getElementById('wissenClear2').addEventListener('click', reset);
+
+  const filterToggle = document.getElementById('filterToggle');
+  const filterExtra = document.getElementById('filterExtra');
+  filterToggle.addEventListener('click', () => {
+    const open = filterExtra.dataset.open === 'true';
+    filterExtra.dataset.open = String(!open);
+    filterToggle.setAttribute('aria-expanded', String(!open));
+  });
 
   // Fortschritt aus localStorage (bmProgress, siehe js/main.js)
   try {
