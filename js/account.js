@@ -36,70 +36,24 @@
   // --------------------------------------------------------------------
   // Qualifikationen — einzige Quelle der Wahrheit für Fortschritt & Zertifikate.
   // Jede Anforderung verweist auf eine item_id aus `lernfortschritt`
-  // (kind 'artikel' | 'quiz' | 'pruefung' | 'kurs').
+  // (kind 'artikel' | 'quiz' | 'pruefung' | 'kurs'). Kommt seit
+  // js/qualifikationen-data.js aus der Datenbank (admin-qualifikationen)
+  // statt fest im Code zu stehen — window.BM_QUALIFICATIONS ist erst NACH
+  // window.BM_QUALIFICATIONS_READY gültig, deshalb hier als Funktion
+  // gelesen statt einmalig in eine Konstante kopiert.
   // --------------------------------------------------------------------
-  const QUALIFICATIONS = [
-    {
-      id: 'sicherungsschein-toprope',
-      name: 'Sicherungsschein Toprope',
-      level: 'Einstieg',
-      text: 'Sicher Toprope sichern, weich fangen und Gewichtsunterschiede einschätzen – die Basis für alles Weitere.',
-      requirements: [
-        { id: 'quiz-sichern', kind: 'quiz', label: 'Quiz „Sichern ohne Mythen“ bestehen', url: 'quiz-sichern' },
-        { id: 'pruefung-sturztraining', kind: 'pruefung', label: 'Online-Prüfung Sturz- und Sicherungstraining bestehen', url: 'pruefung-sturztraining' },
-        { id: 'kurs-sturz', kind: 'kurs', label: 'Kurs „Sturz- und Sicherungstraining“ absolvieren', url: 'kurse' }
-      ]
-    },
-    {
-      id: 'vorstiegsschein-indoor',
-      name: 'Vorstiegsschein Indoor',
-      level: 'Einstieg',
-      text: 'Im Vorstieg klettern und sichern in der Halle, auf aktuellem Stand der Lehrmeinung.',
-      requirements: [
-        { id: 'pruefung-sicherungsschein', kind: 'pruefung', label: 'Online-Prüfung Sicherungstheorie bestehen', url: 'pruefung-sicherungsschein' },
-        { id: 'sicherungsgeraete', kind: 'artikel', label: 'Artikel „Sicherungsgeräte im Überblick“ durcharbeiten', url: 'artikel-sicherungsgeraete' },
-        { id: 'kurs-update', kind: 'kurs', label: 'Kurs „Sicherungs-Update“ absolvieren', url: 'kurse' }
-      ]
-    },
-    {
-      id: 'freigabe-naturfels',
-      name: 'Freigabe Naturfels',
-      level: 'Aufbau',
-      text: 'Der erste Schritt vom Hallen- ins Felsklettern, mit dem richtigen Material im Rucksack.',
-      requirements: [
-        { id: 'halle-an-den-fels', kind: 'artikel', label: 'Artikel „Halle an den Fels“ durcharbeiten', url: 'artikel-halle-an-den-fels' },
-        { id: 'quiz-fels', kind: 'quiz', label: 'Quiz „Der erste Tag am Fels“ bestehen', url: 'quiz-fels' },
-        { id: 'kletterschuhe-finden', kind: 'artikel', label: 'Artikel „Kletterschuhe finden“ lesen', url: 'artikel-kletterschuhe-finden' },
-        { id: 'pruefung-naturfels', kind: 'pruefung', label: 'Online-Prüfung Naturfels bestehen', url: 'pruefung-naturfels' },
-        { id: 'kurs-halle', kind: 'kurs', label: 'Kurs „Von der Halle an den Fels“ absolvieren', url: 'kurse' }
-      ]
-    },
-    {
-      id: 'mehrseillaengen-kompetenz',
-      name: 'Mehrseillängen-Kompetenz',
-      level: 'Fortgeschritten',
-      text: 'Sicher unterwegs auf mehreren Seillängen – Standplatzbau und Taktik inklusive.',
-      requirements: [
-        { id: 'mehrseillaengen-taktik', kind: 'artikel', label: 'Artikel „Richtig Mehrseillängen planen“ durcharbeiten', url: 'artikel-mehrseillaengen-taktik' },
-        { id: 'pruefung-mehrseillaengen', kind: 'pruefung', label: 'Online-Prüfung Mehrseillängen bestehen', url: 'pruefung-mehrseillaengen' },
-        { id: 'kurs-msl', kind: 'kurs', label: 'Kurs „Mehrseillängen für Fortgeschrittene“ absolvieren', url: 'kurse' }
-      ]
-    }
-  ];
-
-  // Für die Zertifikat-Seite (zertifikat.html) les- und wiederverwendbar.
-  window.BM_QUALIFICATIONS = QUALIFICATIONS;
+  function qualifications() { return window.BM_QUALIFICATIONS || []; }
 
   // Alle Nicht-Kurs-Inhalte (Artikel/Quiz/Prüfung), dedupliziert — Basis für
   // "Mein Lernstand" / "Weiterlernen".
-  const CONTENT_ITEMS = (function () {
+  function contentItems() {
     const seen = {};
     const out = [];
-    QUALIFICATIONS.forEach(q => q.requirements.forEach(r => {
+    qualifications().forEach(q => q.requirements.forEach(r => {
       if (r.kind !== 'kurs' && !seen[r.id]) { seen[r.id] = true; out.push(r); }
     }));
     return out;
-  })();
+  }
 
   function badgeFor(done, total) {
     if (total > 0 && done >= total) return { label: 'Abgeschlossen', bg: 'var(--color-accent-2-500)', fg: '#ffffff' };
@@ -303,7 +257,7 @@
   // über die serverseitige Auswertung (siehe bmSubmitExam/submit_pruefung).
   function backfillLocalProgress(progress) {
     try {
-      CONTENT_ITEMS.forEach(item => {
+      contentItems().forEach(item => {
         if (item.kind === 'pruefung') return;
         const already = progress[item.id] && progress[item.id].passed;
         if (!already && bmProgress.isDone(item.id)) {
@@ -323,6 +277,7 @@
     try {
       Object.keys(progress).forEach(itemId => { if (progress[itemId].passed) bmProgress.markDone(itemId); });
     } catch (e) { /* bmProgress kommt aus main.js, sollte immer da sein */ }
+    if (window.BM_QUALIFICATIONS_READY) { try { await window.BM_QUALIFICATIONS_READY; } catch (e) {} }
     backfillLocalProgress(progress);
   }
 
@@ -349,6 +304,7 @@
     if (banner) banner.remove();
     syncNavHeader(session);
     if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
+    if (window.BM_QUALIFICATIONS_READY) { try { await window.BM_QUALIFICATIONS_READY; } catch (e) {} }
 
     await ensureProfile(client, session.user);
     // Gäste-Buchungen mit der gleichen E-Mail nachträglich mit diesem Konto
@@ -425,13 +381,13 @@
   // --------------------------------------------------------------------
   async function renderKonto(ctx) {
     const { progress, bookings } = ctx;
-    const qualStats = QUALIFICATIONS.map(q => Object.assign({ qual: q }, qualProgress(q, progress)));
+    const qualStats = qualifications().map(q => Object.assign({ qual: q }, qualProgress(q, progress)));
     const qualDone = qualStats.filter(q => q.done >= q.total).length;
     const activeBookings = bookings.filter(b => !b.storniert).length;
-    const examCount = CONTENT_ITEMS.filter(c => c.kind === 'pruefung' && progress[c.id] && progress[c.id].passed).length;
+    const examCount = contentItems().filter(c => c.kind === 'pruefung' && progress[c.id] && progress[c.id].passed).length;
 
     const statQual = document.getElementById('statQual');
-    if (statQual) statQual.textContent = qualDone + '/' + QUALIFICATIONS.length;
+    if (statQual) statQual.textContent = qualDone + '/' + qualifications().length;
     const statContent = document.getElementById('statContent');
     if (statContent) statContent.textContent = String(activeBookings);
     const statExams = document.getElementById('statExams');
@@ -442,7 +398,7 @@
     // Nächster offener Schritt: erste offene Anforderung über alle Qualifikationen
     const nextBox = document.getElementById('nextStepBox');
     let nextReq = null;
-    for (const q of QUALIFICATIONS) {
+    for (const q of qualifications()) {
       for (const r of q.requirements) {
         if (!(progress[r.id] && progress[r.id].passed)) { nextReq = r; break; }
       }
@@ -475,7 +431,7 @@
     // Prüfungsnachweise
     const examList = document.getElementById('examList');
     if (examList) {
-      const exams = CONTENT_ITEMS.filter(c => c.kind === 'pruefung' && progress[c.id] && progress[c.id].passed);
+      const exams = contentItems().filter(c => c.kind === 'pruefung' && progress[c.id] && progress[c.id].passed);
       examList.innerHTML = exams.length ? exams.map(e => {
         const row = progress[e.id];
         const date = row.created_at ? new Date(row.created_at).toLocaleDateString('de-DE') : '';
@@ -491,7 +447,7 @@
     // Weiterlernen: bis zu 3 offene Inhalte
     const weiterlernenList = document.getElementById('weiterlernenList');
     if (weiterlernenList) {
-      const open = CONTENT_ITEMS.filter(c => !(progress[c.id] && progress[c.id].passed)).slice(0, 3);
+      const open = contentItems().filter(c => !(progress[c.id] && progress[c.id].passed)).slice(0, 3);
       const typeLabel = { artikel: 'Artikel', quiz: 'Quiz', pruefung: 'Online-Prüfung' };
       weiterlernenList.innerHTML = open.length ? open.map(c => `
         <a href="${c.url}" style="display:flex;gap:12px;justify-content:space-between;align-items:baseline;text-decoration:none;color:var(--color-text);font-size:15.5px;padding-bottom:10px;border-bottom:1px solid var(--color-divider)"><span>${escapeHtml(c.label)}</span><span style="font-size:13px;opacity:0.6;flex:none">${typeLabel[c.kind] || ''}</span></a>
@@ -552,8 +508,8 @@
   // --------------------------------------------------------------------
   async function renderLernen(ctx) {
     const { progress } = ctx;
-    const total = CONTENT_ITEMS.length;
-    const done = CONTENT_ITEMS.filter(c => progress[c.id] && progress[c.id].passed).length;
+    const total = contentItems().length;
+    const done = contentItems().filter(c => progress[c.id] && progress[c.id].passed).length;
     const bar = document.getElementById('lernenBar');
     if (bar) bar.style.width = (total ? Math.round((done / total) * 100) : 0) + '%';
     const label = document.getElementById('lernenLabel');
@@ -562,7 +518,7 @@
     const doneList = document.getElementById('bearbeitetList');
     if (doneList) {
       const typeLabel = { artikel: 'Gelesen', quiz: null, pruefung: null };
-      const items = CONTENT_ITEMS.filter(c => progress[c.id] && progress[c.id].passed);
+      const items = contentItems().filter(c => progress[c.id] && progress[c.id].passed);
       doneList.innerHTML = items.length ? items.map(c => {
         const row = progress[c.id];
         const right = row.score != null ? row.score + '/' + row.total : (typeLabel[c.kind] || 'Erledigt');
@@ -665,7 +621,7 @@
     const { progress } = ctx;
     const root = document.getElementById('qualCards');
     if (!root) return;
-    root.innerHTML = QUALIFICATIONS.map(q => {
+    root.innerHTML = qualifications().map(q => {
       const p = qualProgress(q, progress);
       const rows = q.requirements.map(r => {
         const done = !!(progress[r.id] && progress[r.id].passed);
@@ -712,8 +668,8 @@
   // --------------------------------------------------------------------
   async function renderWeg(ctx) {
     const { progress } = ctx;
-    const totalReq = QUALIFICATIONS.reduce((n, q) => n + q.requirements.length, 0);
-    const doneReq = QUALIFICATIONS.reduce((n, q) => n + q.requirements.filter(r => progress[r.id] && progress[r.id].passed).length, 0);
+    const totalReq = qualifications().reduce((n, q) => n + q.requirements.length, 0);
+    const doneReq = qualifications().reduce((n, q) => n + q.requirements.filter(r => progress[r.id] && progress[r.id].passed).length, 0);
     const bar = document.getElementById('wegBar');
     if (bar) bar.style.width = (totalReq ? Math.round((doneReq / totalReq) * 100) : 0) + '%';
     const label = document.getElementById('wegLabel');
@@ -721,7 +677,7 @@
 
     const root = document.getElementById('wegPath');
     if (!root) return;
-    root.innerHTML = QUALIFICATIONS.map(q => {
+    root.innerHTML = qualifications().map(q => {
       const nodes = q.requirements.map(r => {
         const done = !!(progress[r.id] && progress[r.id].passed);
         const isKurs = r.kind === 'kurs';

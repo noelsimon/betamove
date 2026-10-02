@@ -95,6 +95,7 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
 <script src="js/account.js"></script>
 <script>
@@ -120,6 +121,7 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     const qId = new URLSearchParams(location.search).get('q');
+    if (window.BM_QUALIFICATIONS_READY) { try { await window.BM_QUALIFICATIONS_READY; } catch (e) {} }
     const quals = window.BM_QUALIFICATIONS || [];
     const qual = quals.find(q => q.id === qId);
     if (!qual) { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Unbekannte Qualifikation.</p>'); return; }

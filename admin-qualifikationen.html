@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qualifikationen — BETAMOVE Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+      <a href="admin-kurse">Buchungen</a>
+      <a href="admin-kurse-verwaltung">Kurse &amp; Termine</a>
+      <a href="admin-pruefungen">Prüfungen</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1000px;margin:0 auto;padding:48px 28px 96px">
+  <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
+  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Qualifikationen</h1>
+  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Lege fest, welche Artikel, Quiz, Prüfung und welcher Kurs zu einer Qualifikation gehören. Derselbe Artikel/Quiz/Prüfung kann dabei bei beliebig vielen Qualifikationen wiederverwendet werden.</p>
+
+  <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="adminArea" hidden>
+    <div id="formBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:28px 30px;margin-bottom:30px">
+      <h2 id="formTitle" style="margin:0 0 20px;font-size:22px">Qualifikation anlegen</h2>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+          <div class="field"><label>ID (fest, z.B. "freigabe-naturfels")</label><input id="f-id" class="input"></div>
+          <div class="field"><label>Name</label><input id="f-name" class="input" placeholder="z.B. Freigabe Naturfels"></div>
+          <div class="field"><label>Level</label><input id="f-level" class="input" placeholder="z.B. Aufbau"></div>
+          <div class="field"><label>Reihenfolge (Zahl, kleiner = weiter oben)</label><input id="f-sortOrder" type="number" class="input" value="0"></div>
+        </div>
+        <div class="field"><label>Beschreibung</label><textarea id="f-text" class="input" rows="2"></textarea></div>
+
+        <div>
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Benötigter Kurs (optional, einer)</label>
+          <select id="f-kurs" class="input"><option value="">— keiner —</option></select>
+        </div>
+
+        <div>
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Benötigte Artikel</label>
+          <div id="f-artikel" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div>
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Benötigtes Quiz</label>
+          <div id="f-quiz" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div>
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Benötigte Prüfung</label>
+          <div id="f-pruefung" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+
+        <label class="radio" style="font-size:15px"><input type="checkbox" id="f-aktiv" checked><span class="dot"></span><span>Aktiv (im Konto/Zertifikat sichtbar)</span></label>
+        <p id="formError" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-700)"></p>
+        <div style="display:flex;gap:12px">
+          <button type="button" id="saveBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+          <button type="button" id="cancelFormBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" id="newQualBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px;margin-bottom:24px">+ Neue Qualifikation anlegen</button>
+
+    <div id="qualList" style="display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · <a href="impressum">Impressum</a> · <a href="datenschutz">Datenschutz</a> · <a href="agb">AGB</a> · <a href="widerruf">Vertrag widerrufen</a></div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+<script>
+(function(){
+  const escapeHtml = window.bmEscapeHtml;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await window.bmGuardAdminPage();
+    if (!ctx) return;
+    const { client } = ctx;
+    if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
+
+    let quals = [];
+    let anforderungen = [];   // alle Zeilen aus qualifikation_anforderungen
+    let lerninhalte = [];     // Katalog
+    const kurse = (window.BM_COURSES || []).filter(c => !c.isPaket);
+
+    async function loadAll() {
+      const [qualsRes, reqsRes, inhalteRes] = await Promise.all([
+        client.from('qualifikationen').select('*').order('sort_order', { ascending: true }),
+        client.from('qualifikation_anforderungen').select('*'),
+        client.from('lerninhalte').select('*').order('label', { ascending: true })
+      ]);
+      if (qualsRes.error) throw qualsRes.error;
+      if (reqsRes.error) throw reqsRes.error;
+      if (inhalteRes.error) throw inhalteRes.error;
+      quals = qualsRes.data || [];
+      anforderungen = reqsRes.data || [];
+      lerninhalte = inhalteRes.data || [];
+    }
+
+    try {
+      await loadAll();
+    } catch (e) {
+      document.getElementById('qualList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Qualifikationen konnten nicht geladen werden. Bitte Seite neu laden.</p>';
+      return;
+    }
+
+    const formBox = document.getElementById('formBox');
+    const formTitle = document.getElementById('formTitle');
+    const formError = document.getElementById('formError');
+    let editingId = null;
+
+    // Kurs-Auswahl im Formular einmalig befüllen.
+    const kursSelect = document.getElementById('f-kurs');
+    kurse.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k.id;
+      opt.textContent = k.title;
+      kursSelect.appendChild(opt);
+    });
+
+    function renderLerninhalteCheckboxes(kind, containerId, checkedIds) {
+      const container = document.getElementById(containerId);
+      const items = lerninhalte.filter(li => li.kind === kind);
+      container.innerHTML = items.length ? items.map(li => `
+        <label class="radio" style="font-size:14.5px">
+          <input type="checkbox" data-lerninhalt="${escapeHtml(li.id)}" ${checkedIds.has(li.id) ? 'checked' : ''}>
+          <span class="dot"></span>
+          <span>${escapeHtml(li.label)}</span>
+        </label>`).join('') : '<p style="margin:0;font-size:14px;opacity:0.6">Keine vorhanden.</p>';
+    }
+
+    function clearForm() {
+      document.getElementById('f-id').value = '';
+      document.getElementById('f-id').disabled = false;
+      document.getElementById('f-name').value = '';
+      document.getElementById('f-level').value = '';
+      document.getElementById('f-sortOrder').value = String(quals.length + 1);
+      document.getElementById('f-text').value = '';
+      document.getElementById('f-aktiv').checked = true;
+      kursSelect.value = '';
+      renderLerninhalteCheckboxes('artikel', 'f-artikel', new Set());
+      renderLerninhalteCheckboxes('quiz', 'f-quiz', new Set());
+      renderLerninhalteCheckboxes('pruefung', 'f-pruefung', new Set());
+    }
+
+    function fillForm(qual) {
+      const reqs = anforderungen.filter(a => a.qualifikation_id === qual.id);
+      document.getElementById('f-id').value = qual.id;
+      document.getElementById('f-id').disabled = true;
+      document.getElementById('f-name').value = qual.name || '';
+      document.getElementById('f-level').value = qual.level || '';
+      document.getElementById('f-sortOrder').value = qual.sort_order != null ? qual.sort_order : 0;
+      document.getElementById('f-text').value = qual.text || '';
+      document.getElementById('f-aktiv').checked = !!qual.aktiv;
+
+      const kursReq = reqs.find(r => r.kind === 'kurs');
+      kursSelect.value = kursReq ? kursReq.ref_id.replace(/^kurs-/, '') : '';
+
+      renderLerninhalteCheckboxes('artikel', 'f-artikel', new Set(reqs.filter(r => r.kind === 'artikel').map(r => r.ref_id)));
+      renderLerninhalteCheckboxes('quiz', 'f-quiz', new Set(reqs.filter(r => r.kind === 'quiz').map(r => r.ref_id)));
+      renderLerninhalteCheckboxes('pruefung', 'f-pruefung', new Set(reqs.filter(r => r.kind === 'pruefung').map(r => r.ref_id)));
+    }
+
+    function openCreateForm() {
+      editingId = null;
+      clearForm();
+      formTitle.textContent = 'Qualifikation anlegen';
+      formError.hidden = true;
+      formBox.hidden = false;
+      formBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function openEditForm(qual) {
+      editingId = qual.id;
+      fillForm(qual);
+      formTitle.textContent = 'Qualifikation bearbeiten: ' + qual.name;
+      formError.hidden = true;
+      formBox.hidden = false;
+      formBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function closeForm() {
+      formBox.hidden = true;
+      editingId = null;
+    }
+
+    function renderRow(q) {
+      const reqs = anforderungen.filter(a => a.qualifikation_id === q.id);
+      return `<div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;${q.aktiv ? '' : 'opacity:0.55'}">
+        <div style="flex:1;min-width:220px">
+          <div style="font-size:16px;font-weight:600">${escapeHtml(q.name)}</div>
+          <div style="font-size:13.5px;opacity:0.7;margin-top:2px">${escapeHtml(q.level)} · ${reqs.length} Anforderung${reqs.length === 1 ? '' : 'en'}</div>
+        </div>
+        <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:${q.aktiv ? 'var(--color-accent-2-500)' : 'var(--color-neutral-200)'};color:${q.aktiv ? '#ffffff' : 'var(--color-neutral-800)'}">${q.aktiv ? 'Aktiv' : 'Offline'}</span>
+          <div style="display:flex;gap:8px">
+            <button type="button" data-edit style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+            <button type="button" data-toggle-aktiv style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">${q.aktiv ? 'Offline nehmen' : 'Online stellen'}</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function renderList() {
+      const list = document.getElementById('qualList');
+      list.innerHTML = quals.length ? quals.map(q => `<div data-row data-id="${escapeHtml(q.id)}">${renderRow(q)}</div>`).join('') : '<p style="margin:0;font-size:15.5px;opacity:0.7">Noch keine Qualifikationen angelegt.</p>';
+      list.querySelectorAll('[data-row]').forEach(wrap => {
+        const id = wrap.dataset.id;
+        const row = quals.find(q => q.id === id);
+        const editBtn = wrap.querySelector('[data-edit]');
+        if (editBtn) editBtn.addEventListener('click', () => openEditForm(row));
+        const toggleBtn = wrap.querySelector('[data-toggle-aktiv]');
+        if (toggleBtn) toggleBtn.addEventListener('click', async () => {
+          toggleBtn.disabled = true;
+          try {
+            const { error } = await client.from('qualifikationen').update({ aktiv: !row.aktiv }).eq('id', id);
+            if (error) throw error;
+            row.aktiv = !row.aktiv;
+            renderList();
+          } catch (e) {
+            toggleBtn.disabled = false;
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+      });
+    }
+
+    document.getElementById('newQualBtn').addEventListener('click', openCreateForm);
+    document.getElementById('cancelFormBtn').addEventListener('click', closeForm);
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      formError.hidden = true;
+      const id = document.getElementById('f-id').value.trim();
+      const name = document.getElementById('f-name').value.trim();
+      const level = document.getElementById('f-level').value.trim();
+
+      if (!id || !/^[a-z0-9-]+$/.test(id)) { formError.hidden = false; formError.textContent = 'ID ist Pflicht und darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.'; return; }
+      if (!name || !level) { formError.hidden = false; formError.textContent = 'Name und Level sind Pflichtfelder.'; return; }
+
+      const qualPayload = {
+        id,
+        name,
+        level,
+        text: document.getElementById('f-text').value.trim() || null,
+        sort_order: Number(document.getElementById('f-sortOrder').value) || 0,
+        aktiv: document.getElementById('f-aktiv').checked
+      };
+
+      // Gewünschte Anforderungen aus dem Formular ablesen.
+      const desired = [];
+      document.querySelectorAll('#f-artikel [data-lerninhalt]:checked').forEach((el, i) => desired.push({ kind: 'artikel', ref_id: el.dataset.lerninhalt, sort_order: i + 1 }));
+      document.querySelectorAll('#f-quiz [data-lerninhalt]:checked').forEach((el, i) => desired.push({ kind: 'quiz', ref_id: el.dataset.lerninhalt, sort_order: i + 1 }));
+      document.querySelectorAll('#f-pruefung [data-lerninhalt]:checked').forEach((el, i) => desired.push({ kind: 'pruefung', ref_id: el.dataset.lerninhalt, sort_order: i + 1 }));
+      if (kursSelect.value) desired.push({ kind: 'kurs', ref_id: 'kurs-' + kursSelect.value, sort_order: desired.length + 1 });
+
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      try {
+        if (editingId) {
+          const { id: _drop, ...updatePayload } = qualPayload;
+          const { error } = await client.from('qualifikationen').update(updatePayload).eq('id', editingId);
+          if (error) throw error;
+        } else {
+          const { error } = await client.from('qualifikationen').insert(qualPayload);
+          if (error) throw error;
+        }
+
+        // Anforderungen abgleichen: bestehende für diese Qualifikation
+        // komplett ersetzen (löschen + neu einfügen ist hier einfacher und
+        // robuster als einen Diff zu berechnen, und läuft als eine kurze
+        // Sequenz von zwei Aufrufen).
+        const qualId = editingId || id;
+        const { error: delErr } = await client.from('qualifikation_anforderungen').delete().eq('qualifikation_id', qualId);
+        if (delErr) throw delErr;
+        if (desired.length) {
+          const { error: insErr } = await client.from('qualifikation_anforderungen').insert(
+            desired.map(d => ({ qualifikation_id: qualId, kind: d.kind, ref_id: d.ref_id, sort_order: d.sort_order }))
+          );
+          if (insErr) throw insErr;
+        }
+
+        await loadAll();
+        closeForm();
+        renderList();
+      } catch (e) {
+        formError.hidden = false;
+        formError.textContent = editingId ? 'Konnte nicht gespeichert werden.' : 'Konnte nicht angelegt werden — existiert die ID schon?';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    renderList();
+  });
+})();
+</script>
+</body>
+</html>
