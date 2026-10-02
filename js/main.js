@@ -43,6 +43,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Dezenter Hinweis auf lokale Speicherung (kein Cookie-Consent-Banner,
+  // da diese Seite keine Cookies setzt — siehe datenschutz.html Abschnitt 8).
+  // Erscheint einmalig, bis er geschlossen wird.
+  (function () {
+    const KEY = 'betamove-hinweis-geschlossen';
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(KEY) === '1'; } catch (e) {}
+    if (dismissed) return;
+
+    const notice = document.createElement('div');
+    notice.className = 'privacy-notice';
+    notice.setAttribute('role', 'status');
+    notice.innerHTML = '<p>Diese Seite verwendet keine Cookies und kein Tracking – nur technisch notwendigen lokalen Speicher für Login und Lernfortschritt. <a href="datenschutz#local-storage">Mehr dazu</a></p><button type="button">Verstanden</button>';
+    document.body.appendChild(notice);
+
+    const chatFabWrap = document.querySelector('.chat-fab-wrap');
+    if (chatFabWrap) chatFabWrap.classList.add('lifted');
+
+    notice.querySelector('button').addEventListener('click', () => {
+      notice.remove();
+      if (chatFabWrap) chatFabWrap.classList.remove('lifted');
+      try { localStorage.setItem(KEY, '1'); } catch (e) {}
+    });
+  })();
+
   // Chat-Widget: regelbasierter Assistent (keine KI, kein Backend, keine Kosten).
   // Erkennt Stichworte in der Nutzereingabe und antwortet mit passenden,
   // fest hinterlegten Informationen zu Kursen, Material, Preisen etc.
