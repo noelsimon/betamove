@@ -70,6 +70,35 @@
       <button type="button" id="newLiBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px;margin-bottom:20px">+ Neuen Lerninhalt anlegen</button>
 
       <div id="liList" style="display:flex;flex-direction:column;gap:10px"></div>
+
+      <div id="artikelEditBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-top:22px">
+        <h3 id="artikelEditTitle" style="margin:0 0 18px;font-size:19px">Artikelinhalt bearbeiten</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+          <div class="field"><label>Titel (groß, über dem Artikel)</label><input id="ai-titel" class="input"></div>
+          <div class="field"><label>Tags, kommagetrennt (optional)</label><input id="ai-tags" class="input" placeholder="z.B. Technik &amp; Training, Einstieg"></div>
+          <div class="field"><label>Lesezeit (optional)</label><input id="ai-lesezeit" class="input" placeholder="z.B. 12 Min."></div>
+          <div class="field"><label>Untertitel (optional)</label><input id="ai-untertitel" class="input"></div>
+        </div>
+        <div class="field" style="margin-bottom:14px"><label>Einleitung (Lead-Absatz unter dem Titel)</label><textarea id="ai-intro" class="input" rows="2"></textarea></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+          <div class="field"><label>Titelbild-Pfad (z.B. assets-min/wissen-xyz.jpg)</label><input id="ai-hero-bild" class="input"></div>
+          <div class="field"><label>Titelbild Alt-Text</label><input id="ai-hero-alt" class="input"></div>
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label>Inhalt</label>
+          <p style="margin:0 0 8px;font-size:13px;opacity:0.65">Zeilen mit <code>## </code>/<code>### </code> werden Überschriften, <code>- </code> wird eine Liste, <code>&gt; </code> eine Hinweisbox, <code>![Alt](Bildpfad)</code> ein Bild, <code>**fett**</code>/<code>_kursiv_</code>/<code>[Text](Link)</code> funktionieren mitten im Text. Leerzeile = neuer Absatz.</p>
+          <textarea id="ai-markdown" class="input" rows="16" style="font-family:monospace;font-size:14.5px"></textarea>
+        </div>
+        <div style="margin-bottom:18px">
+          <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Vorschau</label>
+          <div id="ai-preview" style="border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:20px 24px;font-size:16px"></div>
+        </div>
+        <p id="artikelEditError" hidden style="margin:0 0 14px;font-size:14.5px;color:var(--color-accent-700)"></p>
+        <div style="display:flex;gap:12px">
+          <button type="button" id="artikelEditSaveBtn" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+          <button type="button" id="artikelEditCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+        </div>
+      </div>
     </section>
 
     <section>
@@ -115,6 +144,7 @@
 <script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
 <script src="js/account.js"></script>
+<script src="js/markdown-lite.js"></script>
 <script>
 (function(){
   const escapeHtml = window.bmEscapeHtml;
@@ -209,7 +239,8 @@
             <div style="font-size:13px;opacity:0.65;margin-top:2px">${escapeHtml(li.id)} · ${escapeHtml(li.url)}${li.kind !== 'artikel' ? ' · Bestehensgrenze: ' + (li.bestehensgrenze != null ? li.bestehensgrenze : 'automatisch') : ''}</div>
           </div>
           <div style="display:flex;gap:8px">
-            <button type="button" data-edit-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+            ${li.kind === 'artikel' ? '<button type="button" data-edit-content style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-2-500);background:transparent;color:var(--color-accent-2-700)">Inhalt bearbeiten</button>' : ''}
+            <button type="button" data-edit-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Katalog-Eintrag</button>
             <button type="button" data-delete-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">Löschen</button>
           </div>
         </div>`).join('');
@@ -217,6 +248,8 @@
         const id = row.dataset.id;
         const li = lerninhalte.find(x => x.id === id);
         row.querySelector('[data-edit-li]').addEventListener('click', () => openEditLiForm(li));
+        const contentBtn = row.querySelector('[data-edit-content]');
+        if (contentBtn) contentBtn.addEventListener('click', () => openArtikelEditor(li));
         row.querySelector('[data-delete-li]').addEventListener('click', async () => {
           if (!confirm('„' + li.label + '" wirklich löschen? Falls er in einer Qualifikation verwendet wird, bitte dort vorher entfernen.')) return;
           try {
@@ -282,6 +315,85 @@
         liFormError.textContent = editingLiId ? 'Konnte nicht gespeichert werden.' : 'Konnte nicht angelegt werden — existiert die ID schon?';
       } finally {
         saveBtn.disabled = false;
+      }
+    });
+
+    // ------------------------------------------------------------------
+    // Artikelinhalt (Titel, Bild, Markdown-Text) je Lerninhalt kind=artikel
+    // ------------------------------------------------------------------
+    const artikelEditBox = document.getElementById('artikelEditBox');
+    const artikelEditError = document.getElementById('artikelEditError');
+    const aiMarkdown = document.getElementById('ai-markdown');
+    const aiPreview = document.getElementById('ai-preview');
+    let editingArtikelId = null;
+
+    function updatePreview() {
+      aiPreview.innerHTML = typeof window.bmRenderMarkdownLite === 'function' ? window.bmRenderMarkdownLite(aiMarkdown.value) : '';
+    }
+    aiMarkdown.addEventListener('input', updatePreview);
+
+    async function openArtikelEditor(li) {
+      editingArtikelId = li.id;
+      artikelEditError.hidden = true;
+      document.getElementById('artikelEditTitle').textContent = 'Artikelinhalt bearbeiten: ' + li.label;
+      document.getElementById('ai-titel').value = li.label || '';
+      document.getElementById('ai-tags').value = '';
+      document.getElementById('ai-lesezeit').value = '';
+      document.getElementById('ai-untertitel').value = '';
+      document.getElementById('ai-intro').value = '';
+      document.getElementById('ai-hero-bild').value = '';
+      document.getElementById('ai-hero-alt').value = '';
+      aiMarkdown.value = '';
+      try {
+        const { data, error } = await client.from('artikel_inhalte').select('*').eq('lerninhalt_id', li.id).maybeSingle();
+        if (error) throw error;
+        if (data) {
+          document.getElementById('ai-titel').value = data.titel || '';
+          document.getElementById('ai-tags').value = data.tags || '';
+          document.getElementById('ai-lesezeit').value = data.lesezeit || '';
+          document.getElementById('ai-untertitel').value = data.untertitel || '';
+          document.getElementById('ai-intro').value = data.intro || '';
+          document.getElementById('ai-hero-bild').value = data.hero_bild || '';
+          document.getElementById('ai-hero-alt').value = data.hero_alt || '';
+          aiMarkdown.value = data.inhalt_markdown || '';
+        }
+      } catch (e) { /* noch kein Inhalt vorhanden — leeres Formular bleibt */ }
+      updatePreview();
+      artikelEditBox.hidden = false;
+      artikelEditBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('artikelEditCancelBtn').addEventListener('click', () => { artikelEditBox.hidden = true; editingArtikelId = null; });
+
+    document.getElementById('artikelEditSaveBtn').addEventListener('click', async () => {
+      artikelEditError.hidden = true;
+      const titel = document.getElementById('ai-titel').value.trim();
+      if (!titel) { artikelEditError.hidden = false; artikelEditError.textContent = 'Titel ist Pflicht.'; return; }
+
+      const payload = {
+        lerninhalt_id: editingArtikelId,
+        titel,
+        tags: document.getElementById('ai-tags').value.trim(),
+        lesezeit: document.getElementById('ai-lesezeit').value.trim(),
+        untertitel: document.getElementById('ai-untertitel').value.trim(),
+        intro: document.getElementById('ai-intro').value.trim(),
+        hero_bild: document.getElementById('ai-hero-bild').value.trim(),
+        hero_alt: document.getElementById('ai-hero-alt').value.trim(),
+        inhalt_markdown: aiMarkdown.value
+      };
+
+      const btn = document.getElementById('artikelEditSaveBtn');
+      btn.disabled = true;
+      try {
+        const { error } = await client.from('artikel_inhalte').upsert(payload, { onConflict: 'lerninhalt_id' });
+        if (error) throw error;
+        artikelEditBox.hidden = true;
+        editingArtikelId = null;
+      } catch (e) {
+        artikelEditError.hidden = false;
+        artikelEditError.textContent = 'Konnte nicht gespeichert werden.';
+      } finally {
+        btn.disabled = false;
       }
     });
 
