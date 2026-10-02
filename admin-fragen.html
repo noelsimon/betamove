@@ -42,7 +42,7 @@
 
     <section style="margin-bottom:46px">
       <h2 style="margin:0 0 6px;font-size:22px">Katalog</h2>
-      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Ein neuer Artikel braucht danach noch eine fertige Seite von mir (schick mir Text &amp; Bilder im Chat). Ein neues Quiz/eine neue Prüfung kannst du direkt unten mit Fragen befüllen — für die eigentliche Seiten-URL melde dich kurz bei mir.</p>
+      <p style="margin:0 0 18px;font-size:15px;opacity:0.7">Bei jedem Artikel gibt es unten den blauen Button <strong>„Inhalt bearbeiten"</strong> — damit änderst du Titel, Bild und Text. Bei jedem Quiz/jeder Prüfung gibt es <strong>„Fragen bearbeiten"</strong> — damit änderst du die Fragen. Die kleinen grauen Buttons daneben sind nur für die technischen Katalog-Daten (ID/Titel/URL), die du normalerweise nicht brauchst. Ein neuer Artikel braucht danach noch eine fertige Seite von mir (schick mir Text &amp; Bilder im Chat) — bei neuem Quiz/neuer Prüfung genügt kurz Bescheid für die Seiten-URL, Fragen kannst du direkt selbst eintragen.</p>
 
       <div id="liFormBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:22px">
         <h3 id="liFormTitle" style="margin:0 0 18px;font-size:19px">Lerninhalt anlegen</h3>
@@ -238,10 +238,11 @@
             <div style="font-size:15.5px;font-weight:600">${escapeHtml(li.label)}</div>
             <div style="font-size:13px;opacity:0.65;margin-top:2px">${escapeHtml(li.id)} · ${escapeHtml(li.url)}${li.kind !== 'artikel' ? ' · Bestehensgrenze: ' + (li.bestehensgrenze != null ? li.bestehensgrenze : 'automatisch') : ''}</div>
           </div>
-          <div style="display:flex;gap:8px">
-            ${li.kind === 'artikel' ? '<button type="button" data-edit-content style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-2-500);background:transparent;color:var(--color-accent-2-700)">Inhalt bearbeiten</button>' : ''}
-            <button type="button" data-edit-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Katalog-Eintrag</button>
-            <button type="button" data-delete-li style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700)">Löschen</button>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            ${li.kind === 'artikel' ? '<button type="button" data-edit-content class="btn btn-primary" style="font-size:13px;padding:8px 16px">Inhalt bearbeiten</button>' : ''}
+            ${li.kind === 'quiz' || li.kind === 'pruefung' ? '<button type="button" data-edit-fragen class="btn btn-primary" style="font-size:13px;padding:8px 16px">Fragen bearbeiten</button>' : ''}
+            <button type="button" data-edit-li style="cursor:pointer;font:inherit;font-size:12.5px;padding:7px 12px;border-radius:999px;border:1px solid var(--color-divider);background:transparent;color:var(--color-text);opacity:0.7">ID/Titel/URL ändern</button>
+            <button type="button" data-delete-li style="cursor:pointer;font:inherit;font-size:12.5px;padding:7px 12px;border-radius:999px;border:1px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700);opacity:0.85">Löschen</button>
           </div>
         </div>`).join('');
       list.querySelectorAll('[data-li]').forEach(row => {
@@ -250,6 +251,8 @@
         row.querySelector('[data-edit-li]').addEventListener('click', () => openEditLiForm(li));
         const contentBtn = row.querySelector('[data-edit-content]');
         if (contentBtn) contentBtn.addEventListener('click', () => openArtikelEditor(li));
+        const fragenBtn = row.querySelector('[data-edit-fragen]');
+        if (fragenBtn) fragenBtn.addEventListener('click', () => jumpToFragenEditor(li));
         row.querySelector('[data-delete-li]').addEventListener('click', async () => {
           if (!confirm('„' + li.label + '" wirklich löschen? Falls er in einer Qualifikation verwendet wird, bitte dort vorher entfernen.')) return;
           try {
@@ -633,6 +636,12 @@
         fragenArea.hidden = false;
       }
     });
+
+    function jumpToFragenEditor(li) {
+      fragenSelect.value = li.id;
+      fragenSelect.dispatchEvent(new Event('change'));
+      fragenSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
     renderLiList();
     renderFragenSelect();
