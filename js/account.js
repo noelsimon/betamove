@@ -338,6 +338,16 @@
       adminLink.style.cssText = 'text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-accent-700);border:2px dashed var(--color-accent-300);display:flex;align-items:center;gap:10px';
       adminLink.textContent = 'Kursverwaltung (Admin)';
       navEl.appendChild(adminLink);
+      // js/main.js hat das Mobile-Dropdown schon aus den vorhandenen Links
+      // gebaut, bevor dieser (asynchrone) Admin-Link dazukam — hier nachtragen.
+      const mobileSelect = document.querySelector('.konto-mobile-row select');
+      if (mobileSelect && !mobileSelect.querySelector('[data-admin-link]')) {
+        const opt = document.createElement('option');
+        opt.value = adminLink.getAttribute('href');
+        opt.textContent = adminLink.textContent;
+        opt.dataset.adminLink = 'true';
+        mobileSelect.appendChild(opt);
+      }
     }
 
     const vorname = (profile && profile.vorname) || session.user.user_metadata.vorname || 'Kletterer*in';
@@ -354,13 +364,12 @@
       if (level) { el.textContent = level; el.hidden = false; } else { el.hidden = true; }
     });
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
+    document.querySelectorAll('#logoutBtn, [data-logout-btn]').forEach(logoutBtn => {
       logoutBtn.addEventListener('click', async () => {
         try { await client.auth.signOut(); } catch (e) {}
         location.href = '/';
       });
-    }
+    });
 
     return { client, session, profile: profile || { vorname, nachname, email, level }, progress, bookings };
   }

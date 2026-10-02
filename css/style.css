@@ -148,6 +148,13 @@ textarea.input { resize: vertical; font-family: inherit; }
 .konto-nav-link { text-decoration: none; font-size: 15.5px; font-weight: 500; padding: 13px 18px; border-radius: 999px; background: #ffffff; color: var(--color-text); border: 2px solid var(--color-divider); display: flex; align-items: center; gap: 10px; }
 .konto-nav-link.active { background: var(--color-accent); color: #ffffff; border-color: var(--color-accent); }
 
+/* Kompakte Konto-Navigation für schmale Screens (von js/main.js eingefügt):
+   kleiner Abmelden-Button + Dropdown statt Profilkarte + Button-Liste.
+   Standardmäßig versteckt, auf Mobile per Media Query eingeblendet. */
+.konto-mobile-row { display: none; gap: 10px; align-items: center; margin-bottom: 18px; }
+.konto-mobile-row select { flex: 1; min-width: 0; font: inherit; font-size: 15px; font-weight: 600; padding: 12px 16px; border-radius: 999px; border: 2px solid var(--color-divider); background: #ffffff; color: var(--color-text); }
+.konto-mobile-row [data-logout-btn] { cursor: pointer; font: inherit; flex: none; font-size: 14px; font-weight: 600; padding: 12px 16px; border-radius: 999px; border: 2px solid var(--color-divider); background: transparent; color: var(--color-text); }
+
 .site-footer { background: var(--color-neutral-900); color: var(--color-neutral-200); }
 .site-footer a { color: var(--color-neutral-200); text-decoration: none; }
 .site-footer a:hover { color: #ffffff; text-decoration: underline; }
@@ -199,11 +206,15 @@ textarea.input { resize: vertical; font-family: inherit; }
   [data-r="path"] { grid-template-columns: minmax(0, 1fr) !important; }
   [data-r="dash"] { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
   [data-r="dashside"] { position: static !important; top: auto !important; }
-  /* Konto-Nav: auf schmalen Screens als horizontal scrollbare Reihe statt
-     als lange Liste übereinandergestapelter Buttons vor dem eigentlichen
-     Inhalt — sonst muss man erst an 5-6 Buttons vorbeiscrollen. */
-  [data-r="konto-nav"] { flex-direction: row !important; flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 2px; margin: 0 -2px; }
-  [data-r="konto-nav"] > a { flex: none !important; white-space: nowrap; font-size: 14.5px !important; padding: 10px 16px !important; }
+  /* Konto-Nav auf schmalen Screens: Profilkarte (Name steht eh schon in der
+     Überschrift "Hallo ...") und die lange Button-Liste ausblenden, statt
+     dessen ein kompaktes Dropdown + kleiner Abmelden-Button (von js/main.js
+     eingefügt, siehe .konto-mobile-row) — sonst scrollt man erst an der
+     Profilkarte und 5-6 Buttons vorbei, bevor der Inhalt kommt. */
+  [data-r="dashside"] > div:first-child { display: none !important; }
+  [data-r="konto-nav"] { display: none !important; }
+  [data-r="dashside"] > #logoutBtn { display: none !important; }
+  .konto-mobile-row { display: flex !important; }
   [data-r="trust"] { grid-template-columns: minmax(0, 1fr) !important; gap: 20px !important; padding: 24px 26px !important; }
   [data-r="hero"] h1 { font-size: 34px !important; }
   [data-r="summary"] { grid-template-columns: minmax(0, 1fr) !important; }

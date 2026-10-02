@@ -43,6 +43,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Konto-Nav fürs Handy: Dropdown + kompakter Abmelden-Button statt
+  // Profilkarte + langer Button-Liste (siehe .konto-mobile-row in
+  // css/style.css). Die eigentlichen Links bleiben im DOM (für Desktop) —
+  // das Dropdown wird nur aus ihnen abgeleitet, keine doppelte Linkliste.
+  (function () {
+    const dashside = document.querySelector('[data-r="dashside"]');
+    const kontoNav = document.querySelector('[data-r="konto-nav"]');
+    if (!dashside || !kontoNav) return;
+
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', 'Konto-Bereich wählen');
+    kontoNav.querySelectorAll('a').forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.getAttribute('href');
+      opt.textContent = a.textContent;
+      if (a.classList.contains('active')) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => { location.href = select.value; });
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.type = 'button';
+    logoutBtn.setAttribute('data-logout-btn', '');
+    logoutBtn.textContent = 'Abmelden';
+
+    const row = document.createElement('div');
+    row.className = 'konto-mobile-row';
+    row.appendChild(select);
+    row.appendChild(logoutBtn);
+    // Vor die Nav einfügen (nicht als allererstes Kind), damit die
+    // Profilkarte davor ihr :first-child-Selektor in der mobilen CSS-Regel
+    // behält und nicht stattdessen diese neue Zeile trifft.
+    dashside.insertBefore(row, kontoNav);
+  })();
+
   // Dezenter Hinweis auf lokale Speicherung (kein Cookie-Consent-Banner,
   // da diese Seite keine Cookies setzt — siehe datenschutz.html Abschnitt 8).
   // Erscheint einmalig, bis er geschlossen wird.
