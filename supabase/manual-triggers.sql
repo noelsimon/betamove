@@ -133,20 +133,66 @@ create trigger trg_notify_kontaktanfrage
   for each row execute function public.trg_fn_notify_kontaktanfrage();
 
 -- ============================================================================
+-- 3) Trigger für kursanmeldungen (Teilnahme bestätigt) -> notify-teilnahme-bestaetigt
+-- ============================================================================
+-- Feuert nur, wenn teilnahme_bestaetigt von false auf true wechselt (nicht
+-- bei jeder sonstigen Änderung der Buchung, z.B. Notiz oder Storno).
+
+create or replace function public.trg_fn_notify_teilnahme_bestaetigt()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_secret text;
+begin
+  select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'webhook_secret' limit 1;
+  begin
+    perform net.http_post(
+      url := 'https://nzmszupobienfwjaqcmw.supabase.co/functions/v1/notify-teilnahme-bestaetigt',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA',
+        'X-Webhook-Secret', coalesce(v_secret, '')
+      ),
+      body := jsonb_build_object(
+        'type', 'UPDATE',
+        'table', 'kursanmeldungen',
+        'record', to_jsonb(NEW)
+      )
+    );
+  exception when others then
+    raise warning 'trg_fn_notify_teilnahme_bestaetigt: net.http_post fehlgeschlagen: %', sqlerrm;
+  end;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_notify_teilnahme_bestaetigt on public.kursanmeldungen;
+create trigger trg_notify_teilnahme_bestaetigt
+  after update on public.kursanmeldungen
+  for each row
+  when (OLD.teilnahme_bestaetigt is distinct from NEW.teilnahme_bestaetigt and NEW.teilnahme_bestaetigt = true)
+  execute function public.trg_fn_notify_teilnahme_bestaetigt();
+
+-- ============================================================================
 -- Hinweis zum Bearer-Token oben: das ist der öffentliche "publishable"/anon
 -- Key (kein Geheimnis, siehe supabase/schema.sql) — er wird hier nur benutzt,
 -- damit Supabase den Aufruf überhaupt als authentifizierte Anfrage annimmt
 -- (das allein reicht NICHT als Schutz, siehe Hinweis oben zu v3 — den
 -- eigentlichen Schutz übernimmt "X-Webhook-Secret"). Falls du deinen anon
--- key später einmal rotierst, muss er hier oben in beiden Funktionen (Zeile
--- mit "Authorization") aktualisiert werden.
+-- key später einmal rotierst, muss er hier oben in allen drei Funktionen
+-- (Zeile mit "Authorization") aktualisiert werden.
 --
 -- Test danach: linkes Hauptmenü -> Database -> Triggers sollte
--- "trg_notify_kursanmeldung" und "trg_notify_kontaktanfrage" zeigen (grüner
--- Haken = aktiv).
+-- "trg_notify_kursanmeldung", "trg_notify_kontaktanfrage" und
+-- "trg_notify_teilnahme_bestaetigt" zeigen (grüner Haken = aktiv).
 --
--- Falls die Mail trotzdem nicht ankommt, jetzt aber die Anmeldung selbst
--- funktioniert: Database -> Logs -> Postgres Logs nach "warning" und
--- "notify_kursanmeldung" filtern, dort steht dann die genaue Fehlermeldung
--- vom net.http_post-Aufruf.
+-- Falls eine Mail trotzdem nicht ankommt, der auslösende Vorgang selbst aber
+-- funktioniert hat: Database -> Logs -> Postgres Logs nach "warning"
+-- filtern, dort steht die genaue Fehlermeldung vom net.http_post-Aufruf. Für
+-- die tatsächliche HTTP-Antwort (z.B. 401/404) stattdessen im SQL Editor
+-- `select * from net._http_response order by id desc limit 5;` ausführen.
 -- ============================================================================

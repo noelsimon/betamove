@@ -2,11 +2,13 @@
 
 Diese Anleitung richtet sich an dich als Betreiberin, nicht an Programmierer*innen — du brauchst
 dafür keine Kommandozeile, alles geht über zwei Web-Dashboards (Resend und Supabase). Am Ende
-bekommst du bei jeder neuen Kursanmeldung eine E-Mail, und die anmeldende Person automatisch eine
-Bestätigungsmail.
+bekommst du bei jeder neuen Kursanmeldung eine E-Mail, die anmeldende Person automatisch eine
+Bestätigungsmail, und wenn du eine Teilnahme bestätigst, bekommt die betroffene Person ebenfalls
+eine Mail.
 
-Der Code dafür ist bereits fertig (`supabase/functions/notify-kursanmeldung/` und
-`supabase/functions/notify-kontaktanfrage/`) — hier geht es nur noch ums Scharfschalten.
+Der Code dafür ist bereits fertig (`supabase/functions/notify-kursanmeldung/`,
+`supabase/functions/notify-kontaktanfrage/` und `supabase/functions/notify-teilnahme-bestaetigt/`)
+— hier geht es nur noch ums Scharfschalten.
 
 ## 1. Kostenloses Resend-Konto erstellen
 
@@ -45,7 +47,7 @@ Schritt 4 als `FROM_EMAIL` ein.
 **Wichtig:** Dieser Key gehört niemals in den Website-Code oder ins GitHub-Repo — er wird gleich
 als „Secret" direkt bei Supabase hinterlegt (nur dort sichtbar, nicht im Frontend).
 
-## 4. Die beiden E-Mail-Functions bei Supabase einrichten
+## 4. Die drei E-Mail-Functions bei Supabase einrichten
 
 Der einfachste Weg ohne Kommandozeile ist über das Supabase-Dashboard. (Falls du lieber mit der
 Supabase-Kommandozeile arbeitest, findest du die Kurzfassung ganz unten.)
@@ -59,6 +61,8 @@ Supabase-Kommandozeile arbeitest, findest du die Kurzfassung ganz unten.)
    kompletten Inhalt und füge ihn im Dashboard-Editor ein. Speichern/Deploy klicken.
 4. Wiederhole das für die zweite Function: Name `notify-kontaktanfrage`, Inhalt aus
    `supabase/functions/notify-kontaktanfrage/index.ts`.
+5. Und für die dritte Function: Name `notify-teilnahme-bestaetigt`, Inhalt aus
+   `supabase/functions/notify-teilnahme-bestaetigt/index.ts`.
 
 ### 4b. API-Key und Webhook-Passwort als Secrets hinterlegen
 
@@ -73,20 +77,20 @@ Supabase-Kommandozeile arbeitest, findest du die Kurzfassung ganz unten.)
    ```sql
    select vault.create_secret('<dasselbe-Zufallspasswort>', 'webhook_secret');
    ```
-5. Speichern. Die Secrets gelten automatisch für alle Edge Functions des Projekts, also für beide.
+5. Speichern. Die Secrets gelten automatisch für alle Edge Functions des Projekts, also für alle drei.
 
 ### 4c. Absenderadresse prüfen
 
-Am Anfang jeder der beiden Dateien steht:
+Am Anfang jeder der drei Dateien steht mindestens:
 
 ```ts
-const OWNER_EMAIL = "info@betamove.de"; // TODO: ggf. anpassen
 const FROM_EMAIL = "BETAMOVE <info@betamove.de>"; // TODO: ggf. anpassen, sobald Domain bei Resend verifiziert ist
 ```
 
-Falls deine echte Adresse anders lautet, oder du (siehe Schritt 2) vorerst mit der
-Resend-Testadresse arbeitest, passe diese beiden Zeilen im Dashboard-Editor an, bevor du erneut
-„Deploy" klickst.
+(`notify-kursanmeldung` und `notify-kontaktanfrage` haben zusätzlich `OWNER_EMAIL` — die Adresse, an
+die die Benachrichtigung an dich selbst geht.) Falls deine echte Adresse anders lautet, oder du
+(siehe Schritt 2) vorerst mit der Resend-Testadresse arbeitest, passe die betroffenen Zeilen im
+Dashboard-Editor an, bevor du erneut „Deploy" klickst.
 
 ## 5. Database Webhook einrichten
 
@@ -121,8 +125,10 @@ Falls du die [Supabase CLI](https://supabase.com/docs/guides/cli) bereits instal
 supabase login
 supabase link --project-ref <dein-projekt-ref>
 supabase secrets set RESEND_API_KEY=<dein-resend-api-key>
+supabase secrets set WEBHOOK_SECRET=<dasselbe-Zufallspasswort-wie-im-Vault>
 supabase functions deploy notify-kursanmeldung
 supabase functions deploy notify-kontaktanfrage
+supabase functions deploy notify-teilnahme-bestaetigt
 ```
 
 Den Database Webhook (Schritt 5) musst du trotzdem im Dashboard einrichten — dafür gibt es keinen

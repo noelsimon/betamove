@@ -295,6 +295,24 @@
     }
   }
 
+  // Artikel/Quiz, die vor dem Login (oder in einem anderen Browser) nur
+  // lokal als "gelesen"/"bestanden" markiert wurden, nachträglich mit dem
+  // Konto synchronisieren — ohne das ging die Markierung beim ersten Login
+  // verloren, weil bisher nur Konto -> Browser abgeglichen wurde, nicht
+  // umgekehrt. Prüfungen sind bewusst ausgenommen: die laufen ausschließlich
+  // über die serverseitige Auswertung (siehe bmSubmitExam/submit_pruefung).
+  function backfillLocalProgress(progress) {
+    try {
+      CONTENT_ITEMS.forEach(item => {
+        if (item.kind === 'pruefung') return;
+        const already = progress[item.id] && progress[item.id].passed;
+        if (!already && bmProgress.isDone(item.id)) {
+          window.bmSyncLernfortschritt(item.id, item.kind);
+        }
+      });
+    } catch (e) {}
+  }
+
   async function syncHeaderAndLocalProgress() {
     const session = await getSession();
     syncNavHeader(session);
@@ -305,6 +323,7 @@
     try {
       Object.keys(progress).forEach(itemId => { if (progress[itemId].passed) bmProgress.markDone(itemId); });
     } catch (e) { /* bmProgress kommt aus main.js, sollte immer da sein */ }
+    backfillLocalProgress(progress);
   }
 
   // --------------------------------------------------------------------
@@ -341,6 +360,7 @@
       fetchProgress(client, session.user.id),
       fetchBookings(client, session.user.id)
     ]);
+    backfillLocalProgress(progress);
 
     // Kursteilnahme kommt nicht mehr aus einem Selbst-Toggle, sondern aus der
     // Bestätigung der Kursleitung auf der jeweiligen Buchung (siehe
