@@ -624,6 +624,190 @@
   }
 
   // --------------------------------------------------------------------
+  // Seite: konto-training — Ziele + Logbuch (v1, siehe schema-training.sql).
+  // Die Stoppuhr braucht keine Daten und läuft in konto-training.html selbst.
+  // --------------------------------------------------------------------
+  const TYP_LABEL = { bouldern: 'Bouldern', seilklettern: 'Seilklettern', fingerkraft: 'Fingerkraft/Krafttraining', ausdauer: 'Ausdauer/Cardio', mobility: 'Mobility/Dehnen', sonstiges: 'Sonstiges' };
+
+  async function renderTraining(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    const datumInput = document.getElementById('log-datum');
+    if (datumInput && !datumInput.value) datumInput.value = new Date().toISOString().slice(0, 10);
+
+    let ziele = [];
+    let log = [];
+    try {
+      const [zieleRes, logRes] = await Promise.all([
+        client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
+        client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false })
+      ]);
+      if (zieleRes.error) throw zieleRes.error;
+      if (logRes.error) throw logRes.error;
+      ziele = zieleRes.data || [];
+      log = logRes.data || [];
+    } catch (e) {
+      const el = document.getElementById('zieleList');
+      if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
+    }
+
+    // ---- Ziele ----
+    function renderZiele() {
+      const list = document.getElementById('zieleList');
+      if (!list) return;
+      list.innerHTML = ziele.length ? ziele.map(z => `
+        <div data-ziel data-id="${z.id}" style="display:flex;gap:10px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 14px">
+          <button type="button" data-ziel-toggle aria-label="Erledigt" style="cursor:pointer;flex:none;width:22px;height:22px;margin-top:1px;border-radius:6px;border:2px solid ${z.erreicht ? 'var(--color-accent-2-500)' : 'var(--color-divider)'};background:${z.erreicht ? 'var(--color-accent-2-500)' : '#ffffff'};color:#ffffff;display:grid;place-items:center;font-size:12px;font-weight:700">${z.erreicht ? '✓' : ''}</button>
+          <span style="flex:1;min-width:0;font-size:15px;${z.erreicht ? 'text-decoration:line-through;opacity:0.6' : ''}">${escapeHtml(z.text)}</span>
+          <button type="button" data-ziel-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+        </div>`).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Ziele gesetzt.</p>';
+      list.querySelectorAll('[data-ziel]').forEach(row => {
+        const id = row.dataset.id;
+        const ziel = ziele.find(z => z.id === id);
+        row.querySelector('[data-ziel-toggle]').addEventListener('click', async () => {
+          const next = !ziel.erreicht;
+          try {
+            const { error } = await client.from('trainingsziele').update({ erreicht: next, erreicht_am: next ? new Date().toISOString() : null }).eq('id', id);
+            if (error) throw error;
+            ziel.erreicht = next;
+            renderZiele();
+          } catch (e) { alert('Konnte nicht gespeichert werden.'); }
+        });
+        row.querySelector('[data-ziel-delete]').addEventListener('click', async () => {
+          if (!confirm('Ziel „' + ziel.text + '" wirklich löschen?')) return;
+          try {
+            const { error } = await client.from('trainingsziele').delete().eq('id', id);
+            if (error) throw error;
+            ziele = ziele.filter(z => z.id !== id);
+            renderZiele();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderZiele();
+
+    const zielForm = document.getElementById('zielForm');
+    if (zielForm) {
+      zielForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('zielInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const btn = zielForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          const { data, error } = await client.from('trainingsziele').insert({ user_id: userId, text }).select().single();
+          if (error) throw error;
+          ziele.unshift(data);
+          input.value = '';
+          renderZiele();
+        } catch (e) {
+          alert('Konnte nicht gespeichert werden.');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    // ---- Logbuch + Diese-Woche-Summe ----
+    function startOfWeek() {
+      const d = new Date();
+      const day = (d.getDay() + 6) % 7; // Montag = 0
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - day);
+      return d;
+    }
+
+    function renderWeekSummary() {
+      const monday = startOfWeek();
+      const weekEntries = log.filter(l => l.datum && new Date(l.datum + 'T00:00:00') >= monday);
+      const countEl = document.getElementById('weekCount');
+      const minEl = document.getElementById('weekMinutes');
+      if (countEl) countEl.textContent = String(weekEntries.length);
+      if (minEl) minEl.textContent = String(weekEntries.reduce((sum, l) => sum + (l.dauer_minuten || 0), 0));
+    }
+
+    function renderLog() {
+      const list = document.getElementById('logList');
+      if (!list) return;
+      list.innerHTML = log.length ? log.map(l => {
+        const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+        const meta = [TYP_LABEL[l.typ] || l.typ, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
+        return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
+              <span style="font-size:15.5px;font-weight:600">${escapeHtml(date)}</span>
+              <span style="font-size:13.5px;opacity:0.65">${escapeHtml(meta)}</span>
+            </div>
+            ${l.notiz ? '<p style="margin:6px 0 0;font-size:14.5px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
+          </div>
+          <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Einheit eingetragen.</p>';
+      list.querySelectorAll('[data-log]').forEach(row => {
+        const id = row.dataset.id;
+        row.querySelector('[data-log-delete]').addEventListener('click', async () => {
+          if (!confirm('Eintrag wirklich löschen?')) return;
+          try {
+            const { error } = await client.from('trainingslog').delete().eq('id', id);
+            if (error) throw error;
+            log = log.filter(l => l.id !== id);
+            renderLog();
+            renderWeekSummary();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderLog();
+    renderWeekSummary();
+
+    const logForm = document.getElementById('logForm');
+    const logFormError = document.getElementById('logFormError');
+    if (logForm) {
+      logForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        logFormError.hidden = true;
+        const datum = document.getElementById('log-datum').value;
+        const typ = document.getElementById('log-typ').value;
+        const dauerRaw = document.getElementById('log-dauer').value;
+        const anstrengungRaw = document.getElementById('log-anstrengung').value;
+        const notiz = document.getElementById('log-notiz').value.trim();
+
+        if (!datum) { logFormError.hidden = false; logFormError.textContent = 'Bitte ein Datum wählen.'; return; }
+
+        const payload = {
+          user_id: userId,
+          datum,
+          typ,
+          dauer_minuten: dauerRaw ? Number(dauerRaw) : null,
+          anstrengung: anstrengungRaw ? Number(anstrengungRaw) : null,
+          notiz: notiz || null
+        };
+
+        const btn = logForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          const { data, error } = await client.from('trainingslog').insert(payload).select().single();
+          if (error) throw error;
+          log.unshift(data);
+          log.sort((a, b) => (b.datum + b.created_at).localeCompare(a.datum + a.created_at));
+          document.getElementById('log-dauer').value = '';
+          document.getElementById('log-anstrengung').value = '';
+          document.getElementById('log-notiz').value = '';
+          renderLog();
+          renderWeekSummary();
+        } catch (e) {
+          logFormError.hidden = false;
+          logFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------
   // Seite: konto-qualifikationen
   // --------------------------------------------------------------------
   async function renderQualifikationen(ctx) {
@@ -787,7 +971,8 @@
       'konto-profil': renderProfil,
       'konto-lernen': renderLernen,
       'konto-qualifikationen': renderQualifikationen,
-      'konto-weg': renderWeg
+      'konto-weg': renderWeg,
+      'konto-training': renderTraining
     };
 
     if (accountPages[page]) {
