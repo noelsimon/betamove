@@ -89,5 +89,4 @@ window.BM_COURSES_READY = (async function bmLoadCourses() {
     // dann ihren eigenen "nicht erreichbar"-Hinweis statt harter Fehler.
     window.BM_COURSES = [];
   }
-  document.dispatchEvent(new CustomEvent('bm:courses-ready'));
 })();

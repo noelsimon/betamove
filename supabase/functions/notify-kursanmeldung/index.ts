@@ -34,6 +34,12 @@ const FROM_EMAIL = "BETAMOVE <info@betamove.de>";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_API_URL = "https://api.resend.com/emails";
 
+// Geteiltes Geheimnis zwischen dieser Function und dem Postgres-Trigger
+// (supabase/manual-triggers.sql), das NICHT der öffentliche anon key ist.
+// Nur Aufrufe mit diesem Secret werden verarbeitet. Gesetzt über
+// `supabase secrets set WEBHOOK_SECRET=...` — siehe EMAIL-SETUP.md.
+const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET");
+
 interface KursanmeldungRecord {
   id?: string;
   vorname: string;
@@ -218,6 +224,11 @@ Deno.serve(async (req: Request) => {
   // Nur POST wird erwartet (Supabase Database Webhooks senden POST).
   if (req.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
+  }
+
+  // Nur der eigene Postgres-Trigger darf diese Function auslösen.
+  if (!WEBHOOK_SECRET || req.headers.get("X-Webhook-Secret") !== WEBHOOK_SECRET) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   let payload: DatabaseWebhookPayload;

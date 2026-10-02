@@ -60,12 +60,20 @@ Supabase-Kommandozeile arbeitest, findest du die Kurzfassung ganz unten.)
 4. Wiederhole das für die zweite Function: Name `notify-kontaktanfrage`, Inhalt aus
    `supabase/functions/notify-kontaktanfrage/index.ts`.
 
-### 4b. API-Key als Secret hinterlegen
+### 4b. API-Key und Webhook-Passwort als Secrets hinterlegen
 
 1. **Project Settings → Edge Functions → Secrets** (manchmal auch unter „Manage secrets" direkt in
    der Functions-Übersicht zu finden).
 2. Neues Secret anlegen: Name genau `RESEND_API_KEY`, Wert = der Key aus Schritt 3.
-3. Speichern. Das Secret gilt automatisch für alle Edge Functions des Projekts, also für beide.
+3. Noch ein Secret anlegen: Name genau `WEBHOOK_SECRET`, Wert = ein langes Zufallspasswort deiner
+   Wahl (z. B. vom Programmierer erhalten, oder selbst erzeugt). Dieses Passwort stellt sicher,
+   dass nur der eigene Datenbank-Trigger (Schritt 5) die Function auslösen kann.
+4. **Dasselbe Passwort** zusätzlich einmalig im SQL Editor hinterlegen (sonst schickt der Trigger
+   es nicht mit):
+   ```sql
+   select vault.create_secret('<dasselbe-Zufallspasswort>', 'webhook_secret');
+   ```
+5. Speichern. Die Secrets gelten automatisch für alle Edge Functions des Projekts, also für beide.
 
 ### 4c. Absenderadresse prüfen
 
@@ -84,19 +92,13 @@ Resend-Testadresse arbeitest, passe diese beiden Zeilen im Dashboard-Editor an, 
 
 Das ist der Teil, der die Function tatsächlich auslöst, sobald ein Formular abgeschickt wird.
 
-**Für die Kursanmeldung:**
-
-1. Supabase-Dashboard → **Database → Webhooks → Create a new hook** (manchmal „New Webhook").
-2. Name: z. B. „Kursanmeldung-Mail".
-3. Tabelle: `kursanmeldungen`.
-4. Events: nur **Insert** anhaken (Update/Delete nicht).
-5. Type: **Supabase Edge Function**.
-6. Function auswählen: `notify-kursanmeldung`.
-7. Speichern.
-
-**Für die Kontaktanfrage (optional, aber empfohlen):**
-
-Gleiches Vorgehen, nur mit Tabelle `kontaktanfragen` und Function `notify-kontaktanfrage`.
+Bei diesem Projekt liefert das Dashboard-Feature „Database → Webhooks" den Fehler „schema
+supabase_functions does not exist" (ein bekannter Bug bei manchen Projekten). Deshalb übernimmt das
+stattdessen `supabase/manual-triggers.sql` — einmalig komplett im SQL Editor ausführen, **nachdem**
+Schritt 4 (Functions deployt) und 4b (beide Secrets gesetzt, inkl. `webhook_secret` im Vault)
+erledigt sind. Das Skript legt per SQL exakt denselben Mechanismus an wie ein Database Webhook
+(Insert auf `kursanmeldungen`/`kontaktanfragen` → Edge Function aufrufen), nur ohne den kaputten
+UI-Teil.
 
 ## 6. Testen
 

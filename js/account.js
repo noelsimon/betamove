@@ -220,6 +220,51 @@
   };
 
   // --------------------------------------------------------------------
+  // Admin-Seiten (admin-kurse, admin-pruefungen, admin-kurse-verwaltung):
+  // gemeinsamer Zugriffsschutz statt pro Seite dupliziertem Code. Erwartet
+  // auf der Seite die Elemente #statusBox und #adminArea. Gibt
+  // { client, session } zurück, oder null, wenn die Seite wegen
+  // fehlendem/falschem Login bereits den Status angezeigt hat.
+  // --------------------------------------------------------------------
+  function showAdminStatus(html) {
+    const box = document.getElementById('statusBox');
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = html;
+    const area = document.getElementById('adminArea');
+    if (area) area.hidden = true;
+  }
+
+  window.bmGuardAdminPage = async function () {
+    const client = getClient();
+    if (!client) {
+      const cfgErr = typeof window.bmGetSupabaseClient === 'function' ? window.bmGetSupabaseClient().error : null;
+      showAdminStatus(cfgErr
+        ? '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar (' + escapeHtml(cfgErr) + ').</p>'
+        : '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar.</p>');
+      return null;
+    }
+
+    const session = await getSession();
+    if (!session) {
+      const here = (location.pathname.split('/').pop() || 'admin-kurse').replace(/\.html$/i, '');
+      showAdminStatus('<p style="margin:0 0 16px;font-size:15.5px">Bitte melde dich mit deinem Admin-Konto an.</p><a href="login?next=' + encodeURIComponent(here) + '" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>');
+      return null;
+    }
+    if (session.user.email !== ADMIN_EMAIL) {
+      showAdminStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Dieser Bereich ist nur für die Kursleitung zugänglich.</p>');
+      return null;
+    }
+
+    document.getElementById('statusBox').hidden = true;
+    const area = document.getElementById('adminArea');
+    if (area) area.hidden = false;
+    return { client, session };
+  };
+
+  window.bmEscapeHtml = escapeHtml;
+
+  // --------------------------------------------------------------------
   // Kleine Kette an gemeinsamer UI: Header-Login-Link + stiller Abgleich
   // der lokal gespeicherten "gelesen"-Markierungen (bmProgress) auf jeder
   // Seite, nicht nur im Konto-Bereich.

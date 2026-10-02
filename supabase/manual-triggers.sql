@@ -27,6 +27,22 @@
 -- (siehe EMAIL-SETUP.md Schritt 4) — dieses Skript ersetzt nur Schritt 5
 -- ("Database Webhook einrichten").
 --
+-- WICHTIG (v3): Diese Version schickt zusätzlich ein geheimes, nur dem
+-- Trigger und den Functions bekanntes Passwort mit (Header
+-- "X-Webhook-Secret"), das die Functions jetzt prüfen. Das Passwort selbst
+-- steht NICHT im Code (dieses Repo ist öffentlich), sondern liegt
+-- verschlüsselt im Supabase Vault.
+--
+-- Einmalig VOR diesem Skript auszuführen (Werte durch dein eigenes, langes
+-- Zufallspasswort ersetzen — z. B. aus dem Hinweis, den dir der
+-- Programmierer separat gegeben hat):
+--
+--   select vault.create_secret('<DEIN-ZUFALLSPASSWORT>', 'webhook_secret');
+--
+-- Dasselbe Passwort zusätzlich bei Project Settings → Edge Functions →
+-- Secrets als "WEBHOOK_SECRET" hinterlegen (wie RESEND_API_KEY), sonst lehnen
+-- die Functions den Aufruf ab.
+--
 -- So ausführen: Supabase-Dashboard → SQL Editor → New query → diesen
 -- kompletten Inhalt einfügen → Run.
 
@@ -42,13 +58,18 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_secret text;
 begin
+  select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'webhook_secret' limit 1;
   begin
     perform net.http_post(
       url := 'https://nzmszupobienfwjaqcmw.supabase.co/functions/v1/notify-kursanmeldung',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA'
+        'Authorization', 'Bearer sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA',
+        'X-Webhook-Secret', coalesce(v_secret, '')
       ),
       body := jsonb_build_object(
         'type', 'INSERT',
@@ -80,13 +101,18 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_secret text;
 begin
+  select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'webhook_secret' limit 1;
   begin
     perform net.http_post(
       url := 'https://nzmszupobienfwjaqcmw.supabase.co/functions/v1/notify-kontaktanfrage',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA'
+        'Authorization', 'Bearer sb_publishable_X6iX2mVHFCD6wczKEAPnpA_gaWXFZuA',
+        'X-Webhook-Secret', coalesce(v_secret, '')
       ),
       body := jsonb_build_object(
         'type', 'INSERT',
@@ -109,10 +135,11 @@ create trigger trg_notify_kontaktanfrage
 -- ============================================================================
 -- Hinweis zum Bearer-Token oben: das ist der öffentliche "publishable"/anon
 -- Key (kein Geheimnis, siehe supabase/schema.sql) — er wird hier nur benutzt,
--- damit die Edge Function den Aufruf als legitim erkennt (Supabase verlangt
--- standardmäßig einen gültigen Schlüssel im Authorization-Header). Falls du
--- deinen anon key später einmal rotierst, muss er hier oben in beiden
--- Funktionen (Zeile mit "Authorization") aktualisiert werden.
+-- damit Supabase den Aufruf überhaupt als authentifizierte Anfrage annimmt
+-- (das allein reicht NICHT als Schutz, siehe Hinweis oben zu v3 — den
+-- eigentlichen Schutz übernimmt "X-Webhook-Secret"). Falls du deinen anon
+-- key später einmal rotierst, muss er hier oben in beiden Funktionen (Zeile
+-- mit "Authorization") aktualisiert werden.
 --
 -- Test danach: linkes Hauptmenü -> Database -> Triggers sollte
 -- "trg_notify_kursanmeldung" und "trg_notify_kontaktanfrage" zeigen (grüner

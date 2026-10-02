@@ -58,11 +58,10 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/courses-data.js"></script>
 <script src="js/main.js"></script>
+<script src="js/account.js"></script>
 <script>
 (function(){
-  // Muss exakt zur ADMIN_EMAIL in js/account.js, admin-kurse.html und den
-  // Admin-Policies in supabase/schema-pruefungen-zertifikate.sql passen.
-  const ADMIN_EMAIL = 'noel.uhlrich@gmail.com';
+  const escapeHtml = window.bmEscapeHtml;
 
   const EXAMS = [
     { id: 'pruefung-sicherungsschein', label: 'Sicherungstheorie' },
@@ -71,40 +70,10 @@
     { id: 'pruefung-mehrseillaengen', label: 'Mehrseillängen' }
   ];
 
-  function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
-
-  function showStatus(html) {
-    const box = document.getElementById('statusBox');
-    box.hidden = false;
-    box.innerHTML = html;
-    document.getElementById('adminArea').hidden = true;
-  }
-
   document.addEventListener('DOMContentLoaded', async () => {
-    if (typeof window.bmGetSupabaseClient !== 'function') { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar.</p>'); return; }
-    const { client, error: cfgErr } = window.bmGetSupabaseClient();
-    if (!client) { showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Admin-Bereich ist gerade nicht erreichbar (' + escapeHtml(cfgErr) + ').</p>'); return; }
-
-    let session = null;
-    try {
-      const { data } = await client.auth.getSession();
-      session = data && data.session ? data.session : null;
-    } catch (e) { /* session bleibt null */ }
-
-    if (!session) {
-      showStatus('<p style="margin:0 0 16px;font-size:15.5px">Bitte melde dich mit deinem Admin-Konto an.</p><a href="login?next=admin-pruefungen" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>');
-      return;
-    }
-    if (session.user.email !== ADMIN_EMAIL) {
-      showStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Dieser Bereich ist nur für die Kursleitung zugänglich.</p>');
-      return;
-    }
-
-    document.getElementById('statusBox').hidden = true;
-    document.getElementById('adminArea').hidden = false;
+    const ctx = await window.bmGuardAdminPage();
+    if (!ctx) return;
+    const { client } = ctx;
 
     let people = [];
     let freigaben = [];
