@@ -253,7 +253,14 @@
     btn.disabled = true; btn.textContent = 'Erstellt Konto …';
     const { data, error } = await client.auth.signUp({
       email, password,
-      options: { data: { vorname, nachname, level } }
+      options: {
+        data: { vorname, nachname, level },
+        // Explizit setzen statt die "Site URL" aus den Supabase-Projekt-
+        // einstellungen zu übernehmen — die kann (z.B. bei mehreren
+        // Projekten im selben Supabase-Account) auf eine andere Seite
+        // zeigen.
+        emailRedirectTo: location.origin + '/login'
+      }
     });
     btn.disabled = false; btn.textContent = 'Konto erstellen';
     if (error) { errEl.hidden = false; errEl.textContent = friendlyAuthError(error); return; }
