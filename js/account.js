@@ -79,13 +79,43 @@
     return cachedClient;
   }
 
+  // supabase-js wartet beim Laden pro Tab auf eine browserweite Sperre, damit
+  // sich mehrere offene Tabs beim Token-Erneuern nicht in die Quere kommen —
+  // diese Wartezeit hat werksseitig KEIN Timeout. Hält ein anderer offener
+  // Tab (z.B. ein alter, vergessener) die Sperre fest, hängt getSession()
+  // sonst für immer. Deshalb hier mit eigenem Timeout, damit die Seite nicht
+  // dauerhaft auf "Lädt dein Konto …" stehen bleibt.
+  function withTimeout(promise, ms) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(Object.assign(new Error('timeout'), { isTimeout: true })), ms);
+      promise.then(
+        v => { clearTimeout(timer); resolve(v); },
+        e => { clearTimeout(timer); reject(e); }
+      );
+    });
+  }
+
   async function getSession() {
     const client = getClient();
     if (!client) return null;
     try {
-      const { data } = await client.auth.getSession();
+      const { data } = await withTimeout(client.auth.getSession(), 7000);
       return data && data.session ? data.session : null;
     } catch (e) { return null; }
+  }
+
+  // Wie getSession(), unterscheidet aber zusätzlich "wirklich nicht
+  // eingeloggt" von "Laden hängt fest" — guardAccountPage() braucht das, um
+  // im Hänger-Fall nicht fälschlich zum Login weiterzuleiten.
+  async function getSessionOrTimeout() {
+    const client = getClient();
+    if (!client) return { session: null, timedOut: false };
+    try {
+      const { data } = await withTimeout(client.auth.getSession(), 7000);
+      return { session: data && data.session ? data.session : null, timedOut: false };
+    } catch (e) {
+      return { session: null, timedOut: !!(e && e.isTimeout) };
+    }
   }
 
   async function ensureProfile(client, user, extra) {
@@ -295,8 +325,17 @@
       return null;
     }
 
-    const session = await getSession();
+    const { session, timedOut } = await getSessionOrTimeout();
     if (!session) {
+      if (timedOut) {
+        if (banner) {
+          banner.hidden = false;
+          banner.innerHTML = '<span>Das Laden dauert ungewöhnlich lange — meist hilft es, alle anderen BETAMOVE-Tabs/-Fenster zu schließen und diese Seite neu zu laden.</span> <button type="button" id="bmReloadBtn" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:8px 16px;border-radius:999px;border:0;background:#ffffff;color:var(--color-accent-700)">Neu laden</button>';
+          const reloadBtn = document.getElementById('bmReloadBtn');
+          if (reloadBtn) reloadBtn.addEventListener('click', () => location.reload());
+        }
+        return null;
+      }
       const here = location.pathname.split('/').pop() || 'konto';
       location.href = 'login?next=' + encodeURIComponent(here);
       return null;
