@@ -78,8 +78,10 @@ update public.trainingsuebungen
 
 -- "frei" und "fingerkraft" gehen beide in "klassisch" auf — "frei" fällt als
 -- eigene Maske weg, die Unterscheidung läuft jetzt über Art/Trainingsart.
-update public.trainingsuebungen set typ = 'klassisch' where typ in ('frei', 'fingerkraft');
+-- Wichtig: erst die alte (engere) Prüfregel entfernen, DANN umschreiben —
+-- sonst lehnt sie den Zwischenwert "klassisch" selbst ab.
 alter table public.trainingsuebungen drop constraint if exists trainingsuebungen_typ_val;
+update public.trainingsuebungen set typ = 'klassisch' where typ in ('frei', 'fingerkraft');
 alter table public.trainingsuebungen add constraint trainingsuebungen_typ_val
   check (typ in ('klassisch', 'kletterroute'));
 
