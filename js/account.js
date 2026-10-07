@@ -663,42 +663,61 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-training — Ziele + Logbuch (v1, siehe schema-training.sql).
-  // Die Stoppuhr braucht keine Daten und läuft in konto-training.html selbst.
+  // Seite: konto-training — Ziele, Workouts, typisierte Übungen, Logbuch
+  // mit Session-Timer (siehe schema-training.sql, schema-trainingsplan.sql,
+  // schema-trainingsplan-v3.sql).
   // --------------------------------------------------------------------
   const TYP_LABEL = { bouldern: 'Bouldern', seilklettern: 'Seilklettern', fingerkraft: 'Fingerkraft/Krafttraining', ausdauer: 'Ausdauer/Cardio', mobility: 'Mobility/Dehnen', sonstiges: 'Sonstiges' };
   const WOCHENTAGE = [{ n: 1, label: 'Montag', short: 'Mo' }, { n: 2, label: 'Dienstag', short: 'Di' }, { n: 3, label: 'Mittwoch', short: 'Mi' }, { n: 4, label: 'Donnerstag', short: 'Do' }, { n: 5, label: 'Freitag', short: 'Fr' }, { n: 6, label: 'Samstag', short: 'Sa' }, { n: 7, label: 'Sonntag', short: 'So' }];
+  const GRAD_LISTEN = {
+    fontainebleau: ['3', '4', '5', '5+', '6A', '6A+', '6B', '6B+', '6C', '6C+', '7A', '7A+', '7B', '7B+', '7C', '7C+', '8A', '8A+', '8B', '8B+', '8C', '8C+', '9A'],
+    uiaa: ['III', 'III+', 'IV-', 'IV', 'IV+', 'V-', 'V', 'V+', 'VI-', 'VI', 'VI+', 'VII-', 'VII', 'VII+', 'VIII-', 'VIII', 'VIII+', 'IX-', 'IX', 'IX+', 'X-', 'X', 'X+', 'XI-', 'XI', 'XI+', 'XII-', 'XII']
+  };
+  const UEBUNG_TYP_LABEL = { frei: 'Frei', fingerkraft: 'Fingerkraft', kletterroute: 'Kletterroute' };
+  const TIMER_MODUS_LABEL = { keiner: 'Kein Timer', pause: 'Nur Pause', intervall: 'Intervall (Start/Pause)' };
+
+  function fmtMMSS(totalSeconds) {
+    const s = Math.max(0, Math.round(totalSeconds || 0));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
 
   async function renderTraining(ctx) {
     const { client, session } = ctx;
     const userId = session.user.id;
 
-    const datumInput = document.getElementById('log-datum');
-    if (datumInput && !datumInput.value) datumInput.value = new Date().toISOString().slice(0, 10);
-
     let ziele = [];
     let log = [];
     let uebungen = [];
+    let workouts = [];
+    let workoutUebungen = [];
+    let einheiten = [];
     try {
-      const [zieleRes, logRes, uebungenRes] = await Promise.all([
+      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
         client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false }),
-        client.from('trainingsuebungen').select('*').order('created_at', { ascending: false })
+        client.from('trainingsuebungen').select('*').order('created_at', { ascending: false }),
+        client.from('trainingsworkouts').select('*').order('created_at', { ascending: false }),
+        client.from('trainingsworkout_uebungen').select('*').order('reihenfolge', { ascending: true }),
+        client.from('trainingseinheiten').select('*').order('created_at', { ascending: false }).limit(30)
       ]);
-      if (zieleRes.error) throw zieleRes.error;
-      if (logRes.error) throw logRes.error;
-      if (uebungenRes.error) throw uebungenRes.error;
+      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes].forEach(r => { if (r.error) throw r.error; });
       ziele = zieleRes.data || [];
       log = logRes.data || [];
       uebungen = uebungenRes.data || [];
+      workouts = workoutsRes.data || [];
+      workoutUebungen = workoutUebungenRes.data || [];
+      einheiten = einheitenRes.data || [];
     } catch (e) {
       const el = document.getElementById('zieleList');
       if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
     }
 
-    function uebungName(id) {
-      const u = uebungen.find(x => x.id === id);
-      return u ? u.name : null;
+    function uebungById(id) { return uebungen.find(u => u.id === id) || null; }
+    function uebungName(id) { const u = uebungById(id); return u ? u.name : null; }
+    function workoutUebungenFor(workoutId) {
+      return workoutUebungen.filter(wu => wu.workout_id === workoutId).map(wu => uebungById(wu.uebung_id)).filter(Boolean);
     }
 
     // ---- Ziele ----
@@ -759,7 +778,7 @@
       });
     }
 
-    // ---- Wochenplan + eigene Übungen ----
+    // ---- Wochenplan ----
     function renderWochenplan() {
       const grid = document.getElementById('wochenplanGrid');
       if (!grid) return;
@@ -774,6 +793,7 @@
     }
     renderWochenplan();
 
+    // ---- Übung anlegen/bearbeiten: Typ-Umschaltung + Timer-Konfig ----
     const uebungFormBox = document.getElementById('uebungFormBox');
     const uebungForm = document.getElementById('uebungForm');
     const uebungFormTitle = document.getElementById('uebungFormTitle');
@@ -781,6 +801,13 @@
     const uebungWochentageEl = document.getElementById('uebungWochentage');
     const newUebungBtn = document.getElementById('newUebungBtn');
     const uebungCancelBtn = document.getElementById('uebungCancelBtn');
+    const uebungTypPills = document.getElementById('uebungTypPills');
+    const uebungTimerPills = document.getElementById('uebungTimerPills');
+    const uebungTimerPauseField = document.getElementById('uebungTimerPauseField');
+    const uebungTimerHint = document.getElementById('uebungTimerHint');
+    const uebungFelderFrei = document.getElementById('uebungFelderFrei');
+    const uebungFelderFingerkraft = document.getElementById('uebungFelderFingerkraft');
+    const uebungFelderKletterroute = document.getElementById('uebungFelderKletterroute');
     let editingUebungId = null;
 
     if (uebungWochentageEl && !uebungWochentageEl.children.length) {
@@ -800,13 +827,46 @@
       });
     }
 
+    function setActiveTyp(typ) {
+      uebungTypPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.typ === typ); });
+      uebungFelderFrei.hidden = typ !== 'frei';
+      uebungFelderFingerkraft.hidden = typ !== 'fingerkraft';
+      uebungFelderKletterroute.hidden = typ !== 'kletterroute';
+    }
+    function activeTyp() {
+      const btn = uebungTypPills.querySelector('.wd-pill[data-active="true"]');
+      return btn ? btn.dataset.typ : 'frei';
+    }
+    uebungTypPills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => setActiveTyp(btn.dataset.typ)));
+
+    function setActiveTimer(modus) {
+      uebungTimerPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.timer === modus); });
+      uebungTimerPauseField.hidden = modus !== 'pause';
+      uebungTimerHint.textContent = modus === 'intervall'
+        ? 'Im Logbuch: Start/Pause pro Satz, die Intervallzeit beginnt bei jedem Start neu bei 0.'
+        : (modus === 'pause' ? 'Im Logbuch zählt die eingestellte Pausenzeit runter.' : '');
+    }
+    function activeTimer() {
+      const btn = uebungTimerPills.querySelector('.wd-pill[data-active="true"]');
+      return btn ? btn.dataset.timer : 'keiner';
+    }
+    uebungTimerPills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => setActiveTimer(btn.dataset.timer)));
+
     function openUebungForm(uebung) {
       editingUebungId = uebung ? uebung.id : null;
       uebungFormTitle.textContent = uebung ? 'Übung bearbeiten' : 'Übung anlegen';
       document.getElementById('uebung-name').value = uebung ? uebung.name : '';
       document.getElementById('uebung-einheit').value = uebung ? (uebung.einheit || '') : '';
+      document.getElementById('uebung-wiederholungen').value = uebung ? (uebung.wiederholungen || '') : '';
+      document.getElementById('uebung-griffart').value = uebung ? (uebung.griffart || '') : '';
+      document.getElementById('uebung-einheit-fk').value = uebung ? (uebung.einheit || '') : '';
+      document.getElementById('uebung-geraet').value = uebung && uebung.geraet ? uebung.geraet : 'Moonboard';
+      document.getElementById('uebung-gradsystem').value = uebung && uebung.grad_system ? uebung.grad_system : 'fontainebleau';
+      document.getElementById('uebung-timer-pause').value = uebung ? (uebung.timer_pause_sekunden || '') : '';
       document.getElementById('uebung-notiz').value = uebung ? (uebung.notiz || '') : '';
       setSelectedWochentage(uebung ? uebung.wochentage : []);
+      setActiveTyp(uebung ? uebung.typ : 'frei');
+      setActiveTimer(uebung ? uebung.timer_modus : 'keiner');
       uebungFormError.hidden = true;
       uebungFormBox.hidden = false;
     }
@@ -816,20 +876,37 @@
       editingUebungId = null;
       uebungForm.reset();
       setSelectedWochentage([]);
+      setActiveTyp('frei');
+      setActiveTimer('keiner');
     }
 
     if (newUebungBtn) newUebungBtn.addEventListener('click', () => openUebungForm(null));
     if (uebungCancelBtn) uebungCancelBtn.addEventListener('click', closeUebungForm);
+
+    function uebungSubtitle(u) {
+      if (u.typ === 'fingerkraft') {
+        return [u.wiederholungen ? u.wiederholungen + ' Wdh.' : null, u.griffart, u.einheit].filter(Boolean).join(' · ');
+      }
+      if (u.typ === 'kletterroute') {
+        return [u.geraet, u.grad_system ? (u.grad_system === 'uiaa' ? 'UIAA' : 'Fontainebleau') : null].filter(Boolean).join(' · ');
+      }
+      return u.einheit || '';
+    }
 
     function renderUebungenList() {
       const list = document.getElementById('uebungenList');
       if (!list) return;
       list.innerHTML = uebungen.length ? uebungen.map(u => {
         const days = (u.wochentage || []).map(n => (WOCHENTAGE.find(w => w.n === n) || {}).short).filter(Boolean).join(', ');
+        const sub = uebungSubtitle(u);
+        const timerInfo = u.timer_modus && u.timer_modus !== 'keiner' ? (TIMER_MODUS_LABEL[u.timer_modus] + (u.timer_modus === 'pause' && u.timer_pause_sekunden ? ' (' + u.timer_pause_sekunden + 's)' : '')) : null;
         return `<div data-uebung data-id="${u.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap">
           <div style="flex:1;min-width:160px">
-            <div style="font-size:15.5px;font-weight:600">${escapeHtml(u.name)}${u.einheit ? ' <span style="font-weight:400;opacity:0.6;font-size:13.5px">(' + escapeHtml(u.einheit) + ')</span>' : ''}</div>
-            <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${days ? days : 'Keinem Wochentag zugeordnet'}</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:15.5px;font-weight:600">${escapeHtml(u.name)}</span>
+              <span class="tag tag-neutral" style="font-size:10.5px">${UEBUNG_TYP_LABEL[u.typ] || 'Frei'}</span>
+            </div>
+            <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${[sub, days ? days : 'Keinem Wochentag zugeordnet', timerInfo].filter(Boolean).join(' · ')}</div>
             ${u.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(u.notiz) + '</p>' : ''}
           </div>
           <div style="display:flex;gap:8px;flex:none">
@@ -840,17 +917,18 @@
       }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine eigene Übung angelegt.</p>';
       list.querySelectorAll('[data-uebung]').forEach(row => {
         const id = row.dataset.id;
-        const uebung = uebungen.find(u => u.id === id);
+        const uebung = uebungById(id);
         row.querySelector('[data-uebung-edit]').addEventListener('click', () => openUebungForm(uebung));
         row.querySelector('[data-uebung-delete]').addEventListener('click', async () => {
-          if (!confirm('Übung „' + uebung.name + '" wirklich löschen?')) return;
+          if (!confirm('Übung „' + uebung.name + '" wirklich löschen? Workouts, die diese Übung enthalten, verlieren sie.')) return;
           try {
             const { error } = await client.from('trainingsuebungen').delete().eq('id', id);
             if (error) throw error;
             uebungen = uebungen.filter(u => u.id !== id);
+            workoutUebungen = workoutUebungen.filter(wu => wu.uebung_id !== id);
             renderUebungenList();
             renderWochenplan();
-            populateLogUebungSelect();
+            renderWorkoutenList();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
@@ -861,17 +939,36 @@
       uebungForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         uebungFormError.hidden = true;
+        const typ = activeTyp();
         const name = document.getElementById('uebung-name').value.trim();
-        const einheit = document.getElementById('uebung-einheit').value.trim();
-        const notiz = document.getElementById('uebung-notiz').value.trim();
         if (!name) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte einen Namen eintragen.'; return; }
+
+        const timerModus = activeTimer();
+        const timerPauseRaw = document.getElementById('uebung-timer-pause').value;
+        if (timerModus === 'pause' && !timerPauseRaw) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte eine Pausenlänge eintragen.'; return; }
+
         const payload = {
           user_id: userId,
           name,
-          einheit: einheit || null,
-          notiz: notiz || null,
-          wochentage: selectedWochentage()
+          typ,
+          notiz: document.getElementById('uebung-notiz').value.trim() || null,
+          wochentage: selectedWochentage(),
+          timer_modus: timerModus,
+          timer_pause_sekunden: timerModus === 'pause' ? Number(timerPauseRaw) : null,
+          einheit: null, wiederholungen: null, griffart: null, geraet: null, grad_system: null
         };
+        if (typ === 'frei') {
+          payload.einheit = document.getElementById('uebung-einheit').value.trim() || null;
+        } else if (typ === 'fingerkraft') {
+          const wdhRaw = document.getElementById('uebung-wiederholungen').value;
+          payload.wiederholungen = wdhRaw ? Number(wdhRaw) : null;
+          payload.griffart = document.getElementById('uebung-griffart').value.trim() || null;
+          payload.einheit = document.getElementById('uebung-einheit-fk').value.trim() || null;
+        } else if (typ === 'kletterroute') {
+          payload.geraet = document.getElementById('uebung-geraet').value;
+          payload.grad_system = document.getElementById('uebung-gradsystem').value;
+        }
+
         const btn = uebungForm.querySelector('button[type="submit"]');
         btn.disabled = true;
         try {
@@ -887,7 +984,8 @@
           closeUebungForm();
           renderUebungenList();
           renderWochenplan();
-          populateLogUebungSelect();
+          renderWorkoutenList();
+          populateWorkoutSelect();
         } catch (e) {
           uebungFormError.hidden = false;
           uebungFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
@@ -897,7 +995,148 @@
       });
     }
 
-    // ---- Logbuch + Diese-Woche-Summe ----
+    // ---- Workouts (Übungen bündeln) ----
+    const workoutFormBox = document.getElementById('workoutFormBox');
+    const workoutForm = document.getElementById('workoutForm');
+    const workoutFormTitle = document.getElementById('workoutFormTitle');
+    const workoutFormError = document.getElementById('workoutFormError');
+    const newWorkoutBtn = document.getElementById('newWorkoutBtn');
+    const workoutCancelBtn = document.getElementById('workoutCancelBtn');
+    const workoutAvailableList = document.getElementById('workoutAvailableList');
+    const workoutSelectedList = document.getElementById('workoutSelectedList');
+    let editingWorkoutId = null;
+    let workoutSelectedUebungIds = [];
+
+    function renderWorkoutPicker() {
+      const selectedSet = new Set(workoutSelectedUebungIds);
+      workoutAvailableList.innerHTML = uebungen.filter(u => !selectedSet.has(u.id)).map(u => `
+        <button type="button" data-add-uebung data-id="${u.id}" style="text-align:left;cursor:pointer;font:inherit;font-size:13.5px;padding:8px 10px;border-radius:var(--radius-md);border:1px solid var(--color-divider);background:#ffffff;color:var(--color-text)">+ ${escapeHtml(u.name)}</button>
+      `).join('') || '<p style="margin:0;font-size:13px;opacity:0.6">Keine weiteren Übungen.</p>';
+      workoutSelectedList.innerHTML = workoutSelectedUebungIds.map((id, i) => {
+        const u = uebungById(id);
+        if (!u) return '';
+        return `<div data-sel-uebung data-id="${id}" style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:8px 10px;border-radius:var(--radius-md);background:var(--color-accent-100)">
+          <span style="flex:1;min-width:0">${i + 1}. ${escapeHtml(u.name)}</span>
+          <button type="button" data-move-up aria-label="Nach oben" ${i === 0 ? 'disabled' : ''} style="cursor:pointer;font:inherit;background:transparent;border:0;opacity:${i === 0 ? '0.3' : '0.7'}">↑</button>
+          <button type="button" data-move-down aria-label="Nach unten" ${i === workoutSelectedUebungIds.length - 1 ? 'disabled' : ''} style="cursor:pointer;font:inherit;background:transparent;border:0;opacity:${i === workoutSelectedUebungIds.length - 1 ? '0.3' : '0.7'}">↓</button>
+          <button type="button" data-remove aria-label="Entfernen" style="cursor:pointer;font:inherit;background:transparent;border:0;opacity:0.6">✕</button>
+        </div>`;
+      }).join('') || '<p style="margin:0;font-size:13px;opacity:0.6">Noch keine Übung ausgewählt.</p>';
+
+      workoutAvailableList.querySelectorAll('[data-add-uebung]').forEach(btn => {
+        btn.addEventListener('click', () => { workoutSelectedUebungIds.push(btn.dataset.id); renderWorkoutPicker(); });
+      });
+      workoutSelectedList.querySelectorAll('[data-sel-uebung]').forEach(row => {
+        const id = row.dataset.id;
+        const idx = workoutSelectedUebungIds.indexOf(id);
+        const up = row.querySelector('[data-move-up]');
+        const down = row.querySelector('[data-move-down]');
+        if (up) up.addEventListener('click', () => { if (idx > 0) { [workoutSelectedUebungIds[idx - 1], workoutSelectedUebungIds[idx]] = [workoutSelectedUebungIds[idx], workoutSelectedUebungIds[idx - 1]]; renderWorkoutPicker(); } });
+        if (down) down.addEventListener('click', () => { if (idx < workoutSelectedUebungIds.length - 1) { [workoutSelectedUebungIds[idx + 1], workoutSelectedUebungIds[idx]] = [workoutSelectedUebungIds[idx], workoutSelectedUebungIds[idx + 1]]; renderWorkoutPicker(); } });
+        row.querySelector('[data-remove]').addEventListener('click', () => { workoutSelectedUebungIds = workoutSelectedUebungIds.filter(x => x !== id); renderWorkoutPicker(); });
+      });
+    }
+
+    function openWorkoutForm(workout) {
+      editingWorkoutId = workout ? workout.id : null;
+      workoutFormTitle.textContent = workout ? 'Workout bearbeiten' : 'Workout anlegen';
+      document.getElementById('workout-name').value = workout ? workout.name : '';
+      document.getElementById('workout-notiz').value = workout ? (workout.notiz || '') : '';
+      workoutSelectedUebungIds = workout ? workoutUebungenFor(workout.id).map(u => u.id) : [];
+      renderWorkoutPicker();
+      workoutFormError.hidden = true;
+      workoutFormBox.hidden = false;
+    }
+
+    function closeWorkoutForm() {
+      workoutFormBox.hidden = true;
+      editingWorkoutId = null;
+      workoutSelectedUebungIds = [];
+      workoutForm.reset();
+    }
+
+    if (newWorkoutBtn) newWorkoutBtn.addEventListener('click', () => openWorkoutForm(null));
+    if (workoutCancelBtn) workoutCancelBtn.addEventListener('click', closeWorkoutForm);
+
+    function renderWorkoutenList() {
+      const list = document.getElementById('workoutenList');
+      if (!list) return;
+      list.innerHTML = workouts.length ? workouts.map(w => {
+        const names = workoutUebungenFor(w.id).map(u => u.name);
+        return `<div data-workout data-id="${w.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:15.5px;font-weight:600">${escapeHtml(w.name)}</div>
+            <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${names.length ? escapeHtml(names.join(', ')) : 'Noch keine Übung zugeordnet'}</div>
+            ${w.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(w.notiz) + '</p>' : ''}
+          </div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button type="button" data-workout-edit style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+            <button type="button" data-workout-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+          </div>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch kein Workout angelegt.</p>';
+      list.querySelectorAll('[data-workout]').forEach(row => {
+        const id = row.dataset.id;
+        const workout = workouts.find(w => w.id === id);
+        row.querySelector('[data-workout-edit]').addEventListener('click', () => openWorkoutForm(workout));
+        row.querySelector('[data-workout-delete]').addEventListener('click', async () => {
+          if (!confirm('Workout „' + workout.name + '" wirklich löschen? Die enthaltenen Übungen bleiben erhalten.')) return;
+          try {
+            const { error } = await client.from('trainingsworkouts').delete().eq('id', id);
+            if (error) throw error;
+            workouts = workouts.filter(w => w.id !== id);
+            workoutUebungen = workoutUebungen.filter(wu => wu.workout_id !== id);
+            renderWorkoutenList();
+            populateWorkoutSelect();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderWorkoutenList();
+
+    if (workoutForm) {
+      workoutForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        workoutFormError.hidden = true;
+        const name = document.getElementById('workout-name').value.trim();
+        if (!name) { workoutFormError.hidden = false; workoutFormError.textContent = 'Bitte einen Namen eintragen.'; return; }
+        const notiz = document.getElementById('workout-notiz').value.trim();
+        const btn = workoutForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          let workoutId = editingWorkoutId;
+          if (editingWorkoutId) {
+            const { data, error } = await client.from('trainingsworkouts').update({ name, notiz: notiz || null }).eq('id', editingWorkoutId).select().single();
+            if (error) throw error;
+            workouts = workouts.map(w => w.id === editingWorkoutId ? data : w);
+            const { error: delErr } = await client.from('trainingsworkout_uebungen').delete().eq('workout_id', editingWorkoutId);
+            if (delErr) throw delErr;
+            workoutUebungen = workoutUebungen.filter(wu => wu.workout_id !== editingWorkoutId);
+          } else {
+            const { data, error } = await client.from('trainingsworkouts').insert({ user_id: userId, name, notiz: notiz || null }).select().single();
+            if (error) throw error;
+            workouts.unshift(data);
+            workoutId = data.id;
+          }
+          if (workoutSelectedUebungIds.length) {
+            const rows = workoutSelectedUebungIds.map((uebungId, i) => ({ user_id: userId, workout_id: workoutId, uebung_id: uebungId, reihenfolge: i }));
+            const { data: inserted, error: insErr } = await client.from('trainingsworkout_uebungen').insert(rows).select();
+            if (insErr) throw insErr;
+            workoutUebungen = workoutUebungen.concat(inserted || []);
+          }
+          closeWorkoutForm();
+          renderWorkoutenList();
+          populateWorkoutSelect();
+        } catch (e) {
+          workoutFormError.hidden = false;
+          workoutFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    // ---- Diese-Woche / Charts ----
     function startOfWeek() {
       const d = new Date();
       const day = (d.getDay() + 6) % 7; // Montag = 0
@@ -915,44 +1154,6 @@
       if (minEl) minEl.textContent = String(weekEntries.reduce((sum, l) => sum + (l.dauer_minuten || 0), 0));
     }
 
-    function renderLog() {
-      const list = document.getElementById('logList');
-      if (!list) return;
-      list.innerHTML = log.length ? log.map(l => {
-        const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
-        const art = l.uebung_id ? (uebungName(l.uebung_id) || 'Übung') : (TYP_LABEL[l.typ] || l.typ);
-        const ergebnis = l.uebung_id && l.ergebnis_wert != null ? l.ergebnis_wert + (((uebungen.find(u => u.id === l.uebung_id) || {}).einheit) ? ' ' + (uebungen.find(u => u.id === l.uebung_id) || {}).einheit : '') : null;
-        const meta = [art, ergebnis, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
-        return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
-              <span style="font-size:15.5px;font-weight:600">${escapeHtml(date)}</span>
-              <span style="font-size:13.5px;opacity:0.65">${escapeHtml(meta)}</span>
-            </div>
-            ${l.notiz ? '<p style="margin:6px 0 0;font-size:14.5px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
-          </div>
-          <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
-        </div>`;
-      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Einheit eingetragen.</p>';
-      list.querySelectorAll('[data-log]').forEach(row => {
-        const id = row.dataset.id;
-        row.querySelector('[data-log-delete]').addEventListener('click', async () => {
-          if (!confirm('Eintrag wirklich löschen?')) return;
-          try {
-            const { error } = await client.from('trainingslog').delete().eq('id', id);
-            if (error) throw error;
-            log = log.filter(l => l.id !== id);
-            renderLog();
-            renderWeekSummary();
-            renderCharts();
-          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
-        });
-      });
-    }
-    renderLog();
-    renderWeekSummary();
-
-    // ---- Statistik: zwei einfache, eigene Balkendiagramme (kein externes Chart-Script nötig) ----
     function renderCharts() {
       const chartWeeks = document.getElementById('chartWeeks');
       const chartTypes = document.getElementById('chartTypes');
@@ -997,86 +1198,395 @@
           </div>`).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Daten.</p>';
       }
     }
+
+    // ---- Logbuch-Liste ----
+    function renderLog() {
+      const list = document.getElementById('logList');
+      if (!list) return;
+      list.innerHTML = log.length ? log.map(l => {
+        const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+        const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
+        const art = uebung ? uebung.name : (TYP_LABEL[l.typ] || l.typ);
+        const ergebnis = uebung && l.ergebnis_wert != null ? l.ergebnis_wert + (uebung.einheit ? ' ' + uebung.einheit : '') : null;
+        const zeitInfo = l.aktive_zeit_sekunden ? 'Aktivzeit ' + fmtMMSS(l.aktive_zeit_sekunden) : (l.pausen_anzahl ? l.pausen_anzahl + ' Pausen' : null);
+        const meta = [art, ergebnis, zeitInfo, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
+        const routen = Array.isArray(l.routen_versuche) && l.routen_versuche.length ? `
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+            ${l.routen_versuche.map(r => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="tag tag-neutral" style="font-size:10.5px">${escapeHtml(r.grad || '')}</span>
+              ${r.name ? '<span>' + escapeHtml(r.name) + '</span>' : ''}
+              <span style="opacity:0.65">${r.versuche || 1}× Versuch${(r.versuche || 1) > 1 ? 'e' : ''}</span>
+              ${r.getoppt ? '<span style="color:var(--color-accent-2-700);font-weight:600">✓ getoppt</span>' : '<span style="opacity:0.5">nicht getoppt</span>'}
+            </div>`).join('')}
+          </div>` : '';
+        return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
+              <span style="font-size:15.5px;font-weight:600">${escapeHtml(date)}</span>
+              <span style="font-size:13.5px;opacity:0.65">${escapeHtml(meta)}</span>
+            </div>
+            ${routen}
+            ${l.notiz ? '<p style="margin:6px 0 0;font-size:14.5px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
+          </div>
+          <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Einheit eingetragen.</p>';
+      list.querySelectorAll('[data-log]').forEach(row => {
+        const id = row.dataset.id;
+        row.querySelector('[data-log-delete]').addEventListener('click', async () => {
+          if (!confirm('Eintrag wirklich löschen?')) return;
+          try {
+            const { error } = await client.from('trainingslog').delete().eq('id', id);
+            if (error) throw error;
+            log = log.filter(l => l.id !== id);
+            renderLog();
+            renderWeekSummary();
+            renderCharts();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+
+    // ---- Trainingseinheiten-Historie ----
+    function renderEinheitenList() {
+      const list = document.getElementById('einheitenList');
+      if (!list) return;
+      list.innerHTML = einheiten.length ? einheiten.map(e => {
+        const date = e.datum ? new Date(e.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+        const count = log.filter(l => l.einheit_id === e.id).length;
+        return `<div data-einheit data-id="${e.id}" style="display:flex;gap:14px;align-items:center;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <span style="font-size:15.5px;font-weight:600">${escapeHtml(e.workout_name || 'Freies Training')}</span>
+            <span style="font-size:13.5px;opacity:0.65;margin-left:8px">${escapeHtml(date)} · ${e.dauer_sekunden ? fmtMMSS(e.dauer_sekunden) + ' Min:Sek' : 'ohne Zeit'}${count ? ' · ' + count + ' Übung' + (count > 1 ? 'en' : '') : ''}</span>
+          </div>
+          <button type="button" data-einheit-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Trainingseinheit abgeschlossen.</p>';
+      list.querySelectorAll('[data-einheit]').forEach(row => {
+        const id = row.dataset.id;
+        row.querySelector('[data-einheit-delete]').addEventListener('click', async () => {
+          if (!confirm('Trainingseinheit wirklich löschen? Die zugehörigen Logbuch-Einträge bleiben erhalten.')) return;
+          try {
+            const { error } = await client.from('trainingseinheiten').delete().eq('id', id);
+            if (error) throw error;
+            einheiten = einheiten.filter(e => e.id !== id);
+            renderEinheitenList();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+
+    renderLog();
+    renderWeekSummary();
     renderCharts();
+    renderEinheitenList();
 
-    const logUebungSelect = document.getElementById('log-uebung');
-    function populateLogUebungSelect() {
-      if (!logUebungSelect) return;
-      const current = logUebungSelect.value;
-      logUebungSelect.innerHTML = '<option value="">— Keine, freie Art wählen —</option>' +
-        uebungen.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-      if (uebungen.some(u => u.id === current)) logUebungSelect.value = current;
-      updateLogFieldVisibility();
+    // ---- Training-Session: Workout starten/beenden, Übungen abarbeiten ----
+    const sessionWorkoutSelect = document.getElementById('sessionWorkoutSelect');
+    const sessionIdleBox = document.getElementById('sessionIdleBox');
+    const sessionActiveBox = document.getElementById('sessionActiveBox');
+    const sessionExercisesBox = document.getElementById('sessionExercisesBox');
+    const sessionWorkoutLabel = document.getElementById('sessionWorkoutLabel');
+    const sessionTimerDisplay = document.getElementById('sessionTimerDisplay');
+    const sessionStartBtn = document.getElementById('sessionStartBtn');
+    const sessionEndBtn = document.getElementById('sessionEndBtn');
+    const sessionExerciseCards = document.getElementById('sessionExerciseCards');
+    const sessionAddUebungBtn = document.getElementById('sessionAddUebungBtn');
+    const sessionAddUebungBox = document.getElementById('sessionAddUebungBox');
+    const sessionAddUebungSelect = document.getElementById('sessionAddUebungSelect');
+    const sessionAddUebungConfirm = document.getElementById('sessionAddUebungConfirm');
+
+    function populateWorkoutSelect() {
+      if (!sessionWorkoutSelect) return;
+      const current = sessionWorkoutSelect.value;
+      sessionWorkoutSelect.innerHTML = '<option value="">— Freies Training —</option>' +
+        workouts.map(w => `<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('');
+      if (workouts.some(w => w.id === current)) sessionWorkoutSelect.value = current;
+    }
+    populateWorkoutSelect();
+
+    const sess = { active: false, einheitId: null, startedAt: 0, rafId: null, usedUebungIds: new Set() };
+
+    function sessionTick() {
+      if (!sess.active) return;
+      const elapsed = Math.floor((Date.now() - sess.startedAt) / 1000);
+      sessionTimerDisplay.textContent = fmtMMSS(elapsed);
+      sess.rafId = requestAnimationFrame(sessionTick);
     }
 
-    function updateLogFieldVisibility() {
-      const typField = document.getElementById('log-typ-field');
-      const ergField = document.getElementById('log-ergebnis-field');
-      const ergLabel = document.getElementById('log-ergebnis-label');
-      const selectedId = logUebungSelect ? logUebungSelect.value : '';
-      const uebung = selectedId ? uebungen.find(u => u.id === selectedId) : null;
-      if (uebung) {
-        if (typField) typField.hidden = true;
-        if (ergField) ergField.hidden = false;
-        if (ergLabel) ergLabel.textContent = uebung.einheit ? 'Ergebnis (' + uebung.einheit + ')' : 'Ergebnis';
+    function populateAddUebungSelect() {
+      sessionAddUebungSelect.innerHTML = uebungen.filter(u => !sess.usedUebungIds.has(u.id)).map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('') || '<option value="">Keine weiteren Übungen</option>';
+    }
+
+    function addExerciseCard(uebung) {
+      if (!uebung || sess.usedUebungIds.has(uebung.id)) return;
+      sess.usedUebungIds.add(uebung.id);
+      const card = document.createElement('div');
+      card.className = 'sess-ex-card';
+      card.dataset.uebungId = uebung.id;
+
+      const bodyFields = [];
+      if (uebung.typ === 'kletterroute') {
+        bodyFields.push(`
+          <div id="routeList-${uebung.id}" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;align-items:end">
+            <div class="field"><label style="font-size:12.5px">Grad</label><select class="input" data-route-grad>${(GRAD_LISTEN[uebung.grad_system] || GRAD_LISTEN.fontainebleau).map(g => '<option value="' + g + '">' + g + '</option>').join('')}</select></div>
+            <div class="field"><label style="font-size:12.5px">Name (optional)</label><input class="input" data-route-name maxlength="100"></div>
+            <div class="field"><label style="font-size:12.5px">Versuche</label><input class="input" type="number" min="1" max="99" value="1" data-route-versuche></div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;padding-bottom:10px"><input type="checkbox" data-route-getoppt> Getoppt</label>
+          </div>
+          <button type="button" data-route-add style="align-self:flex-start;cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">+ Versuch hinzufügen</button>
+        `);
+      } else if (uebung.typ === 'fingerkraft') {
+        bodyFields.push(`<p style="margin:0;font-size:13.5px;opacity:0.65">${[uebung.wiederholungen ? uebung.wiederholungen + ' Wdh.' : null, uebung.griffart].filter(Boolean).join(' · ')}</p>`);
+        bodyFields.push(`<div class="field"><label>Ergebnis${uebung.einheit ? ' (' + escapeHtml(uebung.einheit) + ')' : ''}</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
       } else {
-        if (typField) typField.hidden = false;
-        if (ergField) ergField.hidden = true;
+        if (uebung.einheit) bodyFields.push(`<div class="field"><label>Ergebnis (${escapeHtml(uebung.einheit)})</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
       }
-    }
 
-    if (logUebungSelect) logUebungSelect.addEventListener('change', updateLogFieldVisibility);
-    populateLogUebungSelect();
+      let timerHtml = '';
+      if (uebung.timer_modus === 'pause') {
+        timerHtml = `<div class="timer-box">
+          <div class="timer-display" data-timer-display>${fmtMMSS(uebung.timer_pause_sekunden || 0)}</div>
+          <div style="font-size:12.5px;opacity:0.65">Pausen genutzt: <span data-pausen-count>0</span></div>
+          <button type="button" data-timer-pause-start class="btn btn-secondary" style="font-size:13.5px;padding:9px 18px">Pause starten</button>
+        </div>`;
+      } else if (uebung.timer_modus === 'intervall') {
+        timerHtml = `<div class="timer-box">
+          <div class="timer-display" data-timer-display>00:00</div>
+          <button type="button" data-timer-toggle class="btn btn-primary" style="font-size:13.5px;padding:9px 18px">Start</button>
+          <div data-interval-list style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+        </div>`;
+      }
 
-    const logForm = document.getElementById('logForm');
-    const logFormError = document.getElementById('logFormError');
-    if (logForm) {
-      logForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        logFormError.hidden = true;
-        const datum = document.getElementById('log-datum').value;
-        const uebungId = logUebungSelect ? logUebungSelect.value : '';
-        const typ = uebungId ? null : document.getElementById('log-typ').value;
-        const ergebnisRaw = document.getElementById('log-ergebnis').value;
-        const dauerRaw = document.getElementById('log-dauer').value;
-        const anstrengungRaw = document.getElementById('log-anstrengung').value;
-        const notiz = document.getElementById('log-notiz').value.trim();
+      card.innerHTML = `
+        <div class="sess-ex-head" data-ex-toggle>
+          <div>
+            <h4 style="margin:0;font-size:17px">${escapeHtml(uebung.name)}</h4>
+            <span style="font-size:12.5px;opacity:0.6">${UEBUNG_TYP_LABEL[uebung.typ] || 'Frei'}</span>
+          </div>
+          <span data-ex-status style="font-size:13px;font-weight:600;opacity:0.6">Offen</span>
+        </div>
+        <div class="sess-ex-body" data-ex-body>
+          ${timerHtml}
+          ${bodyFields.join('')}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+            <div class="field"><label style="font-size:12.5px">Dauer (Min., optional)</label><input class="input" type="number" min="1" max="600" data-ex-dauer></div>
+            <div class="field"><label style="font-size:12.5px">Anstrengung (RPE 1–10, optional)</label><input class="input" type="number" min="1" max="10" data-ex-anstrengung></div>
+          </div>
+          <div class="field"><label style="font-size:12.5px">Notiz (optional)</label><textarea class="input" rows="2" data-ex-notiz maxlength="1000"></textarea></div>
+          <p data-ex-error hidden style="margin:0;font-size:13.5px;color:var(--color-accent-700)"></p>
+          <button type="button" data-ex-save class="btn btn-primary" style="align-self:flex-start;font-size:14.5px;padding:10px 22px">Speichern</button>
+        </div>`;
+      sessionExerciseCards.appendChild(card);
 
-        if (!datum) { logFormError.hidden = false; logFormError.textContent = 'Bitte ein Datum wählen.'; return; }
+      // Kletterroute: lokale Liste der Versuche
+      let routenVersuche = [];
+      const routeListEl = card.querySelector(`#routeList-${CSS.escape(uebung.id)}`);
+      if (routeListEl) {
+        function renderRouteList() {
+          routeListEl.innerHTML = routenVersuche.map((r, i) => `
+            <div class="route-attempt-row" data-route-row data-idx="${i}">
+              <strong>${escapeHtml(r.grad)}</strong>
+              ${r.name ? '<span>' + escapeHtml(r.name) + '</span>' : ''}
+              <span style="opacity:0.65">${r.versuche}× Versuch${r.versuche > 1 ? 'e' : ''}</span>
+              <span>${r.getoppt ? '✓ getoppt' : 'nicht getoppt'}</span>
+              <button type="button" data-route-remove style="cursor:pointer;font:inherit;margin-left:auto;background:transparent;border:0;opacity:0.5">✕</button>
+            </div>`).join('');
+          routeListEl.querySelectorAll('[data-route-row]').forEach(rowEl => {
+            const idx = Number(rowEl.dataset.idx);
+            rowEl.querySelector('[data-route-remove]').addEventListener('click', () => { routenVersuche.splice(idx, 1); renderRouteList(); });
+          });
+        }
+        card.querySelector('[data-route-add]').addEventListener('click', () => {
+          const grad = card.querySelector('[data-route-grad]').value;
+          const name = card.querySelector('[data-route-name]').value.trim();
+          const versuche = Number(card.querySelector('[data-route-versuche]').value) || 1;
+          const getoppt = card.querySelector('[data-route-getoppt]').checked;
+          routenVersuche.push({ grad, name: name || null, versuche, getoppt });
+          renderRouteList();
+          card.querySelector('[data-route-name]').value = '';
+          card.querySelector('[data-route-versuche]').value = '1';
+          card.querySelector('[data-route-getoppt]').checked = false;
+        });
+      }
+
+      // Timer-Logik (pro Karte eigener Zustand)
+      let aktiveZeitSekunden = 0;
+      let intervallSekunden = [];
+      let pausenAnzahl = 0;
+      if (uebung.timer_modus === 'pause') {
+        const display = card.querySelector('[data-timer-display]');
+        const countEl = card.querySelector('[data-pausen-count]');
+        const btn = card.querySelector('[data-timer-pause-start]');
+        const total = uebung.timer_pause_sekunden || 60;
+        let running = false;
+        btn.addEventListener('click', () => {
+          if (running) return;
+          running = true;
+          btn.disabled = true;
+          let remaining = total;
+          display.textContent = fmtMMSS(remaining);
+          const iv = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+              clearInterval(iv);
+              display.textContent = fmtMMSS(total);
+              running = false;
+              btn.disabled = false;
+              pausenAnzahl += 1;
+              countEl.textContent = String(pausenAnzahl);
+            } else {
+              display.textContent = fmtMMSS(remaining);
+            }
+          }, 1000);
+        });
+      } else if (uebung.timer_modus === 'intervall') {
+        const display = card.querySelector('[data-timer-display]');
+        const toggleBtn = card.querySelector('[data-timer-toggle]');
+        const listEl = card.querySelector('[data-interval-list]');
+        let running = false;
+        let startedAt = 0;
+        let rafId = null;
+        function tick() {
+          display.textContent = fmtMMSS((Date.now() - startedAt) / 1000);
+          if (running) rafId = requestAnimationFrame(tick);
+        }
+        toggleBtn.addEventListener('click', () => {
+          if (running) {
+            running = false;
+            if (rafId) cancelAnimationFrame(rafId);
+            const dur = Math.round((Date.now() - startedAt) / 1000);
+            intervallSekunden.push(dur);
+            aktiveZeitSekunden += dur;
+            listEl.innerHTML += `<span class="tag tag-neutral" style="font-size:11px">${fmtMMSS(dur)}</span>`;
+            display.textContent = '00:00';
+            toggleBtn.textContent = 'Start';
+          } else {
+            running = true;
+            startedAt = Date.now();
+            toggleBtn.textContent = 'Pause';
+            tick();
+          }
+        });
+      }
+
+      card.querySelector('[data-ex-toggle]').addEventListener('click', () => {
+        const body = card.querySelector('[data-ex-body]');
+        body.hidden = !body.hidden;
+      });
+
+      card.querySelector('[data-ex-save]').addEventListener('click', async () => {
+        const errorEl = card.querySelector('[data-ex-error]');
+        errorEl.hidden = true;
+        if (uebung.typ === 'kletterroute' && !routenVersuche.length) {
+          errorEl.hidden = false;
+          errorEl.textContent = 'Bitte mindestens einen Versuch hinzufügen.';
+          return;
+        }
+        const ergebnisInput = card.querySelector('[data-ex-ergebnis]');
+        const dauerInput = card.querySelector('[data-ex-dauer]');
+        const anstrengungInput = card.querySelector('[data-ex-anstrengung]');
+        const notizInput = card.querySelector('[data-ex-notiz]');
 
         const payload = {
           user_id: userId,
-          datum,
-          typ,
-          uebung_id: uebungId || null,
-          ergebnis_wert: uebungId && ergebnisRaw ? Number(ergebnisRaw) : null,
-          dauer_minuten: dauerRaw ? Number(dauerRaw) : null,
-          anstrengung: anstrengungRaw ? Number(anstrengungRaw) : null,
-          notiz: notiz || null
+          datum: new Date().toISOString().slice(0, 10),
+          typ: null,
+          uebung_id: uebung.id,
+          einheit_id: sess.einheitId,
+          ergebnis_wert: ergebnisInput && ergebnisInput.value ? Number(ergebnisInput.value) : null,
+          dauer_minuten: dauerInput && dauerInput.value ? Number(dauerInput.value) : null,
+          anstrengung: anstrengungInput && anstrengungInput.value ? Number(anstrengungInput.value) : null,
+          notiz: notizInput && notizInput.value.trim() ? notizInput.value.trim() : null,
+          aktive_zeit_sekunden: aktiveZeitSekunden || null,
+          intervall_sekunden: intervallSekunden.length ? intervallSekunden : null,
+          pausen_anzahl: uebung.timer_modus === 'pause' ? pausenAnzahl : null,
+          routen_versuche: routenVersuche.length ? routenVersuche : null
         };
 
-        const btn = logForm.querySelector('button[type="submit"]');
-        btn.disabled = true;
+        const saveBtn = card.querySelector('[data-ex-save]');
+        saveBtn.disabled = true;
         try {
           const { data, error } = await client.from('trainingslog').insert(payload).select().single();
           if (error) throw error;
           log.unshift(data);
           log.sort((a, b) => (b.datum + b.created_at).localeCompare(a.datum + a.created_at));
-          document.getElementById('log-ergebnis').value = '';
-          document.getElementById('log-dauer').value = '';
-          document.getElementById('log-anstrengung').value = '';
-          document.getElementById('log-notiz').value = '';
+          card.dataset.done = 'true';
+          card.querySelector('[data-ex-status]').textContent = '✓ Gespeichert';
+          card.querySelector('[data-ex-body]').hidden = true;
           renderLog();
           renderWeekSummary();
           renderCharts();
         } catch (e) {
-          logFormError.hidden = false;
-          logFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+          errorEl.hidden = false;
+          errorEl.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
         } finally {
-          btn.disabled = false;
+          saveBtn.disabled = false;
         }
       });
     }
+
+    function startSession() {
+      const workoutId = sessionWorkoutSelect.value || null;
+      const workout = workoutId ? workouts.find(w => w.id === workoutId) : null;
+      sess.usedUebungIds = new Set();
+      sessionExerciseCards.innerHTML = '';
+
+      sessionStartBtn.disabled = true;
+      client.from('trainingseinheiten').insert({
+        user_id: userId,
+        workout_id: workoutId,
+        workout_name: workout ? workout.name : null,
+        datum: new Date().toISOString().slice(0, 10)
+      }).select().single().then(({ data, error }) => {
+        sessionStartBtn.disabled = false;
+        if (error || !data) { alert('Training konnte nicht gestartet werden. Bitte erneut versuchen.'); return; }
+        einheiten.unshift(data);
+        sess.active = true;
+        sess.einheitId = data.id;
+        sess.startedAt = Date.now();
+        sessionWorkoutLabel.textContent = workout ? workout.name : 'Freies Training';
+        sessionIdleBox.hidden = true;
+        sessionActiveBox.hidden = false;
+        sessionExercisesBox.hidden = false;
+        sessionTick();
+        if (workout) workoutUebungenFor(workout.id).forEach(u => addExerciseCard(u));
+        populateAddUebungSelect();
+      });
+    }
+
+    function endSession() {
+      if (!sess.active) return;
+      sess.active = false;
+      if (sess.rafId) cancelAnimationFrame(sess.rafId);
+      const dauer = Math.floor((Date.now() - sess.startedAt) / 1000);
+      client.from('trainingseinheiten').update({ dauer_sekunden: dauer }).eq('id', sess.einheitId).select().single().then(({ data }) => {
+        if (data) einheiten = einheiten.map(e => e.id === data.id ? data : e);
+        renderEinheitenList();
+      });
+      sessionIdleBox.hidden = false;
+      sessionActiveBox.hidden = true;
+      sessionExercisesBox.hidden = true;
+      sessionAddUebungBox.hidden = true;
+      sessionExerciseCards.innerHTML = '';
+      sess.einheitId = null;
+    }
+
+    if (sessionStartBtn) sessionStartBtn.addEventListener('click', startSession);
+    if (sessionEndBtn) sessionEndBtn.addEventListener('click', () => {
+      if (confirm('Training beenden und Gesamtzeit speichern?')) endSession();
+    });
+    if (sessionAddUebungBtn) sessionAddUebungBtn.addEventListener('click', () => {
+      populateAddUebungSelect();
+      sessionAddUebungBox.hidden = !sessionAddUebungBox.hidden;
+    });
+    if (sessionAddUebungConfirm) sessionAddUebungConfirm.addEventListener('click', () => {
+      const id = sessionAddUebungSelect.value;
+      if (!id) return;
+      addExerciseCard(uebungById(id));
+      populateAddUebungSelect();
+    });
   }
 
   // --------------------------------------------------------------------

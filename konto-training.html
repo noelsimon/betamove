@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Training — BETAMOVE Konto</title>
-<meta name="description" content="Dein Trainingsbereich bei BETAMOVE: Ziele setzen, Einheiten loggen, mit der Stoppuhr Intervalle stoppen.">
+<meta name="description" content="Dein Trainingsbereich bei BETAMOVE: Workouts planen, Übungen loggen, mit Timer trainieren.">
 <meta property="og:title" content="Training — BETAMOVE Konto">
-<meta property="og:description" content="Dein Trainingsbereich bei BETAMOVE: Ziele setzen, Einheiten loggen, mit der Stoppuhr Intervalle stoppen.">
+<meta property="og:description" content="Dein Trainingsbereich bei BETAMOVE: Workouts planen, Übungen loggen, mit Timer trainieren.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://betamove.de/konto-training">
 <meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
@@ -24,6 +24,13 @@
   .wp-day h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
   .wp-day-item { font-size: 13.5px; padding: 5px 0; border-top: 1px solid var(--color-divider); }
   .wp-day-item:first-of-type { border-top: 0; }
+  .sess-ex-card { background:#ffffff; border:1px solid var(--color-divider); border-radius: var(--radius-lg); padding: 18px 22px; }
+  .sess-ex-card[data-done="true"] { background: var(--color-accent-100); border-color: var(--color-accent-300); }
+  .sess-ex-head { display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer; }
+  .sess-ex-body { margin-top: 14px; display:flex; flex-direction:column; gap: 12px; }
+  .timer-box { background: var(--color-surface); border-radius: var(--radius-md); padding: 14px 16px; display:flex; flex-direction:column; gap:10px; align-items:center; }
+  .timer-display { font-family: var(--font-heading); font-size: 34px; font-variant-numeric: tabular-nums; }
+  .route-attempt-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background: var(--color-surface); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13.5px; }
 </style>
 </head>
 <body>
@@ -77,7 +84,7 @@
       </aside>
       <div>
         <h2 style="margin:0 0 8px;font-size:30px">Training</h2>
-        <p style="max-width:60ch;margin:0 0 26px;font-size:17px;opacity:0.82">Eigene Übungen auf die Wochentage verteilen, dann Ergebnisse loggen. Nur du siehst deine Einträge.</p>
+        <p style="max-width:60ch;margin:0 0 26px;font-size:17px;opacity:0.82">Workouts aus eigenen Übungen bauen, dann mit Timer trainieren und loggen. Nur du siehst deine Einträge.</p>
 
         <div id="trainingTabs" style="display:flex;gap:10px;margin-bottom:28px">
           <button type="button" data-tab="plan" class="training-tab">Plan</button>
@@ -90,7 +97,7 @@
             <div id="wochenplanGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px"></div>
           </div>
 
-          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px">
               <h3 style="margin:0;font-size:21px">Deine Übungen</h3>
               <button type="button" id="newUebungBtn" class="btn btn-primary" style="font-size:14.5px;padding:10px 18px">+ Neue Übung</button>
@@ -99,14 +106,62 @@
             <div id="uebungFormBox" hidden style="background:var(--color-surface);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px">
               <h4 id="uebungFormTitle" style="margin:0 0 14px;font-size:17px">Übung anlegen</h4>
               <form id="uebungForm" style="display:flex;flex-direction:column;gap:14px">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
-                  <div class="field"><label>Name</label><input id="uebung-name" class="input" placeholder="z.B. Fingerhangboard" maxlength="200" required></div>
+                <div>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Art der Übung</label>
+                  <div id="uebungTypPills" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button type="button" class="wd-pill" data-typ="frei">Frei</button>
+                    <button type="button" class="wd-pill" data-typ="fingerkraft">Fingerkraft</button>
+                    <button type="button" class="wd-pill" data-typ="kletterroute">Kletterroute</button>
+                  </div>
+                </div>
+
+                <div class="field"><label>Name</label><input id="uebung-name" class="input" placeholder="z.B. Fingerhangboard" maxlength="200" required></div>
+
+                <div id="uebungFelderFrei" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
                   <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit" class="input" placeholder="z.B. kg, Sek., Wdh." maxlength="40"></div>
                 </div>
+
+                <div id="uebungFelderFingerkraft" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                  <div class="field"><label>Wiederholungen pro Satz</label><input id="uebung-wiederholungen" type="number" min="1" max="200" class="input" placeholder="z.B. 1"></div>
+                  <div class="field"><label>Griffart</label><input id="uebung-griffart" list="griffartOptions" class="input" placeholder="z.B. Full Crimp" maxlength="60">
+                    <datalist id="griffartOptions"><option value="Full Crimp"><option value="Half Crimp"><option value="Breit"><option value="Eng"><option value="Dreifinger"><option value="Zweifinger"></datalist>
+                  </div>
+                  <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit-fk" class="input" placeholder="z.B. kg, Sek." maxlength="40"></div>
+                </div>
+
+                <div id="uebungFelderKletterroute" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                  <div class="field"><label>Gerät</label>
+                    <select id="uebung-geraet" class="input">
+                      <option value="Moonboard">Moonboard</option>
+                      <option value="Kilterboard">Kilterboard</option>
+                      <option value="Spraywall">Spraywall</option>
+                      <option value="Andere">Andere</option>
+                    </select>
+                  </div>
+                  <div class="field"><label>Grad-System</label>
+                    <select id="uebung-gradsystem" class="input">
+                      <option value="fontainebleau">Fontainebleau</option>
+                      <option value="uiaa">UIAA</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Wochentage</label>
                   <div id="uebungWochentage" style="display:flex;flex-wrap:wrap;gap:8px"></div>
                 </div>
+
+                <div>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Timer (optional)</label>
+                  <div id="uebungTimerPills" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button type="button" class="wd-pill" data-timer="keiner">Keiner</button>
+                    <button type="button" class="wd-pill" data-timer="pause">Nur Pause</button>
+                    <button type="button" class="wd-pill" data-timer="intervall">Intervall (Start/Pause)</button>
+                  </div>
+                  <div id="uebungTimerPauseField" hidden class="field" style="margin-top:10px"><label>Pausenlänge (Sekunden)</label><input id="uebung-timer-pause" type="number" min="5" max="3600" class="input" placeholder="z.B. 90"></div>
+                  <p id="uebungTimerHint" style="margin:8px 0 0;font-size:13px;opacity:0.6"></p>
+                </div>
+
                 <div class="field"><label>Notiz (optional)</label><textarea id="uebung-notiz" class="input" rows="2" maxlength="1000" placeholder="z.B. Zielwert, Ausführungshinweise"></textarea></div>
                 <p id="uebungFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
                 <div style="display:flex;gap:12px">
@@ -118,64 +173,92 @@
 
             <div id="uebungenList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
+
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px">
+              <h3 style="margin:0;font-size:21px">Deine Workouts</h3>
+              <button type="button" id="newWorkoutBtn" class="btn btn-primary" style="font-size:14.5px;padding:10px 18px">+ Neues Workout</button>
+            </div>
+
+            <div id="workoutFormBox" hidden style="background:var(--color-surface);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px">
+              <h4 id="workoutFormTitle" style="margin:0 0 14px;font-size:17px">Workout anlegen</h4>
+              <form id="workoutForm" style="display:flex;flex-direction:column;gap:14px">
+                <div class="field"><label>Name</label><input id="workout-name" class="input" placeholder="z.B. Maximalkraft" maxlength="200" required></div>
+                <div>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Übungen in diesem Workout</label>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+                    <div>
+                      <p style="margin:0 0 8px;font-size:12.5px;font-weight:600;opacity:0.6;text-transform:uppercase;letter-spacing:0.04em">Verfügbar</p>
+                      <div id="workoutAvailableList" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:12.5px;font-weight:600;opacity:0.6;text-transform:uppercase;letter-spacing:0.04em">Im Workout</p>
+                      <div id="workoutSelectedList" style="display:flex;flex-direction:column;gap:6px"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="field"><label>Notiz (optional)</label><textarea id="workout-notiz" class="input" rows="2" maxlength="1000"></textarea></div>
+                <p id="workoutFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
+                <div style="display:flex;gap:12px">
+                  <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+                  <button type="button" id="workoutCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+                </div>
+              </form>
+            </div>
+
+            <div id="workoutenList" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
         </div>
 
         <div id="tabLogbuch" hidden>
-          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
-            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-              <h3 style="margin:0 0 16px;font-size:21px">Ziele</h3>
-              <div id="zieleList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
-              <form id="zielForm" style="display:flex;gap:10px;flex-wrap:wrap">
-                <input id="zielInput" class="input" style="flex:1;min-width:160px" placeholder="z.B. Erste 7a klettern" maxlength="300">
-                <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Hinzufügen</button>
-              </form>
-            </div>
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <h3 style="margin:0 0 16px;font-size:21px">Ziele</h3>
+            <div id="zieleList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+            <form id="zielForm" style="display:flex;gap:10px;flex-wrap:wrap">
+              <input id="zielInput" class="input" style="flex:1;min-width:160px" placeholder="z.B. Erste 7a klettern" maxlength="300">
+              <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Hinzufügen</button>
+            </form>
+          </div>
 
-            <div style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-              <h3 style="margin:0 0 16px;font-size:21px">Stoppuhr</h3>
-              <div id="stopwatchDisplay" style="font-family:var(--font-heading);font-size:48px;text-align:center;margin-bottom:18px;font-variant-numeric:tabular-nums">00:00.0</div>
-              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
-                <button type="button" id="swStartBtn" class="btn btn-primary" style="font-size:14.5px;padding:11px 22px">Start</button>
-                <button type="button" id="swLapBtn" class="btn btn-secondary" style="font-size:14.5px;padding:11px 22px" disabled>Runde</button>
-                <button type="button" id="swResetBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:11px 20px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Zurücksetzen</button>
+          <div id="sessionIdleBox" style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <h3 style="margin:0 0 6px;font-size:21px">Training starten</h3>
+            <p style="margin:0 0 16px;font-size:14.5px;opacity:0.85">Wähle ein Workout aus deinem Plan oder trainiere frei — die Gesamtzeit läuft, sobald du startest.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+              <div class="field" style="flex:1;min-width:200px"><label style="color:#ffffff">Workout (optional)</label>
+                <select id="sessionWorkoutSelect" class="input"><option value="">— Freies Training —</option></select>
               </div>
-              <div id="swLaps" style="display:flex;flex-direction:column-reverse;gap:6px;max-height:160px;overflow-y:auto"></div>
+              <button type="button" id="sessionStartBtn" class="btn btn-primary" style="background:#ffffff;color:var(--color-accent-700);font-size:15px;padding:12px 24px">Training starten</button>
             </div>
           </div>
 
-          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
-            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-              <h3 style="margin:0 0 16px;font-size:21px">Ergebnis eintragen</h3>
-              <form id="logForm" style="display:flex;flex-direction:column;gap:14px">
-                <div class="field">
-                  <label>Übung aus deinem Plan (optional)</label>
-                  <select id="log-uebung" class="input">
-                    <option value="">— Keine, freie Art wählen —</option>
-                  </select>
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
-                  <div class="field"><label>Datum</label><input id="log-datum" type="date" class="input" required></div>
-                  <div class="field" id="log-typ-field">
-                    <label>Art</label>
-                    <select id="log-typ" class="input">
-                      <option value="bouldern">Bouldern</option>
-                      <option value="seilklettern">Seilklettern</option>
-                      <option value="fingerkraft">Fingerkraft/Krafttraining</option>
-                      <option value="ausdauer">Ausdauer/Cardio</option>
-                      <option value="mobility">Mobility/Dehnen</option>
-                      <option value="sonstiges">Sonstiges</option>
-                    </select>
-                  </div>
-                  <div class="field" id="log-ergebnis-field" hidden><label id="log-ergebnis-label">Ergebnis</label><input id="log-ergebnis" type="number" step="any" class="input" placeholder="z.B. 20"></div>
-                  <div class="field"><label>Dauer (Min.)</label><input id="log-dauer" type="number" min="1" max="600" class="input" placeholder="z.B. 90"></div>
-                  <div class="field"><label>Anstrengung (RPE 1–10)</label><input id="log-anstrengung" type="number" min="1" max="10" class="input" placeholder="z.B. 7"></div>
-                </div>
-                <div class="field"><label>Notiz (optional)</label><textarea id="log-notiz" class="input" rows="2" maxlength="1000" placeholder="Was lief gut, was war schwer?"></textarea></div>
-                <p id="logFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
-                <button type="submit" class="btn btn-primary" style="align-self:flex-start;font-size:15px;padding:12px 24px">Eintragen</button>
-              </form>
+          <div id="sessionActiveBox" hidden style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+              <div>
+                <div id="sessionWorkoutLabel" style="font-size:13.5px;opacity:0.85;margin-bottom:4px">Freies Training</div>
+                <div id="sessionTimerDisplay" style="font-family:var(--font-heading);font-size:42px;font-variant-numeric:tabular-nums">00:00</div>
+              </div>
+              <button type="button" id="sessionEndBtn" class="btn btn-primary" style="background:#ffffff;color:var(--color-accent-700);font-size:15px;padding:12px 24px">Training beenden</button>
             </div>
+          </div>
 
+          <div id="sessionExercisesBox" hidden style="margin-bottom:26px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px">
+              <h3 style="margin:0;font-size:21px">Übungen in dieser Einheit</h3>
+              <button type="button" id="sessionAddUebungBtn" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:#ffffff;color:var(--color-text)">+ Übung hinzufügen</button>
+            </div>
+            <div id="sessionAddUebungBox" hidden style="display:flex;gap:10px;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:14px">
+              <select id="sessionAddUebungSelect" class="input" style="flex:1;min-width:200px"></select>
+              <button type="button" id="sessionAddUebungConfirm" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Hinzufügen</button>
+            </div>
+            <div id="sessionExerciseCards" style="display:flex;flex-direction:column;gap:14px"></div>
+          </div>
+
+          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
+            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+              <h3 style="margin:0 0 4px;font-size:21px">Einheiten pro Woche</h3>
+              <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Letzte 8 Wochen.</p>
+              <div id="chartWeeks" style="display:flex;gap:8px;align-items:flex-end"></div>
+            </div>
             <div style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
               <h3 style="margin:0 0 6px;font-size:21px">Diese Woche</h3>
               <p style="margin:0 0 18px;font-size:14px;opacity:0.85">Montag bis heute.</p>
@@ -192,17 +275,15 @@
             </div>
           </div>
 
-          <div data-r="2col" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:26px">
-            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-              <h3 style="margin:0 0 4px;font-size:21px">Einheiten pro Woche</h3>
-              <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Letzte 8 Wochen.</p>
-              <div id="chartWeeks" style="display:flex;gap:8px;align-items:flex-end"></div>
-            </div>
-            <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-              <h3 style="margin:0 0 4px;font-size:21px">Verteilung</h3>
-              <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Nach Übung bzw. Trainingsart.</p>
-              <div id="chartTypes" style="display:flex;flex-direction:column;gap:10px"></div>
-            </div>
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <h3 style="margin:0 0 4px;font-size:21px">Verteilung</h3>
+            <p style="margin:0 0 18px;font-size:13.5px;opacity:0.6">Nach Übung bzw. Trainingsart.</p>
+            <div id="chartTypes" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+            <h3 style="margin:0 0 16px;font-size:21px">Deine Trainingseinheiten</h3>
+            <div id="einheitenList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
 
           <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
@@ -290,72 +371,6 @@
   }
   tabs.forEach(t => t.addEventListener('click', () => activate(t.dataset.tab)));
   activate('plan');
-})();
-
-// Stoppuhr: rein clientseitig, keine Datenbank nötig.
-(function () {
-  const display = document.getElementById('stopwatchDisplay');
-  const startBtn = document.getElementById('swStartBtn');
-  const lapBtn = document.getElementById('swLapBtn');
-  const resetBtn = document.getElementById('swResetBtn');
-  const lapsEl = document.getElementById('swLaps');
-
-  let running = false;
-  let startedAt = 0;
-  let elapsedBefore = 0;
-  let rafId = null;
-  let laps = [];
-
-  function format(ms) {
-    const totalCs = Math.floor(ms / 100);
-    const cs = totalCs % 10;
-    const totalSec = Math.floor(ms / 1000);
-    const sec = totalSec % 60;
-    const min = Math.floor(totalSec / 60);
-    return String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0') + '.' + cs;
-  }
-
-  function currentMs() {
-    return elapsedBefore + (running ? performance.now() - startedAt : 0);
-  }
-
-  function tick() {
-    display.textContent = format(currentMs());
-    if (running) rafId = requestAnimationFrame(tick);
-  }
-
-  startBtn.addEventListener('click', () => {
-    if (running) {
-      running = false;
-      elapsedBefore = currentMs();
-      if (rafId) cancelAnimationFrame(rafId);
-      startBtn.textContent = 'Weiter';
-      lapBtn.disabled = true;
-    } else {
-      running = true;
-      startedAt = performance.now();
-      startBtn.textContent = 'Pause';
-      lapBtn.disabled = false;
-      tick();
-    }
-  });
-
-  lapBtn.addEventListener('click', () => {
-    if (!running) return;
-    laps.push(currentMs());
-    lapsEl.innerHTML = laps.map((ms, i) => '<div style="display:flex;justify-content:space-between;font-size:14.5px;padding:6px 10px;background:#ffffff;border-radius:var(--radius-md)"><span>Runde ' + (i + 1) + '</span><span style="font-variant-numeric:tabular-nums">' + format(ms) + '</span></div>').join('');
-  });
-
-  resetBtn.addEventListener('click', () => {
-    running = false;
-    elapsedBefore = 0;
-    laps = [];
-    if (rafId) cancelAnimationFrame(rafId);
-    display.textContent = '00:00.0';
-    startBtn.textContent = 'Start';
-    lapBtn.disabled = true;
-    lapsEl.innerHTML = '';
-  });
 })();
 </script>
 </body>
