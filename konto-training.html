@@ -136,9 +136,11 @@
                   </div>
 
                   <div id="uebungFelderKlassisch" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                    <div class="field"><label>Anzahl Sätze (optional)</label><input id="uebung-saetze" type="number" min="1" max="50" class="input" placeholder="z.B. 3"></div>
                     <div class="field"><label>Wiederholungen pro Satz (optional)</label><input id="uebung-wiederholungen" type="number" min="1" max="200" class="input" placeholder="z.B. 5"></div>
                     <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit" class="input" placeholder="z.B. kg, Sek., Wdh." maxlength="40"></div>
                   </div>
+                  <p id="uebungSaetzeHint" style="margin:-6px 0 0;font-size:13px;opacity:0.6">Bei mehr als einem Satz zeigt das Logbuch je Satz eine eigene Zeile für Wiederholungen, Ergebnis und Spezifikation.</p>
 
                   <div id="uebungFelderKletterroute" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
                     <div class="field"><label>Gerät</label>

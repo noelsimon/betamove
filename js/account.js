@@ -939,6 +939,7 @@
       document.getElementById('uebung-name').value = uebung ? uebung.name : '';
       document.getElementById('uebung-einheit').value = uebung ? (uebung.einheit || '') : '';
       document.getElementById('uebung-wiederholungen').value = uebung ? (uebung.wiederholungen || '') : '';
+      document.getElementById('uebung-saetze').value = uebung ? (uebung.saetze || '') : '';
       document.getElementById('uebung-geraet').value = uebung && uebung.geraet ? uebung.geraet : 'Moonboard';
       document.getElementById('uebung-gradsystem').value = uebung && uebung.grad_system ? uebung.grad_system : 'fontainebleau';
       document.getElementById('uebung-timer-pause').value = uebung ? (uebung.timer_pause_sekunden || '') : '';
@@ -976,7 +977,7 @@
       if (u.typ === 'kletterroute') {
         parts.push(u.geraet, u.grad_system ? (u.grad_system === 'uiaa' ? 'UIAA' : 'Fontainebleau') : null);
       } else {
-        parts.push(u.wiederholungen ? u.wiederholungen + ' Wdh.' : null, Array.isArray(u.spezifikationen) && u.spezifikationen.length ? u.spezifikationen.join(', ') : null, u.einheit);
+        parts.push(u.saetze && u.saetze > 1 ? u.saetze + ' Sätze' : null, u.wiederholungen ? u.wiederholungen + ' Wdh.' : null, Array.isArray(u.spezifikationen) && u.spezifikationen.length ? u.spezifikationen.join(', ') : null, u.einheit);
       }
       return parts.filter(Boolean).join(' · ');
     }
@@ -1048,14 +1049,16 @@
           wochentage: selectedWochentage(),
           timer_modus: timerModus,
           timer_pause_sekunden: timerModus === 'pause' ? Number(timerPauseRaw) : null,
-          einheit: null, wiederholungen: null, spezifikationen: [], geraet: null, grad_system: null
+          einheit: null, wiederholungen: null, saetze: null, spezifikationen: [], geraet: null, grad_system: null
         };
         if (maske === 'kletterroute') {
           payload.geraet = document.getElementById('uebung-geraet').value;
           payload.grad_system = document.getElementById('uebung-gradsystem').value;
         } else {
           const wdhRaw = document.getElementById('uebung-wiederholungen').value;
+          const saetzeRaw = document.getElementById('uebung-saetze').value;
           payload.wiederholungen = wdhRaw ? Number(wdhRaw) : null;
+          payload.saetze = saetzeRaw ? Number(saetzeRaw) : null;
           payload.einheit = document.getElementById('uebung-einheit').value.trim() || null;
           payload.spezifikationen = uebungSpezifikationen.slice();
         }
@@ -1310,6 +1313,15 @@
               ${r.getoppt ? '<span style="color:var(--color-accent-2-700);font-weight:600">✓ getoppt</span>' : '<span style="opacity:0.5">nicht getoppt</span>'}
             </div>`).join('')}
           </div>` : '';
+        const saetze = Array.isArray(l.satz_ergebnisse) && l.satz_ergebnisse.length ? `
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+            ${l.satz_ergebnisse.map(s => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="tag tag-neutral" style="font-size:10.5px">Satz ${s.nr}</span>
+              ${s.wiederholungen != null ? '<span>' + s.wiederholungen + ' Wdh.</span>' : ''}
+              ${s.ergebnis_wert != null ? '<span>' + s.ergebnis_wert + (uebung && uebung.einheit ? ' ' + escapeHtml(uebung.einheit) : '') + '</span>' : ''}
+              ${s.spezifikation ? '<span style="opacity:0.65">' + escapeHtml(s.spezifikation) + '</span>' : ''}
+            </div>`).join('')}
+          </div>` : '';
         return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
           <div style="flex:1;min-width:0">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
@@ -1317,6 +1329,7 @@
               <span style="font-size:13.5px;opacity:0.65">${escapeHtml(meta)}</span>
             </div>
             ${routen}
+            ${saetze}
             ${l.notiz ? '<p style="margin:6px 0 0;font-size:14.5px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
           </div>
           <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
@@ -1428,6 +1441,19 @@
           </div>
           <button type="button" data-route-add style="align-self:flex-start;cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">+ Versuch hinzufügen</button>
         `);
+      } else if (uebung.saetze && uebung.saetze > 1) {
+        const spezOptions = (uebung.spezifikationen || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        const rows = [];
+        for (let i = 1; i <= uebung.saetze; i++) {
+          rows.push(`
+            <div data-satz-row data-nr="${i}" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:10px 12px">
+              <strong style="min-width:50px;font-size:13.5px">Satz ${i}</strong>
+              <div class="field" style="margin:0"><label style="font-size:11px">Wdh.${uebung.wiederholungen ? ' (Ziel ' + uebung.wiederholungen + ')' : ''}</label><input type="number" min="0" max="999" class="input" data-satz-wdh style="width:80px" placeholder="${uebung.wiederholungen || ''}"></div>
+              ${uebung.einheit ? `<div class="field" style="margin:0"><label style="font-size:11px">Ergebnis (${escapeHtml(uebung.einheit)})</label><input type="number" step="any" class="input" data-satz-ergebnis style="width:90px"></div>` : ''}
+              ${spezOptions ? `<div class="field" style="margin:0"><label style="font-size:11px">Spezifikation</label><select class="input" data-satz-spez style="width:130px"><option value="">–</option>${spezOptions}</select></div>` : ''}
+            </div>`);
+        }
+        bodyFields.push(`<div data-satz-liste style="display:flex;flex-direction:column;gap:8px">${rows.join('')}</div>`);
       } else {
         const info = [uebung.wiederholungen ? uebung.wiederholungen + ' Wdh.' : null, Array.isArray(uebung.spezifikationen) && uebung.spezifikationen.length ? uebung.spezifikationen.join(', ') : null].filter(Boolean).join(' · ');
         if (info) bodyFields.push(`<p style="margin:0;font-size:13.5px;opacity:0.65">${escapeHtml(info)}</p>`);
@@ -1579,6 +1605,18 @@
         const anstrengungInput = card.querySelector('[data-ex-anstrengung]');
         const notizInput = card.querySelector('[data-ex-notiz]');
 
+        const satzErgebnisse = Array.from(card.querySelectorAll('[data-satz-row]')).map(row => {
+          const wdhInput = row.querySelector('[data-satz-wdh]');
+          const ergInput = row.querySelector('[data-satz-ergebnis]');
+          const spezSelect = row.querySelector('[data-satz-spez]');
+          return {
+            nr: Number(row.dataset.nr),
+            wiederholungen: wdhInput && wdhInput.value ? Number(wdhInput.value) : null,
+            ergebnis_wert: ergInput && ergInput.value ? Number(ergInput.value) : null,
+            spezifikation: spezSelect && spezSelect.value ? spezSelect.value : null
+          };
+        });
+
         const payload = {
           user_id: userId,
           datum: new Date().toISOString().slice(0, 10),
@@ -1592,7 +1630,8 @@
           aktive_zeit_sekunden: aktiveZeitSekunden || null,
           intervall_sekunden: intervallSekunden.length ? intervallSekunden : null,
           pausen_anzahl: uebung.timer_modus === 'pause' ? pausenAnzahl : null,
-          routen_versuche: routenVersuche.length ? routenVersuche : null
+          routen_versuche: routenVersuche.length ? routenVersuche : null,
+          satz_ergebnisse: satzErgebnisse.length ? satzErgebnisse : null
         };
 
         const saveBtn = card.querySelector('[data-ex-save]');
