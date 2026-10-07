@@ -104,69 +104,91 @@
             </div>
 
             <div id="uebungFormBox" hidden style="background:var(--color-surface);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px">
-              <h4 id="uebungFormTitle" style="margin:0 0 14px;font-size:17px">Übung anlegen</h4>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <h4 id="uebungFormTitle" style="margin:0;font-size:17px">Übung anlegen</h4>
+                <button type="button" id="uebungCancelBtnTop" style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+              </div>
               <form id="uebungForm" style="display:flex;flex-direction:column;gap:14px">
-                <div>
-                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Art der Übung</label>
-                  <div id="uebungTypPills" style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button type="button" class="wd-pill" data-typ="frei">Frei</button>
-                    <button type="button" class="wd-pill" data-typ="fingerkraft">Fingerkraft</button>
-                    <button type="button" class="wd-pill" data-typ="kletterroute">Kletterroute</button>
-                  </div>
-                </div>
-
                 <div class="field"><label>Name</label><input id="uebung-name" class="input" placeholder="z.B. Fingerhangboard" maxlength="200" required></div>
 
-                <div id="uebungFelderFrei" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
-                  <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit" class="input" placeholder="z.B. kg, Sek., Wdh." maxlength="40"></div>
-                </div>
-
-                <div id="uebungFelderFingerkraft" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
-                  <div class="field"><label>Wiederholungen pro Satz</label><input id="uebung-wiederholungen" type="number" min="1" max="200" class="input" placeholder="z.B. 1"></div>
-                  <div class="field"><label>Griffart</label><input id="uebung-griffart" list="griffartOptions" class="input" placeholder="z.B. Full Crimp" maxlength="60">
-                    <datalist id="griffartOptions"><option value="Full Crimp"><option value="Half Crimp"><option value="Breit"><option value="Eng"><option value="Dreifinger"><option value="Zweifinger"></datalist>
-                  </div>
-                  <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit-fk" class="input" placeholder="z.B. kg, Sek." maxlength="40"></div>
-                </div>
-
-                <div id="uebungFelderKletterroute" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
-                  <div class="field"><label>Gerät</label>
-                    <select id="uebung-geraet" class="input">
-                      <option value="Moonboard">Moonboard</option>
-                      <option value="Kilterboard">Kilterboard</option>
-                      <option value="Spraywall">Spraywall</option>
-                      <option value="Andere">Andere</option>
-                    </select>
-                  </div>
-                  <div class="field"><label>Grad-System</label>
-                    <select id="uebung-gradsystem" class="input">
-                      <option value="fontainebleau">Fontainebleau</option>
-                      <option value="uiaa">UIAA</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div>
-                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Wochentage</label>
-                  <div id="uebungWochentage" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Art</label>
+                  <div id="uebungArtPills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
                 </div>
 
-                <div>
-                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Timer (optional)</label>
-                  <div id="uebungTimerPills" style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button type="button" class="wd-pill" data-timer="keiner">Keiner</button>
-                    <button type="button" class="wd-pill" data-timer="pause">Nur Pause</button>
-                    <button type="button" class="wd-pill" data-timer="intervall">Intervall (Start/Pause)</button>
+                <div id="uebungMaskeSection" hidden>
+                  <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Übungsmaske</label>
+                  <div id="uebungMaskePills" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button type="button" class="wd-pill" data-maske="klassisch">Klassische Maske</button>
+                    <button type="button" class="wd-pill" data-maske="kletterroute">Kletterroutenmaske</button>
                   </div>
-                  <div id="uebungTimerPauseField" hidden class="field" style="margin-top:10px"><label>Pausenlänge (Sekunden)</label><input id="uebung-timer-pause" type="number" min="5" max="3600" class="input" placeholder="z.B. 90"></div>
-                  <p id="uebungTimerHint" style="margin:8px 0 0;font-size:13px;opacity:0.6"></p>
                 </div>
 
-                <div class="field"><label>Notiz (optional)</label><textarea id="uebung-notiz" class="input" rows="2" maxlength="1000" placeholder="z.B. Zielwert, Ausführungshinweise"></textarea></div>
-                <p id="uebungFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
-                <div style="display:flex;gap:12px">
-                  <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
-                  <button type="button" id="uebungCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+                <div id="uebungAfterMaske" hidden style="display:flex;flex-direction:column;gap:14px">
+                  <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Trainingsart</label>
+                    <div id="uebungTrainingsartPills" style="display:flex;gap:8px;flex-wrap:wrap">
+                      <button type="button" class="wd-pill" data-trainingsart="maximalkraft">Maximalkraft</button>
+                      <button type="button" class="wd-pill" data-trainingsart="schnellkraft">Schnellkraft</button>
+                      <button type="button" class="wd-pill" data-trainingsart="ausdauer">Ausdauer</button>
+                      <button type="button" class="wd-pill" data-trainingsart="maximalkraftausdauer">Maximalkraftausdauer</button>
+                    </div>
+                  </div>
+
+                  <div id="uebungFelderKlassisch" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                    <div class="field"><label>Wiederholungen pro Satz (optional)</label><input id="uebung-wiederholungen" type="number" min="1" max="200" class="input" placeholder="z.B. 5"></div>
+                    <div class="field"><label>Einheit für das Ergebnis (optional)</label><input id="uebung-einheit" class="input" placeholder="z.B. kg, Sek., Wdh." maxlength="40"></div>
+                  </div>
+
+                  <div id="uebungFelderKletterroute" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+                    <div class="field"><label>Gerät</label>
+                      <select id="uebung-geraet" class="input">
+                        <option value="Moonboard">Moonboard</option>
+                        <option value="Kilterboard">Kilterboard</option>
+                        <option value="Spraywall">Spraywall</option>
+                        <option value="Andere">Andere</option>
+                      </select>
+                    </div>
+                    <div class="field"><label>Grad-System</label>
+                      <select id="uebung-gradsystem" class="input">
+                        <option value="fontainebleau">Fontainebleau</option>
+                        <option value="uiaa">UIAA</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div id="uebungSpezSection">
+                    <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Spezifikation (optional, mehrere möglich)</label>
+                    <div id="uebungSpezList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+                    <div style="display:flex;gap:8px">
+                      <input id="uebung-spez-input" list="spezOptions" class="input" style="flex:1" placeholder="z.B. Full Crimp" maxlength="60">
+                      <datalist id="spezOptions"><option value="Full Crimp"><option value="Half Crimp"><option value="Breit"><option value="Eng"><option value="Dreifinger"><option value="Zweifinger"></datalist>
+                      <button type="button" id="uebungSpezAdd" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);white-space:nowrap">+ Hinzufügen</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Wochentage</label>
+                    <div id="uebungWochentage" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+                  </div>
+
+                  <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Timer (optional)</label>
+                    <div id="uebungTimerPills" style="display:flex;gap:8px;flex-wrap:wrap">
+                      <button type="button" class="wd-pill" data-timer="keiner">Keiner</button>
+                      <button type="button" class="wd-pill" data-timer="pause">Nur Pause</button>
+                      <button type="button" class="wd-pill" data-timer="intervall">Intervall (Start/Pause)</button>
+                    </div>
+                    <div id="uebungTimerPauseField" hidden class="field" style="margin-top:10px"><label>Pausenlänge (Sekunden)</label><input id="uebung-timer-pause" type="number" min="5" max="3600" class="input" placeholder="z.B. 90"></div>
+                    <p id="uebungTimerHint" style="margin:8px 0 0;font-size:13px;opacity:0.6"></p>
+                  </div>
+
+                  <div class="field"><label>Notiz (optional)</label><textarea id="uebung-notiz" class="input" rows="2" maxlength="1000" placeholder="z.B. Zielwert, Ausführungshinweise"></textarea></div>
+                  <p id="uebungFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
+                  <div style="display:flex;gap:12px">
+                    <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+                    <button type="button" id="uebungCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+                  </div>
                 </div>
               </form>
             </div>

@@ -673,7 +673,9 @@
     fontainebleau: ['3', '4', '5', '5+', '6A', '6A+', '6B', '6B+', '6C', '6C+', '7A', '7A+', '7B', '7B+', '7C', '7C+', '8A', '8A+', '8B', '8B+', '8C', '8C+', '9A'],
     uiaa: ['III', 'III+', 'IV-', 'IV', 'IV+', 'V-', 'V', 'V+', 'VI-', 'VI', 'VI+', 'VII-', 'VII', 'VII+', 'VIII-', 'VIII', 'VIII+', 'IX-', 'IX', 'IX+', 'X-', 'X', 'X+', 'XI-', 'XI', 'XI+', 'XII-', 'XII']
   };
-  const UEBUNG_TYP_LABEL = { frei: 'Frei', fingerkraft: 'Fingerkraft', kletterroute: 'Kletterroute' };
+  const UEBUNG_MASKE_LABEL = { klassisch: 'Klassisch', kletterroute: 'Kletterroute' };
+  const TRAININGSART_LABEL = { maximalkraft: 'Maximalkraft', schnellkraft: 'Schnellkraft', ausdauer: 'Ausdauer', maximalkraftausdauer: 'Maximalkraftausdauer' };
+  const UEBUNG_ART_BUILTIN = ['Athletik', 'Mobilität', 'Dehnung', 'Geräte'];
   const TIMER_MODUS_LABEL = { keiner: 'Kein Timer', pause: 'Nur Pause', intervall: 'Intervall (Start/Pause)' };
 
   function fmtMMSS(totalSeconds) {
@@ -693,22 +695,25 @@
     let workouts = [];
     let workoutUebungen = [];
     let einheiten = [];
+    let uebungArten = [];
     try {
-      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes] = await Promise.all([
+      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
         client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false }),
         client.from('trainingsuebungen').select('*').order('created_at', { ascending: false }),
         client.from('trainingsworkouts').select('*').order('created_at', { ascending: false }),
         client.from('trainingsworkout_uebungen').select('*').order('reihenfolge', { ascending: true }),
-        client.from('trainingseinheiten').select('*').order('created_at', { ascending: false }).limit(30)
+        client.from('trainingseinheiten').select('*').order('created_at', { ascending: false }).limit(30),
+        client.from('trainingsuebung_arten').select('*').order('created_at', { ascending: true })
       ]);
-      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes].forEach(r => { if (r.error) throw r.error; });
+      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes].forEach(r => { if (r.error) throw r.error; });
       ziele = zieleRes.data || [];
       log = logRes.data || [];
       uebungen = uebungenRes.data || [];
       workouts = workoutsRes.data || [];
       workoutUebungen = workoutUebungenRes.data || [];
       einheiten = einheitenRes.data || [];
+      uebungArten = artenRes.data || [];
     } catch (e) {
       const el = document.getElementById('zieleList');
       if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
@@ -793,7 +798,7 @@
     }
     renderWochenplan();
 
-    // ---- Übung anlegen/bearbeiten: Typ-Umschaltung + Timer-Konfig ----
+    // ---- Übung anlegen/bearbeiten: Art -> Übungsmaske -> Trainingsart + Timer-Konfig ----
     const uebungFormBox = document.getElementById('uebungFormBox');
     const uebungForm = document.getElementById('uebungForm');
     const uebungFormTitle = document.getElementById('uebungFormTitle');
@@ -801,14 +806,22 @@
     const uebungWochentageEl = document.getElementById('uebungWochentage');
     const newUebungBtn = document.getElementById('newUebungBtn');
     const uebungCancelBtn = document.getElementById('uebungCancelBtn');
-    const uebungTypPills = document.getElementById('uebungTypPills');
+    const uebungCancelBtnTop = document.getElementById('uebungCancelBtnTop');
+    const uebungArtPills = document.getElementById('uebungArtPills');
+    const uebungMaskeSection = document.getElementById('uebungMaskeSection');
+    const uebungMaskePills = document.getElementById('uebungMaskePills');
+    const uebungAfterMaske = document.getElementById('uebungAfterMaske');
+    const uebungTrainingsartPills = document.getElementById('uebungTrainingsartPills');
     const uebungTimerPills = document.getElementById('uebungTimerPills');
     const uebungTimerPauseField = document.getElementById('uebungTimerPauseField');
     const uebungTimerHint = document.getElementById('uebungTimerHint');
-    const uebungFelderFrei = document.getElementById('uebungFelderFrei');
-    const uebungFelderFingerkraft = document.getElementById('uebungFelderFingerkraft');
+    const uebungFelderKlassisch = document.getElementById('uebungFelderKlassisch');
     const uebungFelderKletterroute = document.getElementById('uebungFelderKletterroute');
+    const uebungSpezList = document.getElementById('uebungSpezList');
+    const uebungSpezInput = document.getElementById('uebung-spez-input');
+    const uebungSpezAdd = document.getElementById('uebungSpezAdd');
     let editingUebungId = null;
+    let uebungSpezifikationen = [];
 
     if (uebungWochentageEl && !uebungWochentageEl.children.length) {
       uebungWochentageEl.innerHTML = WOCHENTAGE.map(wd => `<button type="button" class="wd-pill" data-day="${wd.n}">${wd.short}</button>`).join('');
@@ -827,17 +840,85 @@
       });
     }
 
-    function setActiveTyp(typ) {
-      uebungTypPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.typ === typ); });
-      uebungFelderFrei.hidden = typ !== 'frei';
-      uebungFelderFingerkraft.hidden = typ !== 'fingerkraft';
-      uebungFelderKletterroute.hidden = typ !== 'kletterroute';
+    // ---- Art (Athletik/Mobilität/Dehnung/Geräte + selbst hinzugefügte) ----
+    function renderArtPills() {
+      const custom = uebungArten.map(a => a.name);
+      const current = activeArt();
+      uebungArtPills.innerHTML = UEBUNG_ART_BUILTIN.concat(custom).map(name =>
+        `<button type="button" class="wd-pill" data-art="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+      ).join('') + `<button type="button" class="wd-pill" data-art-add>+ Neue Art</button>`;
+      if (current) setActiveArt(current);
+      uebungArtPills.querySelectorAll('.wd-pill[data-art]').forEach(btn => {
+        btn.addEventListener('click', () => setActiveArt(btn.dataset.art));
+      });
+      const addBtn = uebungArtPills.querySelector('[data-art-add]');
+      if (addBtn) addBtn.addEventListener('click', async () => {
+        const name = (prompt('Name der neuen Art:') || '').trim();
+        if (!name) return;
+        try {
+          const { data, error } = await client.from('trainingsuebung_arten').insert({ user_id: userId, name }).select().single();
+          if (error) throw error;
+          uebungArten.push(data);
+          renderArtPills();
+          setActiveArt(name);
+        } catch (e) { alert('Konnte nicht gespeichert werden.'); }
+      });
     }
-    function activeTyp() {
-      const btn = uebungTypPills.querySelector('.wd-pill[data-active="true"]');
-      return btn ? btn.dataset.typ : 'frei';
+    function setActiveArt(art) {
+      uebungArtPills.querySelectorAll('.wd-pill[data-art]').forEach(btn => { btn.dataset.active = String(btn.dataset.art === art); });
+      uebungMaskeSection.hidden = !art;
+      if (!art) { uebungAfterMaske.hidden = true; setActiveMaske(''); }
     }
-    uebungTypPills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => setActiveTyp(btn.dataset.typ)));
+    function activeArt() {
+      const btn = uebungArtPills.querySelector('.wd-pill[data-art][data-active="true"]');
+      return btn ? btn.dataset.art : '';
+    }
+    renderArtPills();
+
+    // ---- Übungsmaske (klassisch/kletterroute) ----
+    function setActiveMaske(maske) {
+      uebungMaskePills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.maske === maske); });
+      uebungAfterMaske.hidden = !maske;
+      uebungFelderKlassisch.hidden = maske !== 'klassisch';
+      uebungFelderKletterroute.hidden = maske !== 'kletterroute';
+    }
+    function activeMaske() {
+      const btn = uebungMaskePills.querySelector('.wd-pill[data-active="true"]');
+      return btn ? btn.dataset.maske : '';
+    }
+    uebungMaskePills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => setActiveMaske(btn.dataset.maske)));
+
+    // ---- Trainingsart (optional) ----
+    function setActiveTrainingsart(art) {
+      uebungTrainingsartPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.trainingsart === art && !!art); });
+    }
+    function activeTrainingsart() {
+      const btn = uebungTrainingsartPills.querySelector('.wd-pill[data-active="true"]');
+      return btn ? btn.dataset.trainingsart : null;
+    }
+    uebungTrainingsartPills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => {
+      setActiveTrainingsart(btn.dataset.trainingsart === activeTrainingsart() ? null : btn.dataset.trainingsart);
+    }));
+
+    // ---- Spezifikationen (mehrere möglich) ----
+    function renderSpezList() {
+      uebungSpezList.innerHTML = uebungSpezifikationen.map((s, i) => `
+        <span class="tag tag-neutral" data-spez data-idx="${i}" style="font-size:12.5px;display:inline-flex;align-items:center;gap:6px">${escapeHtml(s)}<button type="button" data-spez-remove aria-label="Entfernen" style="cursor:pointer;font:inherit;background:transparent;border:0;opacity:0.6;padding:0">✕</button></span>
+      `).join('');
+      uebungSpezList.querySelectorAll('[data-spez]').forEach(chip => {
+        const idx = Number(chip.dataset.idx);
+        chip.querySelector('[data-spez-remove]').addEventListener('click', () => { uebungSpezifikationen.splice(idx, 1); renderSpezList(); });
+      });
+    }
+    function addSpez() {
+      const val = uebungSpezInput.value.trim();
+      if (!val || uebungSpezifikationen.includes(val)) { uebungSpezInput.value = ''; return; }
+      uebungSpezifikationen.push(val);
+      uebungSpezInput.value = '';
+      renderSpezList();
+    }
+    uebungSpezAdd.addEventListener('click', addSpez);
+    uebungSpezInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSpez(); } });
 
     function setActiveTimer(modus) {
       uebungTimerPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.timer === modus); });
@@ -858,14 +939,16 @@
       document.getElementById('uebung-name').value = uebung ? uebung.name : '';
       document.getElementById('uebung-einheit').value = uebung ? (uebung.einheit || '') : '';
       document.getElementById('uebung-wiederholungen').value = uebung ? (uebung.wiederholungen || '') : '';
-      document.getElementById('uebung-griffart').value = uebung ? (uebung.griffart || '') : '';
-      document.getElementById('uebung-einheit-fk').value = uebung ? (uebung.einheit || '') : '';
       document.getElementById('uebung-geraet').value = uebung && uebung.geraet ? uebung.geraet : 'Moonboard';
       document.getElementById('uebung-gradsystem').value = uebung && uebung.grad_system ? uebung.grad_system : 'fontainebleau';
       document.getElementById('uebung-timer-pause').value = uebung ? (uebung.timer_pause_sekunden || '') : '';
       document.getElementById('uebung-notiz').value = uebung ? (uebung.notiz || '') : '';
+      uebungSpezifikationen = uebung && Array.isArray(uebung.spezifikationen) ? uebung.spezifikationen.slice() : [];
+      renderSpezList();
       setSelectedWochentage(uebung ? uebung.wochentage : []);
-      setActiveTyp(uebung ? uebung.typ : 'frei');
+      setActiveArt(uebung ? (uebung.art || '') : '');
+      setActiveMaske(uebung ? uebung.typ : '');
+      setActiveTrainingsart(uebung ? uebung.trainingsart : null);
       setActiveTimer(uebung ? uebung.timer_modus : 'keiner');
       uebungFormError.hidden = true;
       uebungFormBox.hidden = false;
@@ -875,22 +958,27 @@
       uebungFormBox.hidden = true;
       editingUebungId = null;
       uebungForm.reset();
+      uebungSpezifikationen = [];
+      renderSpezList();
       setSelectedWochentage([]);
-      setActiveTyp('frei');
+      setActiveArt('');
+      setActiveMaske('');
+      setActiveTrainingsart(null);
       setActiveTimer('keiner');
     }
 
     if (newUebungBtn) newUebungBtn.addEventListener('click', () => openUebungForm(null));
     if (uebungCancelBtn) uebungCancelBtn.addEventListener('click', closeUebungForm);
+    if (uebungCancelBtnTop) uebungCancelBtnTop.addEventListener('click', closeUebungForm);
 
     function uebungSubtitle(u) {
-      if (u.typ === 'fingerkraft') {
-        return [u.wiederholungen ? u.wiederholungen + ' Wdh.' : null, u.griffart, u.einheit].filter(Boolean).join(' · ');
-      }
+      const parts = [u.art, TRAININGSART_LABEL[u.trainingsart] || null];
       if (u.typ === 'kletterroute') {
-        return [u.geraet, u.grad_system ? (u.grad_system === 'uiaa' ? 'UIAA' : 'Fontainebleau') : null].filter(Boolean).join(' · ');
+        parts.push(u.geraet, u.grad_system ? (u.grad_system === 'uiaa' ? 'UIAA' : 'Fontainebleau') : null);
+      } else {
+        parts.push(u.wiederholungen ? u.wiederholungen + ' Wdh.' : null, Array.isArray(u.spezifikationen) && u.spezifikationen.length ? u.spezifikationen.join(', ') : null, u.einheit);
       }
-      return u.einheit || '';
+      return parts.filter(Boolean).join(' · ');
     }
 
     function renderUebungenList() {
@@ -904,7 +992,7 @@
           <div style="flex:1;min-width:160px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span style="font-size:15.5px;font-weight:600">${escapeHtml(u.name)}</span>
-              <span class="tag tag-neutral" style="font-size:10.5px">${UEBUNG_TYP_LABEL[u.typ] || 'Frei'}</span>
+              <span class="tag tag-neutral" style="font-size:10.5px">${UEBUNG_MASKE_LABEL[u.typ] || 'Klassisch'}</span>
             </div>
             <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${[sub, days ? days : 'Keinem Wochentag zugeordnet', timerInfo].filter(Boolean).join(' · ')}</div>
             ${u.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(u.notiz) + '</p>' : ''}
@@ -939,9 +1027,12 @@
       uebungForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         uebungFormError.hidden = true;
-        const typ = activeTyp();
+        const art = activeArt();
+        const maske = activeMaske();
         const name = document.getElementById('uebung-name').value.trim();
         if (!name) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte einen Namen eintragen.'; return; }
+        if (!art) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte eine Art auswählen.'; return; }
+        if (!maske) { uebungFormError.hidden = false; uebungFormError.textContent = 'Bitte eine Übungsmaske auswählen.'; return; }
 
         const timerModus = activeTimer();
         const timerPauseRaw = document.getElementById('uebung-timer-pause').value;
@@ -950,23 +1041,23 @@
         const payload = {
           user_id: userId,
           name,
-          typ,
+          art,
+          typ: maske,
+          trainingsart: activeTrainingsart(),
           notiz: document.getElementById('uebung-notiz').value.trim() || null,
           wochentage: selectedWochentage(),
           timer_modus: timerModus,
           timer_pause_sekunden: timerModus === 'pause' ? Number(timerPauseRaw) : null,
-          einheit: null, wiederholungen: null, griffart: null, geraet: null, grad_system: null
+          einheit: null, wiederholungen: null, spezifikationen: [], geraet: null, grad_system: null
         };
-        if (typ === 'frei') {
-          payload.einheit = document.getElementById('uebung-einheit').value.trim() || null;
-        } else if (typ === 'fingerkraft') {
-          const wdhRaw = document.getElementById('uebung-wiederholungen').value;
-          payload.wiederholungen = wdhRaw ? Number(wdhRaw) : null;
-          payload.griffart = document.getElementById('uebung-griffart').value.trim() || null;
-          payload.einheit = document.getElementById('uebung-einheit-fk').value.trim() || null;
-        } else if (typ === 'kletterroute') {
+        if (maske === 'kletterroute') {
           payload.geraet = document.getElementById('uebung-geraet').value;
           payload.grad_system = document.getElementById('uebung-gradsystem').value;
+        } else {
+          const wdhRaw = document.getElementById('uebung-wiederholungen').value;
+          payload.wiederholungen = wdhRaw ? Number(wdhRaw) : null;
+          payload.einheit = document.getElementById('uebung-einheit').value.trim() || null;
+          payload.spezifikationen = uebungSpezifikationen.slice();
         }
 
         const btn = uebungForm.querySelector('button[type="submit"]');
@@ -1337,10 +1428,9 @@
           </div>
           <button type="button" data-route-add style="align-self:flex-start;cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">+ Versuch hinzufügen</button>
         `);
-      } else if (uebung.typ === 'fingerkraft') {
-        bodyFields.push(`<p style="margin:0;font-size:13.5px;opacity:0.65">${[uebung.wiederholungen ? uebung.wiederholungen + ' Wdh.' : null, uebung.griffart].filter(Boolean).join(' · ')}</p>`);
-        bodyFields.push(`<div class="field"><label>Ergebnis${uebung.einheit ? ' (' + escapeHtml(uebung.einheit) + ')' : ''}</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
       } else {
+        const info = [uebung.wiederholungen ? uebung.wiederholungen + ' Wdh.' : null, Array.isArray(uebung.spezifikationen) && uebung.spezifikationen.length ? uebung.spezifikationen.join(', ') : null].filter(Boolean).join(' · ');
+        if (info) bodyFields.push(`<p style="margin:0;font-size:13.5px;opacity:0.65">${escapeHtml(info)}</p>`);
         if (uebung.einheit) bodyFields.push(`<div class="field"><label>Ergebnis (${escapeHtml(uebung.einheit)})</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
       }
 
@@ -1363,7 +1453,7 @@
         <div class="sess-ex-head" data-ex-toggle>
           <div>
             <h4 style="margin:0;font-size:17px">${escapeHtml(uebung.name)}</h4>
-            <span style="font-size:12.5px;opacity:0.6">${UEBUNG_TYP_LABEL[uebung.typ] || 'Frei'}</span>
+            <span style="font-size:12.5px;opacity:0.6">${[uebung.art, UEBUNG_MASKE_LABEL[uebung.typ]].filter(Boolean).join(' · ')}</span>
           </div>
           <span data-ex-status style="font-size:13px;font-weight:600;opacity:0.6">Offen</span>
         </div>
