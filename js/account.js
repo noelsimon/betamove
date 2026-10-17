@@ -754,8 +754,9 @@
     let trainingsplaene = [];
     let trainingsplanEintraege = [];
     let planZyklen = [];
+    let eigeneVorlagen = [];
     try {
-      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes] = await Promise.all([
+      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes, vorlagenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
         client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false }),
         client.from('trainingsuebungen').select('*').order('created_at', { ascending: false }),
@@ -765,9 +766,10 @@
         client.from('trainingsuebung_arten').select('*').order('created_at', { ascending: true }),
         client.from('trainingsplaene').select('*').order('created_at', { ascending: false }),
         client.from('trainingsplan_eintraege').select('*').order('woche_nr', { ascending: true }),
-        client.from('trainingsplan_zyklen').select('*').order('created_at', { ascending: true })
+        client.from('trainingsplan_zyklen').select('*').order('created_at', { ascending: true }),
+        client.from('trainingsuebung_vorlagen').select('*').order('created_at', { ascending: false })
       ]);
-      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes].forEach(r => { if (r.error) throw r.error; });
+      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes, vorlagenRes].forEach(r => { if (r.error) throw r.error; });
       ziele = zieleRes.data || [];
       log = logRes.data || [];
       uebungen = uebungenRes.data || [];
@@ -778,6 +780,7 @@
       trainingsplaene = plaeneRes.data || [];
       trainingsplanEintraege = planEintraegeRes.data || [];
       planZyklen = zyklenRes.data || [];
+      eigeneVorlagen = vorlagenRes.data || [];
     } catch (e) {
       const el = document.getElementById('zieleList');
       if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
@@ -1494,6 +1497,35 @@
         praevEl.innerHTML = cardsHtml(UEBUNG_VORLAGEN_PRAEVENTION);
         praevEl.querySelectorAll('[data-tpl-idx]').forEach(btn => btn.addEventListener('click', () => applyUebungTemplate(UEBUNG_VORLAGEN_PRAEVENTION[Number(btn.dataset.tplIdx)])));
       }
+      const eigenSection = document.getElementById('uebungVorlagenEigenSection');
+      const eigenEl = document.getElementById('uebungVorlagenEigen');
+      if (eigenSection && eigenEl) {
+        eigenSection.hidden = !eigeneVorlagen.length;
+        eigenEl.innerHTML = eigeneVorlagen.map((tpl, i) => {
+          const sub = [tpl.art, TRAININGSART_LABEL[tpl.trainingsart] || null].filter(Boolean).join(' · ');
+          return `<div class="tpl-card" data-tpl-idx="${i}" style="padding-right:26px" title="${escapeHtml(tpl.notiz || '')}">
+            <strong>${escapeHtml(tpl.name)}</strong><span>${escapeHtml(sub)}</span>
+            <button type="button" class="tpl-card-remove" data-tpl-remove aria-label="Vorlage entfernen">✕</button>
+          </div>`;
+        }).join('');
+        eigenEl.querySelectorAll('.tpl-card').forEach(card => {
+          const idx = Number(card.dataset.tplIdx);
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('[data-tpl-remove]')) return;
+            applyUebungTemplate(eigeneVorlagen[idx]);
+          });
+          card.querySelector('[data-tpl-remove]').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const tpl = eigeneVorlagen[idx];
+            try {
+              const { error } = await client.from('trainingsuebung_vorlagen').delete().eq('id', tpl.id);
+              if (error) throw error;
+              eigeneVorlagen = eigeneVorlagen.filter(v => v.id !== tpl.id);
+              renderUebungVorlagen();
+            } catch (err) { alert('Konnte nicht entfernt werden.'); }
+          });
+        });
+      }
     }
     renderUebungVorlagen();
 
@@ -1523,7 +1555,8 @@
             <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${[sub, days ? days : 'Keinem Wochentag zugeordnet', timerInfo].filter(Boolean).join(' · ')}</div>
             ${u.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(u.notiz) + '</p>' : ''}
           </div>
-          <div style="display:flex;gap:8px;flex:none">
+          <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap">
+            <button type="button" data-uebung-vorlage-speichern style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Als Vorlage speichern</button>
             <button type="button" data-uebung-edit style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
             <button type="button" data-uebung-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
           </div>
@@ -1533,6 +1566,37 @@
         const id = row.dataset.id;
         const uebung = uebungById(id);
         row.querySelector('[data-uebung-edit]').addEventListener('click', () => openUebungForm(uebung));
+        row.querySelector('[data-uebung-vorlage-speichern]').addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          try {
+            const payload = {
+              user_id: userId,
+              name: uebung.name,
+              art: uebung.art || null,
+              typ: uebung.typ,
+              trainingsart: uebung.trainingsart || null,
+              einheit: uebung.einheit || null,
+              wiederholungen: uebung.wiederholungen || null,
+              saetze: uebung.saetze || null,
+              spezifikationen: uebung.spezifikationen || [],
+              geraet: uebung.geraet || null,
+              grad_system: uebung.grad_system || null,
+              timer_modus: uebung.timer_modus || 'keiner',
+              timer_pause_sekunden: uebung.timer_pause_sekunden || null,
+              notiz: uebung.notiz || null
+            };
+            const { data, error } = await client.from('trainingsuebung_vorlagen').insert(payload).select().single();
+            if (error) throw error;
+            eigeneVorlagen.push(data);
+            renderUebungVorlagen();
+            btn.textContent = '✓ Gespeichert';
+            setTimeout(() => { btn.textContent = 'Als Vorlage speichern'; btn.disabled = false; }, 1800);
+          } catch (e) {
+            alert('Konnte nicht als Vorlage gespeichert werden.');
+            btn.disabled = false;
+          }
+        });
         row.querySelector('[data-uebung-delete]').addEventListener('click', async () => {
           if (!confirm('Übung „' + uebung.name + '" wirklich löschen? Workouts, die diese Übung enthalten, verlieren sie.')) return;
           try {
