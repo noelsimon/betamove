@@ -553,6 +553,36 @@
         }
       });
     }
+
+    const coachBtn = document.getElementById('coachZugriffBtn');
+    const coachSaved = document.getElementById('coachZugriffSaved');
+    let coachFreigabe = !!profile.training_coach_freigabe;
+    function renderCoachBtn() {
+      if (!coachBtn) return;
+      coachBtn.textContent = coachFreigabe ? 'Zugriff entziehen' : 'Zugriff gewähren';
+      coachBtn.style.borderColor = coachFreigabe ? 'var(--color-accent-2-500)' : 'var(--color-divider)';
+      coachBtn.style.background = coachFreigabe ? 'var(--color-accent-2-500)' : 'transparent';
+      coachBtn.style.color = coachFreigabe ? '#ffffff' : 'var(--color-text)';
+    }
+    renderCoachBtn();
+    if (coachBtn) {
+      coachBtn.addEventListener('click', async () => {
+        if (coachSaved) coachSaved.hidden = true;
+        const next = !coachFreigabe;
+        coachBtn.disabled = true;
+        try {
+          const { error } = await client.from('profiles').update({ training_coach_freigabe: next }).eq('id', session.user.id);
+          if (error) throw error;
+          coachFreigabe = next;
+          renderCoachBtn();
+          if (coachSaved) coachSaved.hidden = false;
+        } catch (e) {
+          alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+        } finally {
+          coachBtn.disabled = false;
+        }
+      });
+    }
   }
 
   // --------------------------------------------------------------------
@@ -814,11 +844,33 @@
       const grid = document.getElementById('wochenplanGrid');
       if (!grid) return;
       const todayIso = (((new Date()).getDay() + 6) % 7) + 1;
+      const activePlan = trainingsplaene.find(p => p.aktiv);
+      const planWeek = activePlan ? currentWeekNrForPlan(activePlan) : null;
+      const planEntries = (activePlan && planWeek) ? trainingsplanEintraege.filter(e => e.plan_id === activePlan.id && e.woche_nr === planWeek) : [];
+
+      const sub = document.getElementById('wochenplanSub');
+      if (sub) {
+        if (activePlan && planWeek) {
+          const phase = planEntries.length ? planEntries[0].phase : null;
+          sub.hidden = false;
+          sub.textContent = activePlan.name + ' · Woche ' + planWeek + ' von ' + activePlan.wochen_anzahl + (phase ? ' · ' + phase : '');
+        } else {
+          sub.hidden = true;
+        }
+      }
+
       grid.innerHTML = WOCHENTAGE.map(wd => {
         const items = uebungen.filter(u => (u.wochentage || []).includes(wd.n));
+        const planItems = planEntries.filter(e => e.wochentag === wd.n);
+        const planHtml = planItems.map(e => {
+          const done = isEintragErledigt(e, activePlan);
+          return '<div class="wp-day-item" style="font-weight:600;color:var(--color-accent-700)">📅 ' + escapeHtml(e.workout_name || '–') + (done ? ' ✓' : '') + '</div>';
+        }).join('');
+        const uebungenHtml = items.map(u => '<div class="wp-day-item">' + escapeHtml(u.name) + '</div>').join('');
         return `<div class="wp-day" data-today="${wd.n === todayIso}">
           <h4>${wd.short}</h4>
-          ${items.length ? items.map(u => '<div class="wp-day-item">' + escapeHtml(u.name) + '</div>').join('') : '<div class="wp-day-item" style="opacity:0.4;border-top:0">—</div>'}
+          ${planHtml}${uebungenHtml}
+          ${(!planItems.length && !items.length) ? '<div class="wp-day-item" style="opacity:0.4;border-top:0">—</div>' : ''}
         </div>`;
       }).join('');
     }
@@ -954,6 +1006,7 @@
           closePlanForm();
           renderPlanList();
           renderPlanWocheBanner();
+          renderWochenplan();
         } catch (e) {
           planFormError.hidden = false;
           planFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
@@ -1057,6 +1110,7 @@
           editingPlanWochen = null;
           renderPlanList();
           renderPlanWocheBanner();
+          renderWochenplan();
         } catch (e) {
           alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
         } finally {
@@ -1134,6 +1188,7 @@
             }
             renderPlanList();
             renderPlanWocheBanner();
+            renderWochenplan();
           } catch (e) { alert('Konnte nicht gespeichert werden.'); }
         });
         row.querySelector('[data-plan-wochen]').addEventListener('click', () => openWochenEditor(plan));
@@ -1148,6 +1203,7 @@
             trainingsplanEintraege = trainingsplanEintraege.filter(e => e.plan_id !== plan.id);
             renderPlanList();
             renderPlanWocheBanner();
+            renderWochenplan();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
@@ -1169,6 +1225,7 @@
         <span style="font-size:13.5px;opacity:0.7;margin-left:10px">Woche ${wn} von ${plan.wochen_anzahl}${entries.length ? ' · ' + done + ' von ' + entries.length + ' Workouts erledigt' : ''}</span>`;
     }
     renderPlanWocheBanner();
+    renderWochenplan();
 
     // ---- PDF-Export eines Trainingsplans ----
     function generatePlanPdf(plan) {
@@ -1870,6 +1927,7 @@
             renderEinheitenList();
             renderPlanList();
             renderPlanWocheBanner();
+            renderWochenplan();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
@@ -2200,6 +2258,7 @@
         einheiten.unshift(data);
         renderPlanList();
         renderPlanWocheBanner();
+        renderWochenplan();
         sess.active = true;
         sess.einheitId = data.id;
         sess.startedAt = Date.now();
@@ -2223,6 +2282,7 @@
         renderEinheitenList();
         renderPlanList();
         renderPlanWocheBanner();
+        renderWochenplan();
       });
       sessionIdleBox.hidden = false;
       sessionActiveBox.hidden = true;

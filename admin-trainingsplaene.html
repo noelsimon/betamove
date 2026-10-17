@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trainingspläne — BETAMOVE Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+      <a href="admin-kurse">Buchungen</a>
+      <a href="admin-kurse-verwaltung">Kurse &amp; Termine</a>
+      <a href="admin-qualifikationen">Qualifikationen</a>
+      <a href="admin-fragen">Lerninhalte</a>
+      <a href="admin-trainingsplaene">Trainingspläne</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
+  <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
+  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Trainingspläne</h1>
+  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Zeigt nur Personen, die ihre Trainingsplanung ausdrücklich über den Coach-Zugriff-Button in ihrem Profil freigegeben haben. Logbuch, Übungen und Ergebnisse sind davon nicht umfasst und bleiben privat.</p>
+
+  <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="adminArea" hidden>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:22px">
+      <input id="searchInput" class="input" style="min-height:42px;font-size:15px;max-width:320px" placeholder="Nach Name oder E-Mail suchen …">
+      <span id="rowCount" style="font-size:14px;opacity:0.65;margin-left:auto"></span>
+    </div>
+    <div id="peopleList" style="display:flex;flex-direction:column;gap:18px"></div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · <a href="impressum">Impressum</a> · <a href="datenschutz">Datenschutz</a> · <a href="agb">AGB</a> · <a href="widerruf">Vertrag widerrufen</a></div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+<script>
+(function(){
+  const escapeHtml = window.bmEscapeHtml;
+  const WOCHENTAGE = [{ n: 1, short: 'Mo' }, { n: 2, short: 'Di' }, { n: 3, short: 'Mi' }, { n: 4, short: 'Do' }, { n: 5, short: 'Fr' }, { n: 6, short: 'Sa' }, { n: 7, short: 'So' }];
+
+  function fmtDateShort(d) { return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  function planWocheRange(plan, wocheNr) {
+    const start = new Date(plan.start_datum + 'T00:00:00');
+    start.setDate(start.getDate() + (wocheNr - 1) * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return { start, end };
+  }
+  function currentWeekNrForPlan(plan) {
+    const start = new Date(plan.start_datum + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today - start) / 86400000);
+    if (diffDays < 0) return null;
+    const wn = Math.floor(diffDays / 7) + 1;
+    return wn <= plan.wochen_anzahl ? wn : null;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await window.bmGuardAdminPage();
+    if (!ctx) return;
+    const { client } = ctx;
+
+    let people = [];
+    let plaene = [];
+    let eintraege = [];
+    try {
+      const [profilesRes, plaeneRes, eintraegeRes] = await Promise.all([
+        client.from('profiles').select('*').eq('training_coach_freigabe', true).order('vorname', { ascending: true }),
+        client.from('trainingsplaene').select('*').order('created_at', { ascending: false }),
+        client.from('trainingsplan_eintraege').select('*').order('woche_nr', { ascending: true })
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (plaeneRes.error) throw plaeneRes.error;
+      if (eintraegeRes.error) throw eintraegeRes.error;
+      people = profilesRes.data || [];
+      plaene = plaeneRes.data || [];
+      eintraege = eintraegeRes.data || [];
+    } catch (e) {
+      document.getElementById('peopleList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Daten konnten nicht geladen werden. Bitte Seite neu laden.</p>';
+      return;
+    }
+
+    function renderPlanWeeks(plan) {
+      const currentWeek = currentWeekNrForPlan(plan);
+      const rows = [];
+      for (let w = 1; w <= plan.wochen_anzahl; w++) {
+        const entries = eintraege.filter(e => e.plan_id === plan.id && e.woche_nr === w);
+        const phase = entries.length ? entries[0].phase : null;
+        const chips = entries.length
+          ? entries.map(e => { const wd = WOCHENTAGE.find(x => x.n === e.wochentag); return (wd ? wd.short : '') + ': ' + escapeHtml(e.workout_name || '–'); }).join(' · ')
+          : '<span style="opacity:0.45">–</span>';
+        rows.push(`<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:5px 8px;border-radius:8px;${w === currentWeek ? 'background:var(--color-accent-100)' : ''}">
+          <strong style="font-size:12.5px;min-width:64px">Woche ${w}${w === currentWeek ? ' (jetzt)' : ''}</strong>
+          <span style="font-size:12px;opacity:0.6;min-width:90px">${phase ? escapeHtml(phase) : '–'}</span>
+          <span style="font-size:12px">${chips}</span>
+        </div>`);
+      }
+      return rows.join('');
+    }
+
+    function renderPlan(plan) {
+      const range0 = planWocheRange(plan, 1);
+      const rangeN = planWocheRange(plan, plan.wochen_anzahl);
+      return `<div style="background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+          <span style="font-size:15px;font-weight:600">${escapeHtml(plan.name)}</span>
+          ${plan.zyklus ? '<span class="tag tag-neutral" style="font-size:10.5px">' + escapeHtml(plan.zyklus) + '</span>' : ''}
+          ${plan.aktiv ? '<span class="tag tag-neutral" style="font-size:10.5px;color:var(--color-accent-2-700);font-weight:600">Aktiv</span>' : ''}
+        </div>
+        <div style="font-size:12px;opacity:0.6;margin-bottom:10px">${fmtDateShort(range0.start)} – ${fmtDateShort(rangeN.end)} · ${plan.wochen_anzahl} Wochen</div>
+        <div style="display:flex;flex-direction:column;gap:2px">${renderPlanWeeks(plan)}</div>
+      </div>`;
+    }
+
+    function renderPerson(p) {
+      const ownPlaene = plaene.filter(pl => pl.user_id === p.id);
+      return `<div data-person data-id="${p.id}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px">
+        <div style="margin-bottom:12px">
+          <div style="font-size:16.5px;font-weight:600">${escapeHtml(p.vorname)} ${escapeHtml(p.nachname)}</div>
+          <div style="font-size:13.5px;opacity:0.7;margin-top:2px">${escapeHtml(p.email)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${ownPlaene.length ? ownPlaene.map(renderPlan).join('') : '<p style="margin:0;font-size:14px;opacity:0.6">Noch kein Trainingsplan angelegt.</p>'}
+        </div>
+      </div>`;
+    }
+
+    function renderList() {
+      const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const visible = q ? people.filter(p => (p.vorname + ' ' + p.nachname + ' ' + p.email).toLowerCase().includes(q)) : people;
+      document.getElementById('rowCount').textContent = visible.length + ' von ' + people.length + ' freigegebenen Konten';
+      document.getElementById('peopleList').innerHTML = visible.length
+        ? visible.map(renderPerson).join('')
+        : (people.length ? '<p style="margin:0;font-size:15.5px;opacity:0.7">Keine Konten gefunden.</p>' : '<p style="margin:0;font-size:15.5px;opacity:0.7">Noch niemand hat dir Zugriff auf die Trainingsplanung gegeben.</p>');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', renderList);
+    renderList();
+  });
+})();
+</script>
+</body>
+</html>
