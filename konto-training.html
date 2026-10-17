@@ -31,6 +31,10 @@
   .timer-box { background: var(--color-surface); border-radius: var(--radius-md); padding: 14px 16px; display:flex; flex-direction:column; gap:10px; align-items:center; }
   .timer-display { font-family: var(--font-heading); font-size: 34px; font-variant-numeric: tabular-nums; }
   .route-attempt-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background: var(--color-surface); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13.5px; }
+  .tpl-card { cursor:pointer; font:inherit; text-align:left; padding:10px 14px; border-radius:var(--radius-md); border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); display:flex; flex-direction:column; gap:2px; min-width:180px; }
+  .tpl-card:hover { border-color: var(--color-accent); }
+  .tpl-card strong { font-size:13.5px; }
+  .tpl-card span { font-size:11.5px; opacity:0.6; }
 </style>
 </head>
 <body>
@@ -149,6 +153,14 @@
                 <h4 id="uebungFormTitle" style="margin:0;font-size:17px">Übung anlegen</h4>
                 <button type="button" id="uebungCancelBtnTop" style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
               </div>
+
+              <div id="uebungVorlagenBox" style="margin-bottom:20px">
+                <p style="margin:0 0 8px;font-size:12px;font-weight:600;opacity:0.55;text-transform:uppercase;letter-spacing:0.04em">Vorlage: Kletter-Kraftübungen</p>
+                <div id="uebungVorlagenKraft" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+                <p style="margin:0 0 8px;font-size:12px;font-weight:600;opacity:0.55;text-transform:uppercase;letter-spacing:0.04em">Vorlage: Antagonisten &amp; Prävention</p>
+                <div id="uebungVorlagenPraevention" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+              </div>
+
               <form id="uebungForm" style="display:flex;flex-direction:column;gap:14px">
                 <div class="field"><label>Name</label><input id="uebung-name" class="input" placeholder="z.B. Fingerhangboard" maxlength="200" required></div>
 

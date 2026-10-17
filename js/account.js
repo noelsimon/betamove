@@ -711,6 +711,16 @@
   const TRAININGSART_LABEL = { maximalkraft: 'Maximalkraft', schnellkraft: 'Schnellkraft', ausdauer: 'Ausdauer', maximalkraftausdauer: 'Maximalkraftausdauer' };
   const UEBUNG_ART_BUILTIN = ['Athletik', 'Mobilität', 'Dehnung', 'Geräte'];
   const ZYKLUS_BUILTIN = ['Hypertrophie', 'Maximalkraft', 'Kraftausdauer', 'Schnellkraft', 'Ausdauer', 'Deload/Regeneration'];
+  const UEBUNG_VORLAGEN_KRAFT = [
+    { name: 'Fingerboard Max Hang', art: 'Geräte', typ: 'klassisch', trainingsart: 'maximalkraft', einheit: 'kg', saetze: 6, wiederholungen: null, spezifikationen: ['Half Crimp', 'Open Hand'], timer_modus: 'pause', timer_pause_sekunden: 180, notiz: 'Max. Zusatz- bzw. Abzuggewicht für 7–10 Sekunden Hang, volle Erholung zwischen den Sätzen.' },
+    { name: 'Campus-Board Up-Moves', art: 'Geräte', typ: 'klassisch', trainingsart: 'schnellkraft', einheit: null, saetze: 4, wiederholungen: 5, spezifikationen: [], timer_modus: 'pause', timer_pause_sekunden: 180, notiz: 'Explosive Züge zwischen den Leisten, nur im ausgeruhten Zustand trainieren.' },
+    { name: 'Weighted Pull-Ups', art: 'Athletik', typ: 'klassisch', trainingsart: 'maximalkraft', einheit: 'kg', saetze: 5, wiederholungen: 3, spezifikationen: [], timer_modus: 'pause', timer_pause_sekunden: 150, notiz: 'Zusatzgewicht am Gurt, saubere Ausführung bis knapp vors Scheitern.' }
+  ];
+  const UEBUNG_VORLAGEN_PRAEVENTION = [
+    { name: 'Schulter-Außenrotation (Band)', art: 'Athletik', typ: 'klassisch', trainingsart: 'ausdauer', einheit: null, saetze: 3, wiederholungen: 15, spezifikationen: ['Je Seite'], timer_modus: 'keiner', timer_pause_sekunden: null, notiz: 'Gleicht die Innenrotations-/Zuglast beim Klettern aus, schont die Rotatorenmanschette.' },
+    { name: 'Unterarm-Extensoren', art: 'Athletik', typ: 'klassisch', trainingsart: 'ausdauer', einheit: 'kg', saetze: 3, wiederholungen: 15, spezifikationen: [], timer_modus: 'keiner', timer_pause_sekunden: null, notiz: 'Handgelenksstreckung mit leichtem Gewicht, beugt Tennisarm/Ellenbogenreizung vor.' },
+    { name: 'Pallof Press', art: 'Athletik', typ: 'klassisch', trainingsart: 'ausdauer', einheit: 'kg', saetze: 3, wiederholungen: 12, spezifikationen: ['Je Seite'], timer_modus: 'keiner', timer_pause_sekunden: null, notiz: 'Anti-Rotations-Übung für den Rumpf, wichtig für Stabilität an steilen Wänden.' }
+  ];
   const TIMER_MODUS_LABEL = { keiner: 'Kein Timer', pause: 'Nur Pause', intervall: 'Intervall (Start/Pause)' };
 
   function fmtMMSS(totalSeconds) {
@@ -1412,6 +1422,8 @@
     function openUebungForm(uebung) {
       editingUebungId = uebung ? uebung.id : null;
       uebungFormTitle.textContent = uebung ? 'Übung bearbeiten' : 'Übung anlegen';
+      const vorlagenBox = document.getElementById('uebungVorlagenBox');
+      if (vorlagenBox) vorlagenBox.hidden = !!uebung;
       document.getElementById('uebung-name').value = uebung ? uebung.name : '';
       document.getElementById('uebung-einheit').value = uebung ? (uebung.einheit || '') : '';
       document.getElementById('uebung-wiederholungen').value = uebung ? (uebung.wiederholungen || '') : '';
@@ -1447,6 +1459,43 @@
     if (newUebungBtn) newUebungBtn.addEventListener('click', () => openUebungForm(null));
     if (uebungCancelBtn) uebungCancelBtn.addEventListener('click', closeUebungForm);
     if (uebungCancelBtnTop) uebungCancelBtnTop.addEventListener('click', closeUebungForm);
+
+    // ---- Übungs-Vorlagen: füllen das Anlegen-Formular vor, Rest bleibt wie beim manuellen Anlegen ----
+    function applyUebungTemplate(tpl) {
+      openUebungForm(null);
+      document.getElementById('uebung-name').value = tpl.name;
+      document.getElementById('uebung-einheit').value = tpl.einheit || '';
+      document.getElementById('uebung-wiederholungen').value = tpl.wiederholungen || '';
+      document.getElementById('uebung-saetze').value = tpl.saetze || '';
+      document.getElementById('uebung-notiz').value = tpl.notiz || '';
+      if (tpl.timer_pause_sekunden) document.getElementById('uebung-timer-pause').value = tpl.timer_pause_sekunden;
+      uebungSpezifikationen = (tpl.spezifikationen || []).slice();
+      renderSpezList();
+      setActiveArt(tpl.art);
+      setActiveMaske(tpl.typ || 'klassisch');
+      setActiveTrainingsart(tpl.trainingsart || null);
+      setActiveTimer(tpl.timer_modus || 'keiner');
+      uebungFormBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function renderUebungVorlagen() {
+      function cardsHtml(list) {
+        return list.map((tpl, i) => {
+          const sub = [tpl.art, TRAININGSART_LABEL[tpl.trainingsart] || null].filter(Boolean).join(' · ');
+          return `<button type="button" class="tpl-card" data-tpl-idx="${i}" title="${escapeHtml(tpl.notiz || '')}"><strong>${escapeHtml(tpl.name)}</strong><span>${escapeHtml(sub)}</span></button>`;
+        }).join('');
+      }
+      const kraftEl = document.getElementById('uebungVorlagenKraft');
+      if (kraftEl) {
+        kraftEl.innerHTML = cardsHtml(UEBUNG_VORLAGEN_KRAFT);
+        kraftEl.querySelectorAll('[data-tpl-idx]').forEach(btn => btn.addEventListener('click', () => applyUebungTemplate(UEBUNG_VORLAGEN_KRAFT[Number(btn.dataset.tplIdx)])));
+      }
+      const praevEl = document.getElementById('uebungVorlagenPraevention');
+      if (praevEl) {
+        praevEl.innerHTML = cardsHtml(UEBUNG_VORLAGEN_PRAEVENTION);
+        praevEl.querySelectorAll('[data-tpl-idx]').forEach(btn => btn.addEventListener('click', () => applyUebungTemplate(UEBUNG_VORLAGEN_PRAEVENTION[Number(btn.dataset.tplIdx)])));
+      }
+    }
+    renderUebungVorlagen();
 
     function uebungSubtitle(u) {
       const parts = [u.art, TRAININGSART_LABEL[u.trainingsart] || null];
