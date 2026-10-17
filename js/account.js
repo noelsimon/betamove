@@ -512,11 +512,13 @@
       vorname: document.getElementById('fVorname'),
       nachname: document.getElementById('fNachname'),
       email: document.getElementById('fEmail'),
-      level: document.getElementById('fLevel')
+      level: document.getElementById('fLevel'),
+      koerpergewicht: document.getElementById('fKoerpergewicht')
     };
     if (fields.vorname) fields.vorname.value = profile.vorname || '';
     if (fields.nachname) fields.nachname.value = profile.nachname || '';
     if (fields.email) fields.email.value = profile.email || session.user.email || '';
+    if (fields.koerpergewicht) fields.koerpergewicht.value = profile.koerpergewicht_kg != null ? profile.koerpergewicht_kg : '';
     document.querySelectorAll('.level-opt').forEach(btn => {
       btn.dataset.active = String(btn.textContent.trim() === profile.level);
       btn.addEventListener('click', () => {
@@ -533,12 +535,14 @@
         if (savedMsg) savedMsg.hidden = true;
         if (errMsg) errMsg.hidden = true;
         const activeLevel = document.querySelector('.level-opt[data-active="true"]');
+        const koerpergewichtVal = fields.koerpergewicht && fields.koerpergewicht.value ? Number(fields.koerpergewicht.value) : null;
         const payload = {
           id: session.user.id,
           vorname: (fields.vorname && fields.vorname.value.trim()) || profile.vorname,
           nachname: (fields.nachname && fields.nachname.value.trim()) || profile.nachname,
           email: profile.email || session.user.email,
-          level: activeLevel ? activeLevel.textContent.trim() : profile.level
+          level: activeLevel ? activeLevel.textContent.trim() : profile.level,
+          koerpergewicht_kg: koerpergewichtVal
         };
         try {
           const { error } = await client.from('profiles').upsert(payload, { onConflict: 'id' });
@@ -676,6 +680,7 @@
   const UEBUNG_MASKE_LABEL = { klassisch: 'Klassisch', kletterroute: 'Kletterroute' };
   const TRAININGSART_LABEL = { maximalkraft: 'Maximalkraft', schnellkraft: 'Schnellkraft', ausdauer: 'Ausdauer', maximalkraftausdauer: 'Maximalkraftausdauer' };
   const UEBUNG_ART_BUILTIN = ['Athletik', 'Mobilität', 'Dehnung', 'Geräte'];
+  const ZYKLUS_BUILTIN = ['Hypertrophie', 'Maximalkraft', 'Kraftausdauer', 'Schnellkraft', 'Ausdauer', 'Deload/Regeneration'];
   const TIMER_MODUS_LABEL = { keiner: 'Kein Timer', pause: 'Nur Pause', intervall: 'Intervall (Start/Pause)' };
 
   function fmtMMSS(totalSeconds) {
@@ -686,8 +691,18 @@
   }
 
   async function renderTraining(ctx) {
-    const { client, session } = ctx;
+    const { client, session, profile } = ctx;
     const userId = session.user.id;
+    const koerpergewichtKg = profile && profile.koerpergewicht_kg != null ? Number(profile.koerpergewicht_kg) : null;
+
+    function prozentKG(ergebnisWert) {
+      if (koerpergewichtKg == null || ergebnisWert == null) return null;
+      const pct = ((koerpergewichtKg + Number(ergebnisWert)) / koerpergewichtKg) * 100;
+      return Math.round(pct * 10) / 10;
+    }
+    function isKgEinheit(einheit) {
+      return typeof einheit === 'string' && einheit.trim().toLowerCase() === 'kg';
+    }
 
     let ziele = [];
     let log = [];
@@ -696,17 +711,23 @@
     let workoutUebungen = [];
     let einheiten = [];
     let uebungArten = [];
+    let trainingsplaene = [];
+    let trainingsplanEintraege = [];
+    let planZyklen = [];
     try {
-      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes] = await Promise.all([
+      const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
         client.from('trainingslog').select('*').order('datum', { ascending: false }).order('created_at', { ascending: false }),
         client.from('trainingsuebungen').select('*').order('created_at', { ascending: false }),
         client.from('trainingsworkouts').select('*').order('created_at', { ascending: false }),
         client.from('trainingsworkout_uebungen').select('*').order('reihenfolge', { ascending: true }),
         client.from('trainingseinheiten').select('*').order('created_at', { ascending: false }).limit(30),
-        client.from('trainingsuebung_arten').select('*').order('created_at', { ascending: true })
+        client.from('trainingsuebung_arten').select('*').order('created_at', { ascending: true }),
+        client.from('trainingsplaene').select('*').order('created_at', { ascending: false }),
+        client.from('trainingsplan_eintraege').select('*').order('woche_nr', { ascending: true }),
+        client.from('trainingsplan_zyklen').select('*').order('created_at', { ascending: true })
       ]);
-      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes].forEach(r => { if (r.error) throw r.error; });
+      [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes].forEach(r => { if (r.error) throw r.error; });
       ziele = zieleRes.data || [];
       log = logRes.data || [];
       uebungen = uebungenRes.data || [];
@@ -714,6 +735,9 @@
       workoutUebungen = workoutUebungenRes.data || [];
       einheiten = einheitenRes.data || [];
       uebungArten = artenRes.data || [];
+      trainingsplaene = plaeneRes.data || [];
+      trainingsplanEintraege = planEintraegeRes.data || [];
+      planZyklen = zyklenRes.data || [];
     } catch (e) {
       const el = document.getElementById('zieleList');
       if (el) el.innerHTML = '<p style="margin:0;font-size:15px;color:var(--color-accent-700)">Konnte nicht geladen werden. Bitte Seite neu laden.</p>';
@@ -724,6 +748,8 @@
     function workoutUebungenFor(workoutId) {
       return workoutUebungen.filter(wu => wu.workout_id === workoutId).map(wu => uebungById(wu.uebung_id)).filter(Boolean);
     }
+    function workoutById(id) { return workouts.find(w => w.id === id) || null; }
+    function fmtDateShort(d) { return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 
     // ---- Ziele ----
     function renderZiele() {
@@ -797,6 +823,399 @@
       }).join('');
     }
     renderWochenplan();
+
+    // ---- Trainingsplan (Mesozyklus): Zyklus -> Wochen mit Phase + Workout-Zuordnung ----
+    function planWocheRange(plan, wocheNr) {
+      const start = new Date(plan.start_datum + 'T00:00:00');
+      start.setDate(start.getDate() + (wocheNr - 1) * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return { start, end };
+    }
+    function currentWeekNrForPlan(plan) {
+      const start = new Date(plan.start_datum + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today - start) / 86400000);
+      if (diffDays < 0) return null;
+      const wn = Math.floor(diffDays / 7) + 1;
+      return wn <= plan.wochen_anzahl ? wn : null;
+    }
+    function isEintragErledigt(eintrag, plan) {
+      if (!eintrag.workout_id) return false;
+      const range = planWocheRange(plan, eintrag.woche_nr);
+      return einheiten.some(e => {
+        if (e.workout_id !== eintrag.workout_id || !e.datum) return false;
+        const d = new Date(e.datum + 'T00:00:00');
+        return d >= range.start && d <= range.end;
+      });
+    }
+
+    const planFormBox = document.getElementById('planFormBox');
+    const planForm = document.getElementById('planForm');
+    const planFormTitle = document.getElementById('planFormTitle');
+    const planFormError = document.getElementById('planFormError');
+    const newPlanBtn = document.getElementById('newPlanBtn');
+    const planCancelBtn = document.getElementById('planCancelBtn');
+    const planZyklusPills = document.getElementById('planZyklusPills');
+    const planWochenEditorBox = document.getElementById('planWochenEditorBox');
+    const planWochenEditorTitle = document.getElementById('planWochenEditorTitle');
+    const planWochenEditorClose = document.getElementById('planWochenEditorClose');
+    const planWochenList = document.getElementById('planWochenList');
+    let editingPlanId = null;
+    let editingPlanWochen = null;
+    let planEintraegeStaged = [];
+    let planEintraegeStagedCounter = 1;
+
+    // ---- Zyklus (Hypertrophie/Maximalkraft/... + selbst hinzugefügte) ----
+    function renderZyklusPills() {
+      const custom = planZyklen.map(z => z.name);
+      const current = activeZyklus();
+      planZyklusPills.innerHTML = ZYKLUS_BUILTIN.concat(custom).map(name =>
+        `<button type="button" class="wd-pill" data-zyklus="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+      ).join('') + `<button type="button" class="wd-pill" data-zyklus-add>+ Neuer Zyklus</button>`;
+      if (current) setActiveZyklus(current);
+      planZyklusPills.querySelectorAll('.wd-pill[data-zyklus]').forEach(btn => {
+        btn.addEventListener('click', () => setActiveZyklus(btn.dataset.zyklus === activeZyklus() ? '' : btn.dataset.zyklus));
+      });
+      const addBtn = planZyklusPills.querySelector('[data-zyklus-add]');
+      if (addBtn) addBtn.addEventListener('click', async () => {
+        const name = (prompt('Name des neuen Zyklus:') || '').trim();
+        if (!name) return;
+        try {
+          const { data, error } = await client.from('trainingsplan_zyklen').insert({ user_id: userId, name }).select().single();
+          if (error) throw error;
+          planZyklen.push(data);
+          renderZyklusPills();
+          setActiveZyklus(name);
+        } catch (e) { alert('Konnte nicht gespeichert werden.'); }
+      });
+    }
+    function setActiveZyklus(z) {
+      planZyklusPills.querySelectorAll('.wd-pill[data-zyklus]').forEach(btn => { btn.dataset.active = String(btn.dataset.zyklus === z); });
+    }
+    function activeZyklus() {
+      const btn = planZyklusPills.querySelector('.wd-pill[data-zyklus][data-active="true"]');
+      return btn ? btn.dataset.zyklus : '';
+    }
+    renderZyklusPills();
+
+    // ---- Plan anlegen/bearbeiten ----
+    function openPlanForm(plan) {
+      editingPlanId = plan ? plan.id : null;
+      planFormTitle.textContent = plan ? 'Plan bearbeiten' : 'Plan anlegen';
+      document.getElementById('plan-name').value = plan ? plan.name : '';
+      document.getElementById('plan-start').value = plan ? plan.start_datum : new Date().toISOString().slice(0, 10);
+      document.getElementById('plan-wochen').value = plan ? plan.wochen_anzahl : 4;
+      document.getElementById('plan-notiz').value = plan ? (plan.notiz || '') : '';
+      setActiveZyklus(plan ? (plan.zyklus || '') : '');
+      planFormError.hidden = true;
+      planFormBox.hidden = false;
+      planFormBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function closePlanForm() {
+      planFormBox.hidden = true;
+      editingPlanId = null;
+      planForm.reset();
+      setActiveZyklus('');
+    }
+    if (newPlanBtn) newPlanBtn.addEventListener('click', () => openPlanForm(null));
+    if (planCancelBtn) planCancelBtn.addEventListener('click', closePlanForm);
+
+    if (planForm) {
+      planForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        planFormError.hidden = true;
+        const name = document.getElementById('plan-name').value.trim();
+        const start = document.getElementById('plan-start').value;
+        const wochenAnzahl = Number(document.getElementById('plan-wochen').value);
+        const notiz = document.getElementById('plan-notiz').value.trim();
+        if (!name || !start || !wochenAnzahl) {
+          planFormError.hidden = false;
+          planFormError.textContent = 'Bitte Name, Start-Datum und Wochenanzahl angeben.';
+          return;
+        }
+        const btn = planForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          const payload = { user_id: userId, name, zyklus: activeZyklus() || null, start_datum: start, wochen_anzahl: wochenAnzahl, notiz: notiz || null };
+          if (editingPlanId) {
+            const { data, error } = await client.from('trainingsplaene').update(payload).eq('id', editingPlanId).select().single();
+            if (error) throw error;
+            trainingsplaene = trainingsplaene.map(p => p.id === editingPlanId ? data : p);
+            const { error: pruneErr } = await client.from('trainingsplan_eintraege').delete().eq('plan_id', editingPlanId).gt('woche_nr', wochenAnzahl);
+            if (pruneErr) throw pruneErr;
+            trainingsplanEintraege = trainingsplanEintraege.filter(x => !(x.plan_id === editingPlanId && x.woche_nr > wochenAnzahl));
+          } else {
+            const { data, error } = await client.from('trainingsplaene').insert(payload).select().single();
+            if (error) throw error;
+            trainingsplaene.unshift(data);
+          }
+          closePlanForm();
+          renderPlanList();
+          renderPlanWocheBanner();
+        } catch (e) {
+          planFormError.hidden = false;
+          planFormError.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    // ---- Wochen-Editor: Phase + Workout-Zuordnung je Woche (lokal gesammelt, erst bei "Speichern" geschrieben) ----
+    function renderWocheChips(entries) {
+      if (!entries.length) return '<span style="font-size:12.5px;opacity:0.5">Noch kein Workout zugeordnet.</span>';
+      return entries.map(e => {
+        const wd = WOCHENTAGE.find(w2 => w2.n === e.wochentag);
+        return `<span class="tag tag-neutral" style="font-size:12px;display:inline-flex;gap:6px;align-items:center">${wd ? wd.short : ''}: ${escapeHtml(e.workout_name || '–')}<button type="button" data-woche-chip-remove data-cid="${e._cid}" style="cursor:pointer;background:transparent;border:0;opacity:0.6;font:inherit;padding:0">✕</button></span>`;
+      }).join(' ');
+    }
+    function renderWochenEditorList(plan) {
+      const weeks = [];
+      for (let w = 1; w <= plan.wochen_anzahl; w++) weeks.push(w);
+      planWochenList.innerHTML = weeks.map(w => {
+        const entries = planEintraegeStaged.filter(e => e.woche_nr === w);
+        const phase = entries.length ? (entries[0].phase || '') : '';
+        const range = planWocheRange(plan, w);
+        return `<div data-woche-row data-nr="${w}" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:14px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <strong style="font-size:15px">Woche ${w}</strong>
+            <span style="font-size:12.5px;opacity:0.6">${fmtDateShort(range.start)} – ${fmtDateShort(range.end)}</span>
+          </div>
+          <div class="field" style="margin:10px 0 8px"><label style="font-size:12px">Phase</label><input class="input" list="phaseOptions" data-woche-phase value="${escapeHtml(phase)}" maxlength="60" placeholder="z.B. Grundlage"></div>
+          <div data-woche-chips style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${renderWocheChips(entries)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+            <div style="display:flex;gap:6px;flex-wrap:wrap" data-woche-day-pills>${WOCHENTAGE.map(wd => `<button type="button" class="wd-pill" data-day="${wd.n}">${wd.short}</button>`).join('')}</div>
+            <select class="input" style="flex:1;min-width:160px" data-woche-workout-select>${workouts.map(wo => `<option value="${wo.id}">${escapeHtml(wo.name)}</option>`).join('')}</select>
+            <button type="button" data-woche-add style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);white-space:nowrap">+ Hinzufügen</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      planWochenList.querySelectorAll('[data-woche-row]').forEach(row => {
+        const w = Number(row.dataset.nr);
+        row.querySelectorAll('[data-woche-day-pills] .wd-pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            row.querySelectorAll('[data-woche-day-pills] .wd-pill').forEach(b => { b.dataset.active = String(b === btn && b.dataset.active !== 'true'); });
+          });
+        });
+        row.querySelector('[data-woche-add]').addEventListener('click', () => {
+          if (!workouts.length) { alert('Bitte zuerst ein Workout anlegen.'); return; }
+          const dayBtn = row.querySelector('[data-woche-day-pills] .wd-pill[data-active="true"]');
+          if (!dayBtn) { alert('Bitte einen Wochentag auswählen.'); return; }
+          const select = row.querySelector('[data-woche-workout-select]');
+          const workoutId = select.value;
+          const workout = workoutById(workoutId);
+          if (!workout) return;
+          const phaseVal = row.querySelector('[data-woche-phase]').value.trim();
+          planEintraegeStaged.push({ _cid: planEintraegeStagedCounter++, woche_nr: w, wochentag: Number(dayBtn.dataset.day), workout_id: workoutId, workout_name: workout.name, phase: phaseVal || null });
+          renderWochenEditorList(plan);
+        });
+        row.querySelectorAll('[data-woche-chip-remove]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cid = Number(btn.dataset.cid);
+            planEintraegeStaged = planEintraegeStaged.filter(e => e._cid !== cid);
+            renderWochenEditorList(plan);
+          });
+        });
+      });
+    }
+    function openWochenEditor(plan) {
+      editingPlanWochen = plan;
+      planEintraegeStaged = trainingsplanEintraege
+        .filter(e => e.plan_id === plan.id)
+        .map(e => ({ _cid: planEintraegeStagedCounter++, woche_nr: e.woche_nr, wochentag: e.wochentag, workout_id: e.workout_id, workout_name: e.workout_name, phase: e.phase }));
+      planWochenEditorTitle.textContent = 'Wochen bearbeiten — ' + plan.name;
+      renderWochenEditorList(plan);
+      planWochenEditorBox.hidden = false;
+      planWochenEditorBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (planWochenEditorClose) {
+      planWochenEditorClose.addEventListener('click', async () => {
+        if (!editingPlanWochen) { planWochenEditorBox.hidden = true; return; }
+        const plan = editingPlanWochen;
+        // Phase-Eingaben können sich geändert haben, ohne dass neu hinzugefügt wurde -> auf alle Einträge der jeweiligen Woche übertragen
+        planWochenList.querySelectorAll('[data-woche-row]').forEach(row => {
+          const w = Number(row.dataset.nr);
+          const phaseVal = row.querySelector('[data-woche-phase]').value.trim() || null;
+          planEintraegeStaged.filter(e => e.woche_nr === w).forEach(e => { e.phase = phaseVal; });
+        });
+        planWochenEditorClose.disabled = true;
+        try {
+          const { error: delErr } = await client.from('trainingsplan_eintraege').delete().eq('plan_id', plan.id);
+          if (delErr) throw delErr;
+          let inserted = [];
+          if (planEintraegeStaged.length) {
+            const rows = planEintraegeStaged.map(e => ({ user_id: userId, plan_id: plan.id, woche_nr: e.woche_nr, wochentag: e.wochentag, workout_id: e.workout_id, workout_name: e.workout_name, phase: e.phase }));
+            const { data, error: insErr } = await client.from('trainingsplan_eintraege').insert(rows).select();
+            if (insErr) throw insErr;
+            inserted = data || [];
+          }
+          trainingsplanEintraege = trainingsplanEintraege.filter(e => e.plan_id !== plan.id).concat(inserted);
+          planWochenEditorBox.hidden = true;
+          editingPlanWochen = null;
+          renderPlanList();
+          renderPlanWocheBanner();
+        } catch (e) {
+          alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+        } finally {
+          planWochenEditorClose.disabled = false;
+        }
+      });
+    }
+
+    // ---- Plan-Übersicht ----
+    function renderPlanList() {
+      const list = document.getElementById('planList');
+      if (!list) return;
+      list.innerHTML = trainingsplaene.length ? trainingsplaene.map(p => {
+        const range0 = planWocheRange(p, 1);
+        const rangeN = planWocheRange(p, p.wochen_anzahl);
+        const currentWeek = currentWeekNrForPlan(p);
+        const weeksHtml = [];
+        for (let w = 1; w <= p.wochen_anzahl; w++) {
+          const entries = trainingsplanEintraege.filter(e => e.plan_id === p.id && e.woche_nr === w);
+          const phase = entries.length ? entries[0].phase : null;
+          const chips = entries.length ? entries.map(e => {
+            const wd = WOCHENTAGE.find(x => x.n === e.wochentag);
+            const done = isEintragErledigt(e, p);
+            return `<span style="font-size:11.5px;${done ? 'color:var(--color-accent-2-700);font-weight:600' : 'opacity:0.65'}">${wd ? wd.short : ''}: ${escapeHtml(e.workout_name || '–')} ${done ? '✓' : '…'}</span>`;
+          }).join(' · ') : '<span style="font-size:12px;opacity:0.45">–</span>';
+          weeksHtml.push(`<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:6px 10px;border-radius:8px;${w === currentWeek ? 'background:var(--color-accent-100)' : ''}">
+            <strong style="font-size:13px;min-width:70px">Woche ${w}${w === currentWeek ? ' (jetzt)' : ''}</strong>
+            <span style="font-size:12px;opacity:0.6;min-width:90px">${phase ? escapeHtml(phase) : '–'}</span>
+            <span style="display:flex;gap:8px;flex-wrap:wrap">${chips}</span>
+          </div>`);
+        }
+        return `<div data-plan data-id="${p.id}" style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:16.5px;font-weight:600">${escapeHtml(p.name)}</span>
+                ${p.zyklus ? '<span class="tag tag-neutral" style="font-size:11px">' + escapeHtml(p.zyklus) + '</span>' : ''}
+                ${p.aktiv ? '<span class="tag tag-neutral" style="font-size:11px;color:var(--color-accent-2-700);font-weight:600">Aktiv</span>' : ''}
+              </div>
+              <div style="font-size:12.5px;opacity:0.6;margin-top:3px">${fmtDateShort(range0.start)} – ${fmtDateShort(rangeN.end)} · ${p.wochen_anzahl} Wochen</div>
+              ${p.notiz ? '<p style="margin:6px 0 0;font-size:13.5px;opacity:0.8">' + escapeHtml(p.notiz) + '</p>' : ''}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" data-plan-aktiv style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">${p.aktiv ? 'Deaktivieren' : 'Aktivieren'}</button>
+              <button type="button" data-plan-wochen style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Wochen bearbeiten</button>
+              <button type="button" data-plan-pdf style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Als PDF</button>
+              <button type="button" data-plan-edit style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
+              <button type="button" data-plan-delete aria-label="Löschen" style="cursor:pointer;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px">${weeksHtml.join('')}</div>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch kein Trainingsplan angelegt.</p>';
+
+      list.querySelectorAll('[data-plan]').forEach(row => {
+        const id = row.dataset.id;
+        const plan = trainingsplaene.find(p => p.id === id);
+        row.querySelector('[data-plan-aktiv]').addEventListener('click', async () => {
+          const makeActive = !plan.aktiv;
+          try {
+            if (makeActive) {
+              const othersActive = trainingsplaene.filter(pl => pl.aktiv && pl.id !== plan.id);
+              if (othersActive.length) {
+                const { error } = await client.from('trainingsplaene').update({ aktiv: false }).eq('user_id', userId).eq('aktiv', true);
+                if (error) throw error;
+                othersActive.forEach(pl => { pl.aktiv = false; });
+              }
+              const { error } = await client.from('trainingsplaene').update({ aktiv: true }).eq('id', plan.id);
+              if (error) throw error;
+              plan.aktiv = true;
+            } else {
+              const { error } = await client.from('trainingsplaene').update({ aktiv: false }).eq('id', plan.id);
+              if (error) throw error;
+              plan.aktiv = false;
+            }
+            renderPlanList();
+            renderPlanWocheBanner();
+          } catch (e) { alert('Konnte nicht gespeichert werden.'); }
+        });
+        row.querySelector('[data-plan-wochen]').addEventListener('click', () => openWochenEditor(plan));
+        row.querySelector('[data-plan-pdf]').addEventListener('click', () => generatePlanPdf(plan));
+        row.querySelector('[data-plan-edit]').addEventListener('click', () => openPlanForm(plan));
+        row.querySelector('[data-plan-delete]').addEventListener('click', async () => {
+          if (!confirm('Plan „' + plan.name + '" wirklich löschen? Alle zugeordneten Wochen werden mitgelöscht.')) return;
+          try {
+            const { error } = await client.from('trainingsplaene').delete().eq('id', plan.id);
+            if (error) throw error;
+            trainingsplaene = trainingsplaene.filter(p => p.id !== plan.id);
+            trainingsplanEintraege = trainingsplanEintraege.filter(e => e.plan_id !== plan.id);
+            renderPlanList();
+            renderPlanWocheBanner();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderPlanList();
+
+    // ---- "Diese Woche im Plan"-Banner (Logbuch-Tab) ----
+    function renderPlanWocheBanner() {
+      const el = document.getElementById('planWocheBanner');
+      if (!el) return;
+      const plan = trainingsplaene.find(p => p.aktiv);
+      const wn = plan ? currentWeekNrForPlan(plan) : null;
+      if (!plan || !wn) { el.hidden = true; return; }
+      const entries = trainingsplanEintraege.filter(e => e.plan_id === plan.id && e.woche_nr === wn);
+      const phase = entries.length ? entries[0].phase : null;
+      const done = entries.filter(e => isEintragErledigt(e, plan)).length;
+      el.hidden = false;
+      el.innerHTML = `<strong style="font-size:15.5px">${escapeHtml(plan.name)}${phase ? ' · ' + escapeHtml(phase) : ''}</strong>
+        <span style="font-size:13.5px;opacity:0.7;margin-left:10px">Woche ${wn} von ${plan.wochen_anzahl}${entries.length ? ' · ' + done + ' von ' + entries.length + ' Workouts erledigt' : ''}</span>`;
+    }
+    renderPlanWocheBanner();
+
+    // ---- PDF-Export eines Trainingsplans ----
+    function generatePlanPdf(plan) {
+      if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const marginX = 18;
+      let y = 20;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+      doc.text(plan.name, marginX, y); y += 8;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(60);
+      const range0 = planWocheRange(plan, 1);
+      const rangeN = planWocheRange(plan, plan.wochen_anzahl);
+      const metaLine = [plan.zyklus, fmtDateShort(range0.start) + ' – ' + fmtDateShort(rangeN.end), plan.wochen_anzahl + ' Wochen'].filter(Boolean).join(' · ');
+      doc.text(metaLine, marginX, y); y += 7;
+      if (plan.notiz) {
+        const lines = doc.splitTextToSize(plan.notiz, 174);
+        doc.text(lines, marginX, y);
+        y += lines.length * 5 + 3;
+      }
+      doc.setDrawColor(210);
+      doc.line(marginX, y, 192, y);
+      y += 9;
+
+      for (let w = 1; w <= plan.wochen_anzahl; w++) {
+        const entries = trainingsplanEintraege.filter(e => e.plan_id === plan.id && e.woche_nr === w);
+        const phase = entries.length ? entries[0].phase : null;
+        const wr = planWocheRange(plan, w);
+        if (y > 268) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20);
+        doc.text('Woche ' + w + (phase ? ' — ' + phase : ''), marginX, y); y += 5.5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(120);
+        doc.text(fmtDateShort(wr.start) + ' – ' + fmtDateShort(wr.end), marginX, y); y += 6;
+        doc.setFontSize(10.5); doc.setTextColor(20);
+        if (!entries.length) {
+          doc.text('Keine Workouts zugeordnet.', marginX + 4, y); y += 7;
+        } else {
+          entries.slice().sort((a, b) => a.wochentag - b.wochentag).forEach(e => {
+            const wd = WOCHENTAGE.find(x => x.n === e.wochentag);
+            if (y > 274) { doc.addPage(); y = 20; }
+            doc.text('• ' + (wd ? wd.label : '') + ': ' + (e.workout_name || '–'), marginX + 4, y); y += 6;
+          });
+        }
+        y += 4;
+      }
+      doc.save((plan.name || 'trainingsplan').replace(/[^a-z0-9äöüß_-]+/gi, '_') + '.pdf');
+    }
 
     // ---- Übung anlegen/bearbeiten: Art -> Übungsmaske -> Trainingsart + Timer-Konfig ----
     const uebungFormBox = document.getElementById('uebungFormBox');
@@ -1293,6 +1712,77 @@
       }
     }
 
+    // ---- Grad-Pyramide / Send-Rate (aus bestehenden routen_versuche) ----
+    function routenAttempts() {
+      const out = [];
+      log.forEach(l => {
+        if (!Array.isArray(l.routen_versuche)) return;
+        const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
+        const system = (uebung && uebung.grad_system) || 'fontainebleau';
+        l.routen_versuche.forEach(r => out.push({ grad: r.grad, system, getoppt: !!r.getoppt, datum: l.datum }));
+      });
+      return out;
+    }
+
+    function renderGradPyramide() {
+      const box = document.getElementById('gradAuswertungBox');
+      const pyramideEl = document.getElementById('gradPyramide');
+      const sendRateEl = document.getElementById('sendRateChart');
+      if (!box) return;
+      const attempts = routenAttempts();
+      box.hidden = !attempts.length;
+      if (!attempts.length) return;
+
+      if (pyramideEl) {
+        const bySystem = {};
+        attempts.forEach(a => {
+          bySystem[a.system] = bySystem[a.system] || {};
+          bySystem[a.system][a.grad] = bySystem[a.system][a.grad] || { gesamt: 0, getoppt: 0 };
+          bySystem[a.system][a.grad].gesamt += 1;
+          if (a.getoppt) bySystem[a.system][a.grad].getoppt += 1;
+        });
+        pyramideEl.innerHTML = Object.keys(bySystem).map(system => {
+          const grade = (GRAD_LISTEN[system] || GRAD_LISTEN.fontainebleau).filter(g => bySystem[system][g]);
+          const maxGetoppt = Math.max(1, ...grade.map(g => bySystem[system][g].getoppt));
+          const rows = grade.slice().reverse().map(g => {
+            const d = bySystem[system][g];
+            return `<div style="display:flex;align-items:center;gap:10px">
+              <span style="width:52px;flex:none;font-size:13px;font-weight:600;text-align:right">${escapeHtml(g)}</span>
+              <div style="flex:1;background:var(--color-surface);border-radius:999px;height:16px;overflow:hidden"><div style="height:100%;width:${Math.round((d.getoppt / maxGetoppt) * 100)}%;background:var(--color-accent-2-500);border-radius:999px"></div></div>
+              <span style="width:70px;flex:none;font-size:12.5px;opacity:0.65">${d.getoppt} / ${d.gesamt}</span>
+            </div>`;
+          }).join('');
+          return `<div><p style="margin:0 0 8px;font-size:12.5px;font-weight:600;opacity:0.6;text-transform:uppercase;letter-spacing:0.04em">${system === 'uiaa' ? 'UIAA' : 'Fontainebleau'}</p>${rows}</div>`;
+        }).join('');
+      }
+
+      if (sendRateEl) {
+        const thisMonday = startOfWeek();
+        const weeks = [];
+        for (let i = 7; i >= 0; i--) {
+          const monday = new Date(thisMonday);
+          monday.setDate(monday.getDate() - i * 7);
+          const nextMonday = new Date(monday);
+          nextMonday.setDate(nextMonday.getDate() + 7);
+          const weekAttempts = attempts.filter(a => {
+            if (!a.datum) return false;
+            const d = new Date(a.datum + 'T00:00:00');
+            return d >= monday && d < nextMonday;
+          });
+          const rate = weekAttempts.length ? Math.round((weekAttempts.filter(a => a.getoppt).length / weekAttempts.length) * 100) : null;
+          weeks.push({ label: monday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }), rate });
+        }
+        sendRateEl.innerHTML = weeks.map(w => `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0">
+            <div style="font-size:12px;opacity:0.7">${w.rate != null ? w.rate + '%' : '–'}</div>
+            <div style="width:100%;height:90px;display:flex;align-items:flex-end">
+              <div style="width:100%;height:${w.rate != null ? w.rate : 0}%;min-height:${w.rate ? 4 : 0}px;background:var(--color-accent-2-500);border-radius:4px 4px 0 0"></div>
+            </div>
+            <div style="font-size:10.5px;opacity:0.55;white-space:nowrap">${w.label}</div>
+          </div>`).join('');
+      }
+    }
+
     // ---- Logbuch-Liste ----
     function renderLog() {
       const list = document.getElementById('logList');
@@ -1301,7 +1791,8 @@
         const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
         const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
         const art = uebung ? uebung.name : (TYP_LABEL[l.typ] || l.typ);
-        const ergebnis = uebung && l.ergebnis_wert != null ? l.ergebnis_wert + (uebung.einheit ? ' ' + uebung.einheit : '') : null;
+        const ergebnisPct = uebung && isKgEinheit(uebung.einheit) && l.ergebnis_wert != null ? prozentKG(l.ergebnis_wert) : null;
+        const ergebnis = uebung && l.ergebnis_wert != null ? l.ergebnis_wert + (uebung.einheit ? ' ' + uebung.einheit : '') + (ergebnisPct != null ? ' (' + ergebnisPct + ' % KG)' : '') : null;
         const zeitInfo = l.aktive_zeit_sekunden ? 'Aktivzeit ' + fmtMMSS(l.aktive_zeit_sekunden) : (l.pausen_anzahl ? l.pausen_anzahl + ' Pausen' : null);
         const meta = [art, ergebnis, zeitInfo, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
         const routen = Array.isArray(l.routen_versuche) && l.routen_versuche.length ? `
@@ -1318,8 +1809,9 @@
             ${l.satz_ergebnisse.map(s => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span class="tag tag-neutral" style="font-size:10.5px">Satz ${s.nr}</span>
               ${s.wiederholungen != null ? '<span>' + s.wiederholungen + ' Wdh.</span>' : ''}
-              ${s.ergebnis_wert != null ? '<span>' + s.ergebnis_wert + (uebung && uebung.einheit ? ' ' + escapeHtml(uebung.einheit) : '') + '</span>' : ''}
+              ${s.ergebnis_wert != null ? '<span>' + s.ergebnis_wert + (uebung && uebung.einheit ? ' ' + escapeHtml(uebung.einheit) : '') + (uebung && isKgEinheit(uebung.einheit) && prozentKG(s.ergebnis_wert) != null ? ' (' + prozentKG(s.ergebnis_wert) + ' % KG)' : '') + '</span>' : ''}
               ${s.spezifikation ? '<span style="opacity:0.65">' + escapeHtml(s.spezifikation) + '</span>' : ''}
+              ${s.rpe != null ? '<span style="opacity:0.65">RPE ' + s.rpe + '</span>' : ''}
             </div>`).join('')}
           </div>` : '';
         return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
@@ -1346,6 +1838,7 @@
             renderLog();
             renderWeekSummary();
             renderCharts();
+            renderGradPyramide();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
@@ -1375,6 +1868,8 @@
             if (error) throw error;
             einheiten = einheiten.filter(e => e.id !== id);
             renderEinheitenList();
+            renderPlanList();
+            renderPlanWocheBanner();
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
@@ -1383,6 +1878,7 @@
     renderLog();
     renderWeekSummary();
     renderCharts();
+    renderGradPyramide();
     renderEinheitenList();
 
     // ---- Training-Session: Workout starten/beenden, Übungen abarbeiten ----
@@ -1443,6 +1939,7 @@
         `);
       } else if (uebung.saetze && uebung.saetze > 1) {
         const spezOptions = (uebung.spezifikationen || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        const kgEinheit = isKgEinheit(uebung.einheit);
         const rows = [];
         for (let i = 1; i <= uebung.saetze; i++) {
           rows.push(`
@@ -1451,13 +1948,18 @@
               <div class="field" style="margin:0"><label style="font-size:11px">Wdh.${uebung.wiederholungen ? ' (Ziel ' + uebung.wiederholungen + ')' : ''}</label><input type="number" min="0" max="999" class="input" data-satz-wdh style="width:80px" placeholder="${uebung.wiederholungen || ''}"></div>
               ${uebung.einheit ? `<div class="field" style="margin:0"><label style="font-size:11px">Ergebnis (${escapeHtml(uebung.einheit)})</label><input type="number" step="any" class="input" data-satz-ergebnis style="width:90px"></div>` : ''}
               ${spezOptions ? `<div class="field" style="margin:0"><label style="font-size:11px">Spezifikation</label><select class="input" data-satz-spez style="width:130px"><option value="">–</option>${spezOptions}</select></div>` : ''}
+              <div class="field" style="margin:0"><label style="font-size:11px">RPE (1–10)</label><input type="number" min="1" max="10" class="input" data-satz-rpe style="width:70px"></div>
+              ${kgEinheit ? `<span data-satz-kg-pct style="font-size:12px;opacity:0.6;align-self:center"></span>` : ''}
             </div>`);
         }
         bodyFields.push(`<div data-satz-liste style="display:flex;flex-direction:column;gap:8px">${rows.join('')}</div>`);
       } else {
         const info = [uebung.wiederholungen ? uebung.wiederholungen + ' Wdh.' : null, Array.isArray(uebung.spezifikationen) && uebung.spezifikationen.length ? uebung.spezifikationen.join(', ') : null].filter(Boolean).join(' · ');
         if (info) bodyFields.push(`<p style="margin:0;font-size:13.5px;opacity:0.65">${escapeHtml(info)}</p>`);
-        if (uebung.einheit) bodyFields.push(`<div class="field"><label>Ergebnis (${escapeHtml(uebung.einheit)})</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
+        if (uebung.einheit) {
+          bodyFields.push(`<div class="field"><label>Ergebnis (${escapeHtml(uebung.einheit)})</label><input class="input" type="number" step="any" data-ex-ergebnis placeholder="z.B. 20"></div>`);
+          if (isKgEinheit(uebung.einheit)) bodyFields.push(`<p data-ex-kg-pct style="margin:-6px 0 0;font-size:12.5px;opacity:0.6"></p>`);
+        }
       }
 
       let timerHtml = '';
@@ -1495,6 +1997,27 @@
           <button type="button" data-ex-save class="btn btn-primary" style="align-self:flex-start;font-size:14.5px;padding:10px 22px">Speichern</button>
         </div>`;
       sessionExerciseCards.appendChild(card);
+
+      // %-Körpergewicht-Hinweis live bei kg-Übungen (nur wenn Körpergewicht im Profil hinterlegt ist)
+      function updateKgPct(input, out) {
+        if (!out) return;
+        const pct = koerpergewichtKg != null && input && input.value ? prozentKG(Number(input.value)) : null;
+        out.textContent = pct != null ? ('= ' + pct + ' % Körpergewicht') : (koerpergewichtKg == null ? 'Körpergewicht im Profil eintragen, um den %-Anteil zu sehen.' : '');
+      }
+      const exErgebnisInput = card.querySelector('[data-ex-ergebnis]');
+      const exKgPctOut = card.querySelector('[data-ex-kg-pct]');
+      if (exKgPctOut) {
+        updateKgPct(exErgebnisInput, exKgPctOut);
+        exErgebnisInput.addEventListener('input', () => updateKgPct(exErgebnisInput, exKgPctOut));
+      }
+      card.querySelectorAll('[data-satz-row]').forEach(row => {
+        const satzErgInput = row.querySelector('[data-satz-ergebnis]');
+        const satzKgPctOut = row.querySelector('[data-satz-kg-pct]');
+        if (satzKgPctOut) {
+          updateKgPct(satzErgInput, satzKgPctOut);
+          satzErgInput.addEventListener('input', () => updateKgPct(satzErgInput, satzKgPctOut));
+        }
+      });
 
       // Kletterroute: lokale Liste der Versuche
       let routenVersuche = [];
@@ -1609,11 +2132,13 @@
           const wdhInput = row.querySelector('[data-satz-wdh]');
           const ergInput = row.querySelector('[data-satz-ergebnis]');
           const spezSelect = row.querySelector('[data-satz-spez]');
+          const rpeInput = row.querySelector('[data-satz-rpe]');
           return {
             nr: Number(row.dataset.nr),
             wiederholungen: wdhInput && wdhInput.value ? Number(wdhInput.value) : null,
             ergebnis_wert: ergInput && ergInput.value ? Number(ergInput.value) : null,
-            spezifikation: spezSelect && spezSelect.value ? spezSelect.value : null
+            spezifikation: spezSelect && spezSelect.value ? spezSelect.value : null,
+            rpe: rpeInput && rpeInput.value ? Number(rpeInput.value) : null
           };
         });
 
@@ -1647,6 +2172,7 @@
           renderLog();
           renderWeekSummary();
           renderCharts();
+          renderGradPyramide();
         } catch (e) {
           errorEl.hidden = false;
           errorEl.textContent = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
@@ -1672,6 +2198,8 @@
         sessionStartBtn.disabled = false;
         if (error || !data) { alert('Training konnte nicht gestartet werden. Bitte erneut versuchen.'); return; }
         einheiten.unshift(data);
+        renderPlanList();
+        renderPlanWocheBanner();
         sess.active = true;
         sess.einheitId = data.id;
         sess.startedAt = Date.now();
@@ -1693,6 +2221,8 @@
       client.from('trainingseinheiten').update({ dauer_sekunden: dauer }).eq('id', sess.einheitId).select().single().then(({ data }) => {
         if (data) einheiten = einheiten.map(e => e.id === data.id ? data : e);
         renderEinheitenList();
+        renderPlanList();
+        renderPlanWocheBanner();
       });
       sessionIdleBox.hidden = false;
       sessionActiveBox.hidden = true;
