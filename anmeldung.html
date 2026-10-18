@@ -104,7 +104,7 @@
             <div style="margin-top:22px;padding:16px 20px;border-radius:var(--radius-md);background:var(--color-accent-2-100);color:var(--color-accent-2-800);font-size:14.5px">Wir nutzen deine Telefonnummer nur, wenn sich am Kurstag etwas ändert.</div>
 
             <h4 style="margin:30px 0 6px;font-size:18px">Weitere Teilnehmer*innen (optional)</h4>
-            <p style="margin:0 0 14px;font-size:14.5px;opacity:0.75">Meldest du mehrere Personen gemeinsam an? Du schließt die Buchung als Vertragspartnerin bzw. -partner ab, die weiteren Personen werden nur mit Name gespeichert.</p>
+            <p style="margin:0 0 14px;font-size:14.5px;opacity:0.75">Meldest du mehrere Personen gemeinsam an? Du schließt die Buchung als Vertragspartnerin bzw. -partner ab, die weiteren Personen werden nur mit Name gespeichert. Für jede weitere Person wird der Kurspreis in der Übersicht entsprechend erhöht.</p>
             <div id="teilnehmerList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <input id="teilnehmerName" class="input" style="flex:1;min-width:160px;min-height:46px;font-size:16px" placeholder="Name der Person" maxlength="150">
@@ -344,15 +344,21 @@
     return true;
   }
 
+  function teilnehmerCount() { return 1 + f.teilnehmer.length; }
+
   function updateAside() {
     const list = selectedCourses();
+    const count = teilnehmerCount();
     document.getElementById('selTitle').textContent = list.length ? (list.length === 1 ? list[0].title : list.length + ' Kurse ausgewählt') : 'Noch kein Kurs gewählt';
-    document.getElementById('selMeta').textContent = list.map(c => c.title + ' · ' + c.date).join(' • ');
-    const base = list.reduce((sum, c) => sum + c.price, 0);
+    document.getElementById('selMeta').textContent = list.map(c => c.title + ' · ' + c.date).join(' • ') + (count > 1 ? ' · ' + count + ' Personen' : '');
+    const base = list.reduce((sum, c) => sum + c.price, 0) * count;
     const pctDisc = f.discount === 'student' ? Math.round(base * 0.15) : 0;
     const vDisc = list.length ? voucherDiscount() : 0;
     let rows = '';
-    list.forEach(c => { rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">'+c.title+'</span><span>'+eur(c.price)+'</span></div>'; });
+    list.forEach(c => {
+      const label = count > 1 ? c.title + ' × ' + count + ' Personen' : c.title;
+      rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">'+label+'</span><span>'+eur(c.price * count)+'</span></div>';
+    });
     if (pctDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Ausbildungsrabatt (15 %)</span><span>−'+eur(pctDisc)+'</span></div>';
     if (vDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Gutschein</span><span>−'+eur(vDisc)+'</span></div>';
     document.getElementById('priceRows').innerHTML = rows;
@@ -458,7 +464,7 @@
       </div>`).join('');
     list.querySelectorAll('[data-teilnehmer]').forEach(row => {
       const idx = Number(row.dataset.idx);
-      row.querySelector('[data-teilnehmer-remove]').addEventListener('click', () => { f.teilnehmer.splice(idx, 1); renderTeilnehmerList(); });
+      row.querySelector('[data-teilnehmer-remove]').addEventListener('click', () => { f.teilnehmer.splice(idx, 1); renderTeilnehmerList(); updateAside(); });
     });
   }
   document.getElementById('teilnehmerAdd').addEventListener('click', () => {
@@ -471,6 +477,7 @@
     notizEl.value = '';
     nameEl.focus();
     renderTeilnehmerList();
+    updateAside();
   });
 
   function goToStep(n) {
