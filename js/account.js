@@ -556,30 +556,66 @@
 
     const coachBtn = document.getElementById('coachZugriffBtn');
     const coachSaved = document.getElementById('coachZugriffSaved');
+    const coachBearbeitenBox = document.getElementById('coachBearbeitenBox');
+    const coachBearbeitenBtn = document.getElementById('coachBearbeitenBtn');
+    const coachBearbeitenSaved = document.getElementById('coachBearbeitenSaved');
     let coachFreigabe = !!profile.training_coach_freigabe;
+    let coachBearbeiten = !!profile.training_coach_bearbeiten;
     function renderCoachBtn() {
       if (!coachBtn) return;
       coachBtn.textContent = coachFreigabe ? 'Zugriff entziehen' : 'Zugriff gewähren';
       coachBtn.style.borderColor = coachFreigabe ? 'var(--color-accent-2-500)' : 'var(--color-divider)';
       coachBtn.style.background = coachFreigabe ? 'var(--color-accent-2-500)' : 'transparent';
       coachBtn.style.color = coachFreigabe ? '#ffffff' : 'var(--color-text)';
+      if (coachBearbeitenBox) coachBearbeitenBox.hidden = !coachFreigabe;
+    }
+    function renderCoachBearbeitenBtn() {
+      if (!coachBearbeitenBtn) return;
+      coachBearbeitenBtn.textContent = coachBearbeiten ? 'Änderungen wieder sperren' : 'Änderungen erlauben';
+      coachBearbeitenBtn.style.borderColor = coachBearbeiten ? 'var(--color-accent-2-500)' : 'var(--color-divider)';
+      coachBearbeitenBtn.style.background = coachBearbeiten ? 'var(--color-accent-2-500)' : 'transparent';
+      coachBearbeitenBtn.style.color = coachBearbeiten ? '#ffffff' : 'var(--color-text)';
     }
     renderCoachBtn();
+    renderCoachBearbeitenBtn();
     if (coachBtn) {
       coachBtn.addEventListener('click', async () => {
         if (coachSaved) coachSaved.hidden = true;
         const next = !coachFreigabe;
+        const payload = { training_coach_freigabe: next };
+        // Lesezugriff entziehen nimmt automatisch auch den Bearbeiten-Zugriff zurück.
+        if (!next) payload.training_coach_bearbeiten = false;
         coachBtn.disabled = true;
         try {
-          const { error } = await client.from('profiles').update({ training_coach_freigabe: next }).eq('id', session.user.id);
+          const { error } = await client.from('profiles').update(payload).eq('id', session.user.id);
           if (error) throw error;
           coachFreigabe = next;
+          if (!next) coachBearbeiten = false;
           renderCoachBtn();
+          renderCoachBearbeitenBtn();
           if (coachSaved) coachSaved.hidden = false;
         } catch (e) {
           alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
         } finally {
           coachBtn.disabled = false;
+        }
+      });
+    }
+    if (coachBearbeitenBtn) {
+      coachBearbeitenBtn.addEventListener('click', async () => {
+        if (coachBearbeitenSaved) coachBearbeitenSaved.hidden = true;
+        const next = !coachBearbeiten;
+        coachBearbeitenBtn.disabled = true;
+        try {
+          const { error } = await client.from('profiles').update({ training_coach_bearbeiten: next }).eq('id', session.user.id);
+          if (error) throw error;
+          coachBearbeiten = next;
+          renderCoachBearbeitenBtn();
+          if (coachBearbeitenSaved) coachBearbeitenSaved.hidden = false;
+        } catch (e) {
+          alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+        } finally {
+          coachBearbeitenBtn.disabled = false;
         }
       });
     }
