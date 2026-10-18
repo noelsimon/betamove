@@ -102,6 +102,15 @@
               <div class="field"><label for="ph">Telefon</label><input id="ph" type="tel" class="input" style="min-height:46px;font-size:16px" placeholder="+49 …"></div>
             </div>
             <div style="margin-top:22px;padding:16px 20px;border-radius:var(--radius-md);background:var(--color-accent-2-100);color:var(--color-accent-2-800);font-size:14.5px">Wir nutzen deine Telefonnummer nur, wenn sich am Kurstag etwas ändert.</div>
+
+            <h4 style="margin:30px 0 6px;font-size:18px">Weitere Teilnehmer*innen (optional)</h4>
+            <p style="margin:0 0 14px;font-size:14.5px;opacity:0.75">Meldest du mehrere Personen gemeinsam an? Du schließt die Buchung als Vertragspartnerin bzw. -partner ab, die weiteren Personen werden nur mit Name gespeichert.</p>
+            <div id="teilnehmerList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <input id="teilnehmerName" class="input" style="flex:1;min-width:160px;min-height:46px;font-size:16px" placeholder="Name der Person" maxlength="150">
+              <input id="teilnehmerNotiz" class="input" style="flex:1;min-width:160px;min-height:46px;font-size:16px" placeholder="Notiz (optional)" maxlength="500">
+              <button type="button" id="teilnehmerAdd" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:12px 20px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);white-space:nowrap">+ Hinzufügen</button>
+            </div>
           </section>
 
           <section data-step="3" hidden style="animation:bmFade 0.25s ease both">
@@ -270,8 +279,9 @@
 <script src="js/account.js"></script>
 <script>
 (function(){
+  const escapeHtml = window.bmEscapeHtml;
   let step = 1;
-  const f = { courseIds: [], level: '', gear: [], discount: 'none', discountReason: '', voucher: '' };
+  const f = { courseIds: [], level: '', gear: [], discount: 'none', discountReason: '', voucher: '', teilnehmer: [] };
   const VOUCHERS = { BETAMOVE15: 15 };
   const nextLabels = {1:'Weiter zu deinen Daten', 2:'Weiter zu Erfahrung', 3:'Zur Übersicht'};
 
@@ -371,6 +381,7 @@
       ['Rabatt', f.discount === 'student' ? ('Studierend / Azubi (' + (f.discountReason || '–') + ')') : 'Kein Rabatt'],
       ['Gutschein', f.voucher.trim() ? (voucherDiscount() > 0 ? f.voucher.trim() + ' (gültig)' : f.voucher.trim() + ' (nicht erkannt)') : '—'],
       ['Anmerkungen', document.getElementById('nt').value || '—'],
+      ['Weitere Teilnehmer*innen', f.teilnehmer.length ? f.teilnehmer.map(t => t.name).join(', ') : '—'],
     ];
     document.getElementById('summaryRows').innerHTML = rows.map(r =>
       '<dt style="padding:13px 0;border-top:1px solid var(--color-divider);opacity:0.6;font-size:14px">'+r[0]+'</dt><dd style="padding:13px 0;border-top:1px solid var(--color-divider);margin:0">'+r[1]+'</dd>'
@@ -434,6 +445,32 @@
     else if (voucherDiscount() > 0) { hint.textContent = '✓ Gutschein gültig: ' + eur(voucherDiscount()) + ' Rabatt.'; hint.style.color = 'var(--color-accent-2-700)'; }
     else { hint.textContent = 'Code nicht erkannt — prüfe die Schreibweise.'; hint.style.color = 'var(--color-accent-700)'; }
     updateAside();
+  });
+
+  function renderTeilnehmerList() {
+    const list = document.getElementById('teilnehmerList');
+    if (!list) return;
+    list.innerHTML = f.teilnehmer.map((t, i) => `
+      <div data-teilnehmer data-idx="${i}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--color-surface);border-radius:var(--radius-md);padding:10px 14px">
+        <span style="font-weight:600;font-size:15px">${escapeHtml(t.name)}</span>
+        ${t.notiz ? '<span style="opacity:0.65;font-size:14px">' + escapeHtml(t.notiz) + '</span>' : ''}
+        <button type="button" data-teilnehmer-remove style="cursor:pointer;margin-left:auto;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+      </div>`).join('');
+    list.querySelectorAll('[data-teilnehmer]').forEach(row => {
+      const idx = Number(row.dataset.idx);
+      row.querySelector('[data-teilnehmer-remove]').addEventListener('click', () => { f.teilnehmer.splice(idx, 1); renderTeilnehmerList(); });
+    });
+  }
+  document.getElementById('teilnehmerAdd').addEventListener('click', () => {
+    const nameEl = document.getElementById('teilnehmerName');
+    const notizEl = document.getElementById('teilnehmerNotiz');
+    const name = nameEl.value.trim();
+    if (!name) return;
+    f.teilnehmer.push({ name, notiz: notizEl.value.trim() || null });
+    nameEl.value = '';
+    notizEl.value = '';
+    nameEl.focus();
+    renderTeilnehmerList();
   });
 
   function goToStep(n) {
@@ -510,7 +547,7 @@
 
     try {
       const userId = window.bmCurrentUserId ? await window.bmCurrentUserId() : null;
-      const { error } = await client.from('kursanmeldungen').insert({
+      const { data, error } = await client.from('kursanmeldungen').insert({
         user_id: userId,
         vorname: document.getElementById('fn').value.trim(),
         nachname: document.getElementById('ln').value.trim(),
@@ -526,8 +563,17 @@
         gutschein_code: f.voucher.trim() || null,
         anmerkungen: document.getElementById('nt').value.trim() || null,
         agb_akzeptiert: true,
-      });
+      }).select().single();
       if (error) throw error;
+      if (f.teilnehmer.length) {
+        const { error: teilnehmerError } = await client.from('kursanmeldung_teilnehmer').insert(
+          f.teilnehmer.map(t => ({ anmeldung_id: data.id, name: t.name, notiz: t.notiz }))
+        );
+        // Die Buchung selbst steht schon sicher, ein Fehler hier soll die
+        // Anmeldung nicht als Ganzes scheitern lassen (z.B. bei einem
+        // kurzen Netzwerk-Hick-up nach dem ersten Insert).
+        if (teilnehmerError) console.error('Teilnehmer*innen konnten nicht gespeichert werden:', teilnehmerError);
+      }
       showSuccess(list, !!userId);
     } catch (err) {
       showSubmitError('Anmeldung konnte leider nicht gesendet werden.' + FALLBACK_EMAIL_HINT);
@@ -541,11 +587,12 @@
     document.getElementById('successPanel').hidden = true;
     document.getElementById('formPanel').hidden = false;
     step = 1;
-    f.courseIds = []; f.level = ''; f.gear = []; f.discount = 'none'; f.discountReason = ''; f.voucher = '';
+    f.courseIds = []; f.level = ''; f.gear = []; f.discount = 'none'; f.discountReason = ''; f.voucher = ''; f.teilnehmer = [];
     renderOptions();
+    renderTeilnehmerList();
     document.querySelectorAll('.level-opt,.discount-opt').forEach(b => b.dataset.active = 'false');
     document.getElementById('discountReasonBox').hidden = true;
-    ['fn','ln','em','ph','nt','voucher','discountReason'].forEach(id => document.getElementById(id).value = '');
+    ['fn','ln','em','ph','nt','voucher','discountReason','teilnehmerName','teilnehmerNotiz'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('voucherHint').textContent = 'Optional — falls du einen Gutscheincode hast.';
     document.getElementById('agb').checked = false;
     document.getElementById('hpWebsite').value = '';

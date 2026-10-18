@@ -87,14 +87,21 @@
     if (window.BM_COURSES_READY) { try { await window.BM_COURSES_READY; } catch (e) {} }
 
     let bookings = [];
+    let teilnehmer = [];
     try {
-      const { data, error } = await client.from('kursanmeldungen').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      bookings = data || [];
+      const [bookingsRes, teilnehmerRes] = await Promise.all([
+        client.from('kursanmeldungen').select('*').order('created_at', { ascending: false }),
+        client.from('kursanmeldung_teilnehmer').select('*').order('created_at', { ascending: true })
+      ]);
+      if (bookingsRes.error) throw bookingsRes.error;
+      if (teilnehmerRes.error) throw teilnehmerRes.error;
+      bookings = bookingsRes.data || [];
+      teilnehmer = teilnehmerRes.data || [];
     } catch (e) {
       document.getElementById('bookingsList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Buchungen konnten nicht geladen werden. Bitte Seite neu laden.</p>';
       return;
     }
+    function teilnehmerFor(anmeldungId) { return teilnehmer.filter(t => t.anmeldung_id === anmeldungId); }
 
     const filterEl = document.getElementById('courseFilter');
     const statusFilterEl = document.getElementById('statusFilter');
@@ -154,6 +161,12 @@
             </div>
           </div>
         </div>
+        ${teilnehmerFor(b.id).length ? `<div style="border-top:1px solid var(--color-divider);padding-top:12px">
+          <div style="font-size:12px;font-weight:600;opacity:0.55;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px">In dieser Buchung enthaltene Teilnehmer*innen</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${teilnehmerFor(b.id).map(t => `<div style="font-size:13.5px;display:flex;gap:8px;flex-wrap:wrap"><strong>${escapeHtml(t.name)}</strong>${t.notiz ? '<span style="opacity:0.65">' + escapeHtml(t.notiz) + '</span>' : ''}</div>`).join('')}
+          </div>
+        </div>` : ''}
         <div style="border-top:1px solid var(--color-divider);padding-top:12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
           <textarea data-field="admin_notiz" class="input" rows="1" placeholder="Notiz für dich (nicht sichtbar für die Buchungsperson) …" style="flex:1;min-width:220px;font-size:13.5px">${escapeHtml(b.admin_notiz || '')}</textarea>
           <button type="button" data-save-note style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);flex:none">Notiz speichern</button>
