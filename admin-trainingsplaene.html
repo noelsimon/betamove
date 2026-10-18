@@ -38,7 +38,10 @@
 </header>
 <main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
   <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
-  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Trainingspläne</h1>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-top:16px">
+    <h1 style="margin:0 0 8px;font-size:clamp(28px,3.4vw,38px)">Trainingspläne</h1>
+    <button type="button" id="newPlanTopBtn" class="btn btn-primary" style="font-size:14.5px;padding:10px 18px;white-space:nowrap">+ Neuer Plan</button>
+  </div>
   <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Zeigt nur Personen, die ihre Trainingsplanung ausdrücklich über den Coach-Zugriff-Button in ihrem Profil freigegeben haben. Logbuch, Übungen und Ergebnisse sind davon nicht umfasst und bleiben privat.</p>
 
   <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
@@ -54,6 +57,7 @@
     <div id="planFormBox" hidden style="background:#ffffff;border:2px solid var(--color-accent);border-radius:calc(var(--radius-lg) * 1.15);padding:22px 24px;margin-bottom:22px">
       <h4 id="planFormTitle" style="margin:0 0 14px;font-size:17px">Plan anlegen</h4>
       <form id="planForm" style="display:flex;flex-direction:column;gap:14px">
+        <div class="field"><label>Person</label><select id="plan-person" class="input" required></select></div>
         <div class="field"><label>Name</label><input id="plan-name" class="input" placeholder="z.B. Winter-Hypertrophie" maxlength="200" required></div>
         <div>
           <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Zyklus</label>
@@ -186,13 +190,28 @@
     const planForm = document.getElementById('planForm');
     const planFormTitle = document.getElementById('planFormTitle');
     const planFormError = document.getElementById('planFormError');
+    const planPersonSelect = document.getElementById('plan-person');
     let editingPlanId = null;
-    let editingPlanUserId = null;
+
+    function editablePeople() { return people.filter(p => p.training_coach_bearbeiten); }
+
+    function populatePersonSelect(selectedId) {
+      const options = editablePeople();
+      planPersonSelect.innerHTML = options.map(p =>
+        `<option value="${p.id}">${escapeHtml(p.vorname)} ${escapeHtml(p.nachname)} (${escapeHtml(p.email)})</option>`
+      ).join('');
+      if (selectedId) planPersonSelect.value = selectedId;
+    }
 
     function openPlanForm(person, plan) {
+      if (!editablePeople().length) {
+        alert('Noch niemand hat dir erlaubt, ihre Trainingsplanung zu bearbeiten. Das stellst du im Profil der jeweiligen Person über "Änderungen erlauben" ein.');
+        return;
+      }
       editingPlanId = plan ? plan.id : null;
-      editingPlanUserId = person.id;
-      planFormTitle.textContent = (plan ? 'Plan bearbeiten — ' : 'Plan anlegen für ') + person.vorname + ' ' + person.nachname;
+      planFormTitle.textContent = plan ? 'Plan bearbeiten' : 'Plan anlegen';
+      populatePersonSelect(person ? person.id : (plan ? plan.user_id : null));
+      planPersonSelect.disabled = !!plan;
       document.getElementById('plan-name').value = plan ? plan.name : '';
       document.getElementById('plan-start').value = plan ? plan.start_datum : new Date().toISOString().slice(0, 10);
       document.getElementById('plan-wochen').value = plan ? plan.wochen_anzahl : 4;
@@ -206,19 +225,26 @@
     function closePlanForm() {
       planFormBox.hidden = true;
       editingPlanId = null;
-      editingPlanUserId = null;
       planForm.reset();
+      planPersonSelect.disabled = false;
       setActiveZyklus('');
     }
     document.getElementById('planCancelBtn').addEventListener('click', closePlanForm);
+    document.getElementById('newPlanTopBtn').addEventListener('click', () => openPlanForm(null, null));
 
     planForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       planFormError.hidden = true;
+      const targetUserId = planPersonSelect.value;
       const name = document.getElementById('plan-name').value.trim();
       const start = document.getElementById('plan-start').value;
       const wochenAnzahl = Number(document.getElementById('plan-wochen').value);
       const notiz = document.getElementById('plan-notiz').value.trim();
+      if (!targetUserId) {
+        planFormError.hidden = false;
+        planFormError.textContent = 'Bitte eine Person auswählen.';
+        return;
+      }
       if (!name || !start || !wochenAnzahl) {
         planFormError.hidden = false;
         planFormError.textContent = 'Bitte Name, Start-Datum und Wochenanzahl angeben.';
@@ -227,7 +253,7 @@
       const btn = planForm.querySelector('button[type="submit"]');
       btn.disabled = true;
       try {
-        const payload = { user_id: editingPlanUserId, name, zyklus: activeZyklus() || null, start_datum: start, wochen_anzahl: wochenAnzahl, notiz: notiz || null };
+        const payload = { user_id: targetUserId, name, zyklus: activeZyklus() || null, start_datum: start, wochen_anzahl: wochenAnzahl, notiz: notiz || null };
         if (editingPlanId) {
           const { data, error } = await client.from('trainingsplaene').update(payload).eq('id', editingPlanId).select().single();
           if (error) throw error;
