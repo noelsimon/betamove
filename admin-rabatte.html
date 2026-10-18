@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rabatte — BETAMOVE Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .wd-pill { cursor:pointer; font:inherit; font-size:13.5px; font-weight:600; padding:8px 14px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
+  .wd-pill[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="konto">Mein Konto</a>
+      <a href="admin-kurse">Buchungen</a>
+      <a href="admin-kurse-verwaltung">Kurse</a>
+      <a href="admin-pruefungen">Prüfungen</a>
+      <a href="admin-qualifikationen">Qualifikationen</a>
+      <a href="admin-fragen">Lerninhalte</a>
+      <a href="admin-trainingsplaene">Trainingspläne</a>
+      <a href="admin-konten">Konten</a>
+    </nav>
+    <div data-r="navactions">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1000px;margin:0 auto;padding:48px 28px 96px">
+  <span class="tag tag-accent" style="font-size:11.5px">Nur für die Kursleitung</span>
+  <h1 style="margin:16px 0 8px;font-size:clamp(28px,3.4vw,38px)">Rabatte</h1>
+  <p style="margin:0 0 30px;font-size:17px;opacity:0.82">Studierenden-/Azubi-Rabatt und Gutscheincodes für die Kursanmeldung verwalten.</p>
+
+  <div id="statusBox" style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+    <p style="margin:0;font-size:15.5px;opacity:0.7">Lädt …</p>
+  </div>
+
+  <div id="adminArea" hidden>
+    <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
+      <h3 style="margin:0 0 6px;font-size:21px">Studierenden-/Azubi-Rabatt</h3>
+      <p style="margin:0 0 16px;font-size:14.5px;opacity:0.7">Gilt automatisch für jede Anmeldung mit diesem Rabatt, Nachweis wird vor Ort geprüft.</p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div class="field" style="margin:0;max-width:140px"><label>Prozent</label><input id="studentenRabattInput" type="number" min="0" max="100" class="input" style="min-height:44px"></div>
+        <button type="button" id="studentenRabattSave" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Speichern</button>
+        <span id="studentenRabattSaved" hidden style="font-size:14px;font-weight:600;color:var(--color-accent-2-700)">✓ Gespeichert</span>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px">
+        <h3 style="margin:0;font-size:21px">Gutscheine</h3>
+        <button type="button" id="newGutscheinBtn" class="btn btn-primary" style="font-size:14.5px;padding:10px 18px">+ Neuer Gutschein</button>
+      </div>
+      <p style="margin:-8px 0 16px;font-size:14.5px;opacity:0.65">Rabatt-Codes (z.B. für Marketing-Aktionen) und Geschenkgutscheine laufen über dieselbe Liste — beide sind ein fester Euro-Betrag, den die Person bei der Anmeldung per Code einlöst.</p>
+
+      <div id="gutscheinFormBox" hidden style="background:var(--color-surface);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px">
+        <h4 style="margin:0 0 14px;font-size:17px">Gutschein anlegen</h4>
+        <form id="gutscheinForm" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="display:block;font-size:13.5px;font-weight:600;opacity:0.7;margin-bottom:8px">Typ</label>
+            <div id="gutscheinTypPills" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="wd-pill" data-typ="rabatt">Rabatt-Code</button>
+              <button type="button" class="wd-pill" data-typ="geschenk">Geschenkgutschein</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+            <div class="field"><label>Code</label>
+              <div style="display:flex;gap:8px">
+                <input id="gutschein-code" class="input" placeholder="z.B. BETAMOVE15" maxlength="40" style="flex:1">
+                <button type="button" id="gutscheinCodeGenerate" style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:0 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);white-space:nowrap">Zufällig</button>
+              </div>
+            </div>
+            <div class="field"><label>Wert (€)</label><input id="gutschein-wert" type="number" min="1" max="10000" step="0.01" class="input" placeholder="z.B. 15"></div>
+          </div>
+          <div class="field"><label>Notiz (optional)</label><input id="gutschein-notiz" class="input" placeholder="z.B. für wen gedacht, welche Aktion" maxlength="500"></div>
+          <p id="gutscheinFormError" hidden style="margin:0;font-size:14px;color:var(--color-accent-700)"></p>
+          <div style="display:flex;gap:12px">
+            <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 24px">Speichern</button>
+            <button type="button" id="gutscheinCancelBtn" style="cursor:pointer;font:inherit;font-size:15px;font-weight:600;padding:12px 24px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="gutscheinList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · <a href="impressum">Impressum</a> · <a href="datenschutz">Datenschutz</a> · <a href="agb">AGB</a> · <a href="widerruf">Vertrag widerrufen</a></div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+<script>
+(function(){
+  const escapeHtml = window.bmEscapeHtml;
+  const TYP_LABEL = { rabatt: 'Rabatt-Code', geschenk: 'Geschenkgutschein' };
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await window.bmGuardAdminPage();
+    if (!ctx) return;
+    const { client } = ctx;
+
+    let einstellungen = null;
+    let gutscheine = [];
+    try {
+      const [einstellungenRes, gutscheineRes] = await Promise.all([
+        client.from('rabatt_einstellungen').select('*').eq('id', 1).maybeSingle(),
+        client.from('gutscheine').select('*').order('created_at', { ascending: false })
+      ]);
+      if (einstellungenRes.error) throw einstellungenRes.error;
+      if (gutscheineRes.error) throw gutscheineRes.error;
+      einstellungen = einstellungenRes.data;
+      gutscheine = gutscheineRes.data || [];
+    } catch (e) {
+      document.getElementById('gutscheinList').innerHTML = '<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Daten konnten nicht geladen werden. Bitte Seite neu laden.</p>';
+      return;
+    }
+
+    // ---- Studierenden-/Azubi-Rabatt ----
+    const studentenRabattInput = document.getElementById('studentenRabattInput');
+    const studentenRabattSaved = document.getElementById('studentenRabattSaved');
+    studentenRabattInput.value = einstellungen ? einstellungen.studenten_rabatt_prozent : 15;
+    document.getElementById('studentenRabattSave').addEventListener('click', async () => {
+      const btn = document.getElementById('studentenRabattSave');
+      const val = Number(studentenRabattInput.value);
+      if (!(val >= 0 && val <= 100)) { alert('Bitte einen Wert zwischen 0 und 100 eingeben.'); return; }
+      btn.disabled = true;
+      studentenRabattSaved.hidden = true;
+      try {
+        const { error } = await client.from('rabatt_einstellungen').update({ studenten_rabatt_prozent: val, updated_at: new Date().toISOString() }).eq('id', 1);
+        if (error) throw error;
+        studentenRabattSaved.hidden = false;
+      } catch (e) {
+        alert('Konnte nicht gespeichert werden.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ---- Gutscheine ----
+    const gutscheinFormBox = document.getElementById('gutscheinFormBox');
+    const gutscheinForm = document.getElementById('gutscheinForm');
+    const gutscheinFormError = document.getElementById('gutscheinFormError');
+    const gutscheinTypPills = document.getElementById('gutscheinTypPills');
+
+    function setActiveTyp(typ) {
+      gutscheinTypPills.querySelectorAll('.wd-pill').forEach(btn => { btn.dataset.active = String(btn.dataset.typ === typ); });
+    }
+    function activeTyp() {
+      const btn = gutscheinTypPills.querySelector('.wd-pill[data-active="true"]');
+      return btn ? btn.dataset.typ : 'rabatt';
+    }
+    gutscheinTypPills.querySelectorAll('.wd-pill').forEach(btn => btn.addEventListener('click', () => setActiveTyp(btn.dataset.typ)));
+    setActiveTyp('rabatt');
+
+    function randomCode(typ) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let suffix = '';
+      for (let i = 0; i < 6; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+      return (typ === 'geschenk' ? 'GESCHENK-' : 'RABATT-') + suffix;
+    }
+    document.getElementById('gutscheinCodeGenerate').addEventListener('click', () => {
+      document.getElementById('gutschein-code').value = randomCode(activeTyp());
+    });
+
+    function openGutscheinForm() {
+      gutscheinForm.reset();
+      setActiveTyp('rabatt');
+      gutscheinFormError.hidden = true;
+      gutscheinFormBox.hidden = false;
+      gutscheinFormBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function closeGutscheinForm() {
+      gutscheinFormBox.hidden = true;
+    }
+    document.getElementById('newGutscheinBtn').addEventListener('click', openGutscheinForm);
+    document.getElementById('gutscheinCancelBtn').addEventListener('click', closeGutscheinForm);
+
+    gutscheinForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      gutscheinFormError.hidden = true;
+      const code = document.getElementById('gutschein-code').value.trim().toUpperCase();
+      const wert = Number(document.getElementById('gutschein-wert').value);
+      const notiz = document.getElementById('gutschein-notiz').value.trim();
+      if (!code || code.length < 3) { gutscheinFormError.hidden = false; gutscheinFormError.textContent = 'Bitte einen Code mit mindestens 3 Zeichen eingeben.'; return; }
+      if (!(wert > 0)) { gutscheinFormError.hidden = false; gutscheinFormError.textContent = 'Bitte einen Wert größer als 0 eingeben.'; return; }
+      const btn = gutscheinForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        const { data, error } = await client.from('gutscheine').insert({ code, typ: activeTyp(), wert_eur: wert, notiz: notiz || null }).select().single();
+        if (error) throw error;
+        gutscheine.unshift(data);
+        closeGutscheinForm();
+        renderGutscheinList();
+      } catch (e) {
+        gutscheinFormError.hidden = false;
+        gutscheinFormError.textContent = e && e.message && e.message.indexOf('duplicate') > -1 ? 'Dieser Code existiert schon.' : 'Konnte nicht gespeichert werden.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function renderGutscheinList() {
+      const list = document.getElementById('gutscheinList');
+      list.innerHTML = gutscheine.length ? gutscheine.map(g => {
+        const date = g.created_at ? new Date(g.created_at).toLocaleDateString('de-DE') : '';
+        return `<div data-gutschein data-id="${g.id}" style="display:flex;gap:14px;align-items:center;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap;${g.aktiv ? '' : 'opacity:0.55'}">
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:15.5px;font-weight:600;font-family:monospace">${escapeHtml(g.code)}</span>
+              <span class="tag tag-neutral" style="font-size:10.5px">${TYP_LABEL[g.typ] || g.typ}</span>
+              ${!g.aktiv ? '<span class="tag tag-neutral" style="font-size:10.5px">Inaktiv</span>' : ''}
+            </div>
+            <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${g.wert_eur} € · angelegt ${escapeHtml(date)}${g.notiz ? ' · ' + escapeHtml(g.notiz) : ''}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button type="button" data-gutschein-toggle style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">${g.aktiv ? 'Deaktivieren' : 'Aktivieren'}</button>
+            <button type="button" data-gutschein-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+          </div>
+        </div>`;
+      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch kein Gutschein angelegt.</p>';
+
+      list.querySelectorAll('[data-gutschein]').forEach(row => {
+        const id = row.dataset.id;
+        const g = gutscheine.find(x => x.id === id);
+        row.querySelector('[data-gutschein-toggle]').addEventListener('click', async () => {
+          try {
+            const { error } = await client.from('gutscheine').update({ aktiv: !g.aktiv }).eq('id', id);
+            if (error) throw error;
+            g.aktiv = !g.aktiv;
+            renderGutscheinList();
+          } catch (e) { alert('Konnte nicht gespeichert werden.'); }
+        });
+        row.querySelector('[data-gutschein-delete]').addEventListener('click', async () => {
+          if (!confirm('Gutschein „' + g.code + '" wirklich löschen?')) return;
+          try {
+            const { error } = await client.from('gutscheine').delete().eq('id', id);
+            if (error) throw error;
+            gutscheine = gutscheine.filter(x => x.id !== id);
+            renderGutscheinList();
+          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        });
+      });
+    }
+    renderGutscheinList();
+  });
+})();
+</script>
+</body>
+</html>

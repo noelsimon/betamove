@@ -282,15 +282,55 @@
   const escapeHtml = window.bmEscapeHtml;
   let step = 1;
   const f = { courseIds: [], level: '', gear: [], discount: 'none', discountReason: '', voucher: '', teilnehmer: [] };
-  const VOUCHERS = { BETAMOVE15: 15 };
+  let studentenRabattProzent = 15;
+  let voucherResult = { code: '', wert: 0, checked: true };
+  let voucherDebounceTimer = null;
   const nextLabels = {1:'Weiter zu deinen Daten', 2:'Weiter zu Erfahrung', 3:'Zur Übersicht'};
 
   function eur(n) { return window.BM_EUR(n); }
   function selectedCourses() { return f.courseIds.map(id => window.BM_COURSES.find(c => c.id === id)).filter(Boolean); }
   function voucherDiscount() {
     const code = (f.voucher || '').trim().toUpperCase();
-    return code && VOUCHERS[code] ? VOUCHERS[code] : 0;
+    return (code && voucherResult.checked && voucherResult.code === code) ? voucherResult.wert : 0;
   }
+  async function checkVoucher(rawCode) {
+    const trimmed = (rawCode || '').trim();
+    if (!trimmed) { voucherResult = { code: '', wert: 0, checked: true }; updateVoucherHint(); updateAside(); return; }
+    const { client } = window.bmGetSupabaseClient ? window.bmGetSupabaseClient() : { client: null };
+    let wert = 0;
+    if (client) {
+      try {
+        const { data, error } = await client.rpc('gutschein_wert', { code_input: trimmed });
+        if (!error && data != null) wert = Number(data);
+      } catch (e) {}
+    }
+    voucherResult = { code: trimmed.toUpperCase(), wert, checked: true };
+    updateVoucherHint();
+    updateAside();
+    if (step === 4) updateSummary();
+  }
+  function updateVoucherHint() {
+    const hint = document.getElementById('voucherHint');
+    if (!hint) return;
+    const trimmed = f.voucher.trim();
+    if (!trimmed) { hint.textContent = 'Optional — falls du einen Gutscheincode hast.'; hint.style.color = ''; return; }
+    if (!voucherResult.checked || voucherResult.code !== trimmed.toUpperCase()) { hint.textContent = 'Prüfe Code …'; hint.style.color = ''; return; }
+    if (voucherDiscount() > 0) { hint.textContent = '✓ Gutschein gültig: ' + eur(voucherDiscount()) + ' Rabatt.'; hint.style.color = 'var(--color-accent-2-700)'; }
+    else { hint.textContent = 'Code nicht erkannt — prüfe die Schreibweise.'; hint.style.color = 'var(--color-accent-700)'; }
+  }
+  (async function loadRabattEinstellungen() {
+    const { client } = window.bmGetSupabaseClient ? window.bmGetSupabaseClient() : { client: null };
+    if (!client) return;
+    try {
+      const { data, error } = await client.rpc('studenten_rabatt_prozent');
+      if (!error && data != null) {
+        studentenRabattProzent = Number(data);
+        const btn = document.querySelector('.discount-opt[data-discount="student"]');
+        if (btn) btn.textContent = 'Studierend / Azubi (−' + studentenRabattProzent + ' %)';
+        updateAside();
+      }
+    } catch (e) {}
+  })();
 
   function optBtnHtml(c) {
     const full = c.ausgebucht && !f.courseIds.includes(c.id);
@@ -352,14 +392,14 @@
     document.getElementById('selTitle').textContent = list.length ? (list.length === 1 ? list[0].title : list.length + ' Kurse ausgewählt') : 'Noch kein Kurs gewählt';
     document.getElementById('selMeta').textContent = list.map(c => c.title + ' · ' + c.date).join(' • ') + (count > 1 ? ' · ' + count + ' Personen' : '');
     const base = list.reduce((sum, c) => sum + c.price, 0) * count;
-    const pctDisc = f.discount === 'student' ? Math.round(base * 0.15) : 0;
+    const pctDisc = f.discount === 'student' ? Math.round(base * (studentenRabattProzent / 100)) : 0;
     const vDisc = list.length ? voucherDiscount() : 0;
     let rows = '';
     list.forEach(c => {
       const label = count > 1 ? c.title + ' × ' + count + ' Personen' : c.title;
       rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">'+label+'</span><span>'+eur(c.price * count)+'</span></div>';
     });
-    if (pctDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Ausbildungsrabatt (15 %)</span><span>−'+eur(pctDisc)+'</span></div>';
+    if (pctDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Ausbildungsrabatt ('+studentenRabattProzent+' %)</span><span>−'+eur(pctDisc)+'</span></div>';
     if (vDisc > 0) rows += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="opacity:0.75">Gutschein</span><span>−'+eur(vDisc)+'</span></div>';
     document.getElementById('priceRows').innerHTML = rows;
     document.getElementById('priceRowsStep4').innerHTML = rows;
@@ -445,12 +485,15 @@
   });
   document.getElementById('voucher').addEventListener('input', (e) => {
     f.voucher = e.target.value;
-    const hint = document.getElementById('voucherHint');
-    const trimmed = f.voucher.trim();
-    if (!trimmed) { hint.textContent = 'Optional — falls du einen Gutscheincode hast.'; hint.style.color = ''; }
-    else if (voucherDiscount() > 0) { hint.textContent = '✓ Gutschein gültig: ' + eur(voucherDiscount()) + ' Rabatt.'; hint.style.color = 'var(--color-accent-2-700)'; }
-    else { hint.textContent = 'Code nicht erkannt — prüfe die Schreibweise.'; hint.style.color = 'var(--color-accent-700)'; }
+    voucherResult.checked = false;
+    updateVoucherHint();
     updateAside();
+    if (voucherDebounceTimer) clearTimeout(voucherDebounceTimer);
+    voucherDebounceTimer = setTimeout(() => checkVoucher(f.voucher), 450);
+  });
+  document.getElementById('voucher').addEventListener('blur', () => {
+    if (voucherDebounceTimer) clearTimeout(voucherDebounceTimer);
+    checkVoucher(f.voucher);
   });
 
   function renderTeilnehmerList() {
@@ -595,6 +638,8 @@
     document.getElementById('formPanel').hidden = false;
     step = 1;
     f.courseIds = []; f.level = ''; f.gear = []; f.discount = 'none'; f.discountReason = ''; f.voucher = ''; f.teilnehmer = [];
+    if (voucherDebounceTimer) clearTimeout(voucherDebounceTimer);
+    voucherResult = { code: '', wert: 0, checked: true };
     renderOptions();
     renderTeilnehmerList();
     document.querySelectorAll('.level-opt,.discount-opt').forEach(b => b.dataset.active = 'false');
