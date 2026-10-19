@@ -1336,7 +1336,6 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="button" data-plan-aktiv style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">${p.aktiv ? 'Deaktivieren' : 'Aktivieren'}</button>
               <button type="button" data-plan-wochen style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Wochen bearbeiten</button>
-              <button type="button" data-plan-pdf style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Als PDF</button>
               <button type="button" data-plan-edit style="cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
               <button type="button" data-plan-delete aria-label="Löschen" style="cursor:pointer;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
             </div>
@@ -1372,7 +1371,6 @@
           } catch (e) { alert('Konnte nicht gespeichert werden.'); }
         });
         row.querySelector('[data-plan-wochen]').addEventListener('click', () => openWochenEditor(plan));
-        row.querySelector('[data-plan-pdf]').addEventListener('click', () => generatePlanPdf(plan));
         row.querySelector('[data-plan-edit]').addEventListener('click', () => openPlanForm(plan));
         row.querySelector('[data-plan-delete]').addEventListener('click', async () => {
           if (!confirm('Plan „' + plan.name + '" wirklich löschen? Alle zugeordneten Wochen werden mitgelöscht.')) return;
@@ -1387,6 +1385,7 @@
           } catch (e) { alert('Konnte nicht gelöscht werden.'); }
         });
       });
+      renderPlanExportSelect();
     }
     renderPlanList();
 
@@ -1407,50 +1406,199 @@
     renderPlanWocheBanner();
     renderWochenplan();
 
-    // ---- PDF-Export eines Trainingsplans ----
-    function generatePlanPdf(plan) {
+    // ---- Trainingsplan exportieren (Auswahl unten im Plan-Tab) ----
+    function renderPlanExportSelect() {
+      const select = document.getElementById('planExportSelect');
+      const controls = document.getElementById('planExportControls');
+      const hint = document.getElementById('planExportHint');
+      if (!select) return;
+      if (!trainingsplaene.length) {
+        if (controls) controls.hidden = true;
+        if (hint) hint.textContent = 'Noch kein Trainingsplan angelegt. Lege oben einen Plan an, um ihn hier exportieren zu können.';
+        return;
+      }
+      if (controls) controls.hidden = false;
+      if (hint) hint.textContent = 'Erstellt ein professionelles PDF-Dokument mit Zyklus-Übersicht und Wochenplan im BETAMOVE-Design — zum Teilen, z.B. mit Kund*innen.';
+      const prevValue = select.value;
+      select.innerHTML = trainingsplaene.map(p =>
+        `<option value="${p.id}">${escapeHtml(p.name)}${p.aktiv ? ' (Aktiv)' : ''}</option>`
+      ).join('');
+      const stillExists = trainingsplaene.some(p => p.id === prevValue);
+      if (stillExists) select.value = prevValue;
+      else {
+        const aktiv = trainingsplaene.find(p => p.aktiv);
+        select.value = aktiv ? aktiv.id : trainingsplaene[0].id;
+      }
+    }
+
+    const planExportBtn = document.getElementById('planExportBtn');
+    if (planExportBtn) {
+      planExportBtn.addEventListener('click', async () => {
+        const select = document.getElementById('planExportSelect');
+        const plan = trainingsplaene.find(p => p.id === (select && select.value));
+        if (!plan) return;
+        planExportBtn.disabled = true;
+        const original = planExportBtn.textContent;
+        planExportBtn.textContent = 'Erstelle PDF…';
+        try {
+          await generatePlanPdf(plan);
+        } catch (e) {
+          alert('PDF konnte nicht erstellt werden. Bitte erneut versuchen.');
+        } finally {
+          planExportBtn.disabled = false;
+          planExportBtn.textContent = original;
+        }
+      });
+    }
+
+    // ---- PDF-Export eines Trainingsplans: professionelles Dokument mit Logo,
+    // Zyklus-Übersicht (Belastung/Entlastung) und Wochenplan im Detail ----
+    let logoDataUrlPromise = null;
+    function loadLogoDataUrl() {
+      if (!logoDataUrlPromise) {
+        logoDataUrlPromise = fetch('assets-min/logo.png')
+          .then(res => res.blob())
+          .then(blob => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          }))
+          .catch(() => null);
+      }
+      return logoDataUrlPromise;
+    }
+
+    async function generatePlanPdf(plan) {
       if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.'); return; }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const marginX = 18;
-      let y = 20;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-      doc.text(plan.name, marginX, y); y += 8;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(60);
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const brand = [17, 74, 122];
+      const warnColor = [168, 93, 73];
+      const logoDataUrl = await loadLogoDataUrl();
+
+      function addHeaderBand() {
+        doc.setFillColor(brand[0], brand[1], brand[2]);
+        doc.rect(0, 0, pageWidth, 30, 'F');
+        const textX = marginX + (logoDataUrl ? 27 : 0);
+        if (logoDataUrl) {
+          try { doc.addImage(logoDataUrl, 'PNG', marginX, 4, 22, 22); } catch (e) {}
+        }
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+        doc.text('BETAMOVE', textX, 13);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+        doc.text('Trainingsplan', textX, 19);
+      }
+
+      function addFooter(pageNr, pageCount) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(140);
+        doc.text('BETAMOVE · betamove.de', marginX, pageHeight - 10);
+        doc.text('Seite ' + pageNr + ' / ' + pageCount, pageWidth - marginX, pageHeight - 10, { align: 'right' });
+      }
+
+      let y = 42;
+      function ensureSpace(next) {
+        if (y + next > pageHeight - 18) { doc.addPage(); addHeaderBand(); y = 42; }
+      }
+
+      addHeaderBand();
+
+      doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
+      doc.text(plan.name, marginX, y); y += 9;
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(90);
       const range0 = planWocheRange(plan, 1);
       const rangeN = planWocheRange(plan, plan.wochen_anzahl);
-      const metaLine = [plan.zyklus, fmtDateShort(range0.start) + ' – ' + fmtDateShort(rangeN.end), plan.wochen_anzahl + ' Wochen'].filter(Boolean).join(' · ');
+      const metaLine = [plan.zyklus, fmtDateShort(range0.start) + ' – ' + fmtDateShort(rangeN.end), plan.wochen_anzahl + ' Wochen', (plan.mikrozyklus_wochen || 4) + '-Wochen-Mikrozyklus'].filter(Boolean).join(' · ');
       doc.text(metaLine, marginX, y); y += 7;
       if (plan.notiz) {
-        const lines = doc.splitTextToSize(plan.notiz, 174);
+        const lines = doc.splitTextToSize(plan.notiz, pageWidth - marginX * 2);
+        doc.setFontSize(10);
         doc.text(lines, marginX, y);
         y += lines.length * 5 + 3;
       }
-      doc.setDrawColor(210);
-      doc.line(marginX, y, 192, y);
-      y += 9;
+      doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.6);
+      doc.line(marginX, y, pageWidth - marginX, y);
+      y += 10;
+
+      // Zyklus auf einen Blick
+      const zyklusWochen = wochenFuerPlan(plan);
+      const zyklusBlocks = blocksFuer(zyklusWochen, plan.mikrozyklus_wochen || 4);
+
+      ensureSpace(10);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(brand[0], brand[1], brand[2]);
+      doc.text('Zyklus auf einen Blick', marginX, y); y += 7;
+
+      let vorherPensum = null;
+      zyklusBlocks.forEach((blk, bi) => {
+        ensureSpace(8);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(60);
+        doc.text('Block ' + (bi + 1) + ' · Woche ' + blk[0].nr + '–' + blk[blk.length - 1].nr, marginX, y); y += 6;
+        blk.forEach(w => {
+          ensureSpace(6);
+          const ent = istEntlastungPhase(w.phase);
+          let hinweis;
+          if (vorherPensum == null) hinweis = 'Basis';
+          else if (!vorherPensum) hinweis = '–';
+          else {
+            const delta = Math.round(((w.pensum - vorherPensum) / vorherPensum) * 100);
+            hinweis = (delta >= 0 ? '+' : '') + delta + '% Pensum ggü. Vorwoche';
+          }
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+          if (ent) doc.setTextColor(warnColor[0], warnColor[1], warnColor[2]);
+          else doc.setTextColor(30, 30, 30);
+          const kategorie = ent ? 'Entlastung' : 'Belastung';
+          const zeigePhase = w.phase && w.phase.trim().toLowerCase() !== kategorie.toLowerCase();
+          const label = 'Woche ' + w.nr + ' — ' + kategorie + (zeigePhase ? ' (' + w.phase + ')' : '') + ' — ' + hinweis;
+          doc.text(label, marginX + 4, y); y += 5.5;
+          vorherPensum = w.pensum;
+        });
+        y += 2;
+      });
+
+      y += 4;
+      ensureSpace(4);
+      doc.setDrawColor(210); doc.setLineWidth(0.3);
+      doc.line(marginX, y, pageWidth - marginX, y);
+      y += 10;
+
+      // Wochenplan im Detail
+      ensureSpace(10);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(brand[0], brand[1], brand[2]);
+      doc.text('Wochenplan im Detail', marginX, y); y += 8;
 
       for (let w = 1; w <= plan.wochen_anzahl; w++) {
         const entries = trainingsplanEintraege.filter(e => e.plan_id === plan.id && e.woche_nr === w);
         const phase = entries.length ? entries[0].phase : null;
         const wr = planWocheRange(plan, w);
-        if (y > 268) { doc.addPage(); y = 20; }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20);
+        ensureSpace(14);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20);
         doc.text('Woche ' + w + (phase ? ' — ' + phase : ''), marginX, y); y += 5.5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(120);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120);
         doc.text(fmtDateShort(wr.start) + ' – ' + fmtDateShort(wr.end), marginX, y); y += 6;
-        doc.setFontSize(10.5); doc.setTextColor(20);
+        doc.setFontSize(10.5); doc.setTextColor(30);
         if (!entries.length) {
           doc.text('Keine Workouts zugeordnet.', marginX + 4, y); y += 7;
         } else {
           entries.slice().sort((a, b) => a.wochentag - b.wochentag).forEach(e => {
             const wd = WOCHENTAGE.find(x => x.n === e.wochentag);
-            if (y > 274) { doc.addPage(); y = 20; }
+            ensureSpace(6);
             doc.text('• ' + (wd ? wd.label : '') + ': ' + (e.workout_name || '–'), marginX + 4, y); y += 6;
           });
         }
         y += 4;
       }
+
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        addFooter(i, pageCount);
+      }
+
       doc.save((plan.name || 'trainingsplan').replace(/[^a-z0-9äöüß_-]+/gi, '_') + '.pdf');
     }
 
