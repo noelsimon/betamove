@@ -2121,7 +2121,10 @@
     }
 
     // ---- Logbuch: nach Trainingseinheit gruppiert, einklappbar ----
-    let expandedEinheiten = new Set();
+    // Trainingseinheiten von heute starten aufgeklappt, damit frisch geloggtes
+    // Training nach einem Neuladen der Seite nicht wie verschwunden wirkt.
+    const heutigesDatum = new Date().toISOString().slice(0, 10);
+    let expandedEinheiten = new Set(einheiten.filter(e => e.datum === heutigesDatum).map(e => e.id));
 
     function logEntryHtml(l) {
       const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
