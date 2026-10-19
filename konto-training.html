@@ -223,7 +223,7 @@
                     <div id="uebungSpezList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
                     <div style="display:flex;gap:8px">
                       <input id="uebung-spez-input" list="spezOptions" class="input" style="flex:1" placeholder="z.B. Full Crimp" maxlength="60">
-                      <datalist id="spezOptions"><option value="Full Crimp"><option value="Half Crimp"><option value="Breit"><option value="Eng"><option value="Dreifinger"><option value="Zweifinger"></datalist>
+                      <datalist id="spezOptions"><option value="Full Crimp"><option value="Half Crimp"><option value="Breit"><option value="Eng"><option value="Dreifinger"><option value="Zweifinger"><option value="5 mm"><option value="10 mm"><option value="15 mm"><option value="20 mm"><option value="25 mm"></datalist>
                       <button type="button" id="uebungSpezAdd" style="cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text);white-space:nowrap">+ Hinzufügen</button>
                     </div>
                   </div>
@@ -317,12 +317,12 @@
           </div>
 
           <div id="sessionActiveBox" hidden style="background:var(--color-accent-700);color:#ffffff;border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:16px">
               <div>
                 <div id="sessionWorkoutLabel" style="font-size:13.5px;opacity:0.85;margin-bottom:4px">Freies Training</div>
                 <div id="sessionTimerDisplay" style="font-family:var(--font-heading);font-size:42px;font-variant-numeric:tabular-nums">00:00</div>
               </div>
-              <button type="button" id="sessionEndBtn" class="btn btn-primary" style="background:#ffffff;color:var(--color-accent-700);font-size:15px;padding:12px 24px">Training beenden</button>
+              <button type="button" id="sessionEndBtn" class="btn btn-primary" style="background:#ffffff;color:var(--color-accent-700);font-size:15px;padding:12px 24px;align-self:flex-start">Training beenden</button>
             </div>
           </div>
 
@@ -375,13 +375,9 @@
             <div id="sendRateChart" style="display:flex;gap:8px;align-items:flex-end"></div>
           </div>
 
-          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px;margin-bottom:26px">
-            <h3 style="margin:0 0 16px;font-size:21px">Deine Trainingseinheiten</h3>
-            <div id="einheitenList" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-
           <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
-            <h3 style="margin:0 0 16px;font-size:21px">Logbuch</h3>
+            <h3 style="margin:0 0 4px;font-size:21px">Logbuch</h3>
+            <p style="margin:0 0 16px;font-size:13.5px;opacity:0.6">Nach Trainingseinheit gruppiert — zum Aufklappen auf eine Einheit tippen.</p>
             <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
         </div>

@@ -1591,8 +1591,8 @@
             <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${[sub, days ? days : 'Keinem Wochentag zugeordnet', timerInfo].filter(Boolean).join(' · ')}</div>
             ${u.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.8">' + escapeHtml(u.notiz) + '</p>' : ''}
           </div>
-          <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap">
-            <button type="button" data-uebung-vorlage-speichern style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Als Vorlage speichern</button>
+          <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap;max-width:100%">
+            <button type="button" data-uebung-vorlage-speichern style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">+ Vorlage</button>
             <button type="button" data-uebung-edit style="cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Bearbeiten</button>
             <button type="button" data-uebung-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
           </div>
@@ -1627,7 +1627,7 @@
             eigeneVorlagen.push(data);
             renderUebungVorlagen();
             btn.textContent = '✓ Gespeichert';
-            setTimeout(() => { btn.textContent = 'Als Vorlage speichern'; btn.disabled = false; }, 1800);
+            setTimeout(() => { btn.textContent = '+ Vorlage'; btn.disabled = false; }, 1800);
           } catch (e) {
             alert('Konnte nicht als Vorlage gespeichert werden.');
             btn.disabled = false;
@@ -1989,104 +1989,138 @@
       }
     }
 
-    // ---- Logbuch-Liste ----
-    function renderLog() {
+    // ---- Logbuch: nach Trainingseinheit gruppiert, einklappbar ----
+    let expandedEinheiten = new Set();
+
+    function logEntryHtml(l) {
+      const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
+      const art = uebung ? uebung.name : (TYP_LABEL[l.typ] || l.typ);
+      const ergebnisPct = uebung && isKgEinheit(uebung.einheit) && l.ergebnis_wert != null ? prozentKG(l.ergebnis_wert) : null;
+      const ergebnis = uebung && l.ergebnis_wert != null ? l.ergebnis_wert + (uebung.einheit ? ' ' + uebung.einheit : '') + (ergebnisPct != null ? ' (' + ergebnisPct + ' % KG)' : '') : null;
+      const zeitInfo = l.aktive_zeit_sekunden ? 'Aktivzeit ' + fmtMMSS(l.aktive_zeit_sekunden) : (l.pausen_anzahl ? l.pausen_anzahl + ' Pausen' : null);
+      const meta = [ergebnis, zeitInfo, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
+      const routen = Array.isArray(l.routen_versuche) && l.routen_versuche.length ? `
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+          ${l.routen_versuche.map(r => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="tag tag-neutral" style="font-size:10.5px">${escapeHtml(r.grad || '')}</span>
+            ${r.name ? '<span>' + escapeHtml(r.name) + '</span>' : ''}
+            <span style="opacity:0.65">${r.versuche || 1}× Versuch${(r.versuche || 1) > 1 ? 'e' : ''}</span>
+            ${r.getoppt ? '<span style="color:var(--color-accent-2-700);font-weight:600">✓ getoppt</span>' : '<span style="opacity:0.5">nicht getoppt</span>'}
+          </div>`).join('')}
+        </div>` : '';
+      const saetze = Array.isArray(l.satz_ergebnisse) && l.satz_ergebnisse.length ? `
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+          ${l.satz_ergebnisse.map(s => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="tag tag-neutral" style="font-size:10.5px">Satz ${s.nr}</span>
+            ${s.wiederholungen != null ? '<span>' + s.wiederholungen + ' Wdh.</span>' : ''}
+            ${s.ergebnis_wert != null ? '<span>' + s.ergebnis_wert + (uebung && uebung.einheit ? ' ' + escapeHtml(uebung.einheit) : '') + (uebung && isKgEinheit(uebung.einheit) && prozentKG(s.ergebnis_wert) != null ? ' (' + prozentKG(s.ergebnis_wert) + ' % KG)' : '') + '</span>' : ''}
+            ${s.spezifikation ? '<span style="opacity:0.65">' + escapeHtml(s.spezifikation) + '</span>' : ''}
+            ${s.rpe != null ? '<span style="opacity:0.65">RPE ' + s.rpe + '</span>' : ''}
+          </div>`).join('')}
+        </div>` : '';
+      return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:#ffffff;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:12px 14px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600">${escapeHtml(art)}</div>
+          <div style="font-size:13px;opacity:0.65;margin-top:2px">${escapeHtml(meta)}</div>
+          ${routen}
+          ${saetze}
+          ${l.notiz ? '<p style="margin:6px 0 0;font-size:14px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
+        </div>
+        <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+      </div>`;
+    }
+
+    function renderLogbuch() {
       const list = document.getElementById('logList');
       if (!list) return;
-      list.innerHTML = log.length ? log.map(l => {
-        const date = l.datum ? new Date(l.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
-        const uebung = l.uebung_id ? uebungById(l.uebung_id) : null;
-        const art = uebung ? uebung.name : (TYP_LABEL[l.typ] || l.typ);
-        const ergebnisPct = uebung && isKgEinheit(uebung.einheit) && l.ergebnis_wert != null ? prozentKG(l.ergebnis_wert) : null;
-        const ergebnis = uebung && l.ergebnis_wert != null ? l.ergebnis_wert + (uebung.einheit ? ' ' + uebung.einheit : '') + (ergebnisPct != null ? ' (' + ergebnisPct + ' % KG)' : '') : null;
-        const zeitInfo = l.aktive_zeit_sekunden ? 'Aktivzeit ' + fmtMMSS(l.aktive_zeit_sekunden) : (l.pausen_anzahl ? l.pausen_anzahl + ' Pausen' : null);
-        const meta = [art, ergebnis, zeitInfo, l.dauer_minuten ? l.dauer_minuten + ' Min.' : null, l.anstrengung ? 'RPE ' + l.anstrengung : null].filter(Boolean).join(' · ');
-        const routen = Array.isArray(l.routen_versuche) && l.routen_versuche.length ? `
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
-            ${l.routen_versuche.map(r => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <span class="tag tag-neutral" style="font-size:10.5px">${escapeHtml(r.grad || '')}</span>
-              ${r.name ? '<span>' + escapeHtml(r.name) + '</span>' : ''}
-              <span style="opacity:0.65">${r.versuche || 1}× Versuch${(r.versuche || 1) > 1 ? 'e' : ''}</span>
-              ${r.getoppt ? '<span style="color:var(--color-accent-2-700);font-weight:600">✓ getoppt</span>' : '<span style="opacity:0.5">nicht getoppt</span>'}
-            </div>`).join('')}
-          </div>` : '';
-        const saetze = Array.isArray(l.satz_ergebnisse) && l.satz_ergebnisse.length ? `
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
-            ${l.satz_ergebnisse.map(s => `<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <span class="tag tag-neutral" style="font-size:10.5px">Satz ${s.nr}</span>
-              ${s.wiederholungen != null ? '<span>' + s.wiederholungen + ' Wdh.</span>' : ''}
-              ${s.ergebnis_wert != null ? '<span>' + s.ergebnis_wert + (uebung && uebung.einheit ? ' ' + escapeHtml(uebung.einheit) : '') + (uebung && isKgEinheit(uebung.einheit) && prozentKG(s.ergebnis_wert) != null ? ' (' + prozentKG(s.ergebnis_wert) + ' % KG)' : '') + '</span>' : ''}
-              ${s.spezifikation ? '<span style="opacity:0.65">' + escapeHtml(s.spezifikation) + '</span>' : ''}
-              ${s.rpe != null ? '<span style="opacity:0.65">RPE ' + s.rpe + '</span>' : ''}
-            </div>`).join('')}
-          </div>` : '';
-        return `<div data-log data-id="${l.id}" style="display:flex;gap:14px;align-items:flex-start;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
-              <span style="font-size:15.5px;font-weight:600">${escapeHtml(date)}</span>
-              <span style="font-size:13.5px;opacity:0.65">${escapeHtml(meta)}</span>
-            </div>
-            ${routen}
-            ${saetze}
-            ${l.notiz ? '<p style="margin:6px 0 0;font-size:14.5px;opacity:0.85">' + escapeHtml(l.notiz) + '</p>' : ''}
-          </div>
-          <button type="button" data-log-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
-        </div>`;
-      }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Einheit eingetragen.</p>';
-      list.querySelectorAll('[data-log]').forEach(row => {
-        const id = row.dataset.id;
-        row.querySelector('[data-log-delete]').addEventListener('click', async () => {
-          if (!confirm('Eintrag wirklich löschen?')) return;
-          try {
-            const { error } = await client.from('trainingslog').delete().eq('id', id);
-            if (error) throw error;
-            log = log.filter(l => l.id !== id);
-            renderLog();
-            renderWeekSummary();
-            renderCharts();
-            renderGradPyramide();
-          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
-        });
-      });
-    }
 
-    // ---- Trainingseinheiten-Historie ----
-    function renderEinheitenList() {
-      const list = document.getElementById('einheitenList');
-      if (!list) return;
-      list.innerHTML = einheiten.length ? einheiten.map(e => {
+      const logByEinheit = new Map();
+      log.forEach(l => {
+        const key = l.einheit_id || 'ohne';
+        if (!logByEinheit.has(key)) logByEinheit.set(key, []);
+        logByEinheit.get(key).push(l);
+      });
+
+      const einheitIds = new Set(einheiten.map(e => e.id));
+      const groups = einheiten.map(e => ({ einheit: e, entries: logByEinheit.get(e.id) || [], loeschbar: true }));
+      [...logByEinheit.keys()].filter(k => k !== 'ohne' && !einheitIds.has(k)).forEach(id => {
+        const entries = logByEinheit.get(id);
+        groups.push({ einheit: { id, workout_name: 'Gelöschtes Workout', datum: entries[0].datum, dauer_sekunden: null }, entries, loeschbar: false });
+      });
+      if (logByEinheit.has('ohne')) {
+        groups.push({ einheit: { id: 'ohne', workout_name: 'Ohne Trainingseinheit', datum: null, dauer_sekunden: null }, entries: logByEinheit.get('ohne'), loeschbar: false });
+      }
+
+      list.innerHTML = groups.length ? groups.map(({ einheit: e, entries, loeschbar }) => {
         const date = e.datum ? new Date(e.datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
-        const count = log.filter(l => l.einheit_id === e.id).length;
-        return `<div data-einheit data-id="${e.id}" style="display:flex;gap:14px;align-items:center;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:160px">
-            <span style="font-size:15.5px;font-weight:600">${escapeHtml(e.workout_name || 'Freies Training')}</span>
-            <span style="font-size:13.5px;opacity:0.65;margin-left:8px">${escapeHtml(date)} · ${e.dauer_sekunden ? fmtMMSS(e.dauer_sekunden) + ' Min:Sek' : 'ohne Zeit'}${count ? ' · ' + count + ' Übung' + (count > 1 ? 'en' : '') : ''}</span>
+        const isOpen = expandedEinheiten.has(e.id);
+        const metaParts = [date, e.dauer_sekunden ? fmtMMSS(e.dauer_sekunden) + ' Min:Sek' : null, entries.length ? entries.length + ' Übung' + (entries.length > 1 ? 'en' : '') : 'Keine Übung erfasst'].filter(Boolean);
+        return `<div data-einheit-group data-id="${e.id}" style="background:var(--color-surface);border-radius:var(--radius-md);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 8px 6px 16px">
+            <button type="button" data-group-toggle style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;background:transparent;border:0;font:inherit;text-align:left;padding:8px 0">
+              <div style="min-width:0">
+                <div style="font-size:15.5px;font-weight:600">${escapeHtml(e.workout_name || 'Freies Training')}</div>
+                <div style="font-size:13.5px;opacity:0.65;margin-top:3px">${escapeHtml(metaParts.join(' · '))}</div>
+              </div>
+              <span aria-hidden="true" style="flex:none;font-size:13px;opacity:0.5;transform:${isOpen ? 'rotate(180deg)' : 'none'};transition:transform .15s">▾</span>
+            </button>
+            ${loeschbar ? '<button type="button" data-einheit-delete aria-label="Trainingseinheit löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:8px 10px">✕</button>' : ''}
           </div>
-          <button type="button" data-einheit-delete aria-label="Löschen" style="cursor:pointer;flex:none;font:inherit;font-size:13px;opacity:0.5;background:transparent;border:0;padding:2px 4px">✕</button>
+          <div data-group-body ${isOpen ? '' : 'hidden'} style="padding:0 16px 14px;display:flex;flex-direction:column;gap:8px">
+            ${entries.length ? entries.map(l => logEntryHtml(l)).join('') : '<p style="margin:0;font-size:14px;opacity:0.6">Keine Übung in dieser Einheit erfasst.</p>'}
+          </div>
         </div>`;
       }).join('') : '<p style="margin:0;font-size:15px;opacity:0.65">Noch keine Trainingseinheit abgeschlossen.</p>';
-      list.querySelectorAll('[data-einheit]').forEach(row => {
+
+      list.querySelectorAll('[data-einheit-group]').forEach(row => {
         const id = row.dataset.id;
-        row.querySelector('[data-einheit-delete]').addEventListener('click', async () => {
-          if (!confirm('Trainingseinheit wirklich löschen? Die zugehörigen Logbuch-Einträge bleiben erhalten.')) return;
-          try {
-            const { error } = await client.from('trainingseinheiten').delete().eq('id', id);
-            if (error) throw error;
-            einheiten = einheiten.filter(e => e.id !== id);
-            renderEinheitenList();
-            renderPlanList();
-            renderPlanWocheBanner();
-            renderWochenplan();
-          } catch (e) { alert('Konnte nicht gelöscht werden.'); }
+        const toggleBtn = row.querySelector('[data-group-toggle]');
+        const body = row.querySelector('[data-group-body]');
+        toggleBtn.addEventListener('click', () => {
+          if (expandedEinheiten.has(id)) expandedEinheiten.delete(id); else expandedEinheiten.add(id);
+          body.hidden = !expandedEinheiten.has(id);
+          const caret = toggleBtn.querySelector('span');
+          if (caret) caret.style.transform = expandedEinheiten.has(id) ? 'rotate(180deg)' : 'none';
+        });
+        const deleteBtn = row.querySelector('[data-einheit-delete]');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Trainingseinheit wirklich löschen? Die zugehörigen Logbuch-Einträge bleiben erhalten.')) return;
+            try {
+              const { error } = await client.from('trainingseinheiten').delete().eq('id', id);
+              if (error) throw error;
+              einheiten = einheiten.filter(x => x.id !== id);
+              renderLogbuch();
+              renderPlanList();
+              renderPlanWocheBanner();
+              renderWochenplan();
+            } catch (err) { alert('Konnte nicht gelöscht werden.'); }
+          });
+        }
+        row.querySelectorAll('[data-log-delete]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const logId = btn.closest('[data-log]').dataset.id;
+            if (!confirm('Eintrag wirklich löschen?')) return;
+            try {
+              const { error } = await client.from('trainingslog').delete().eq('id', logId);
+              if (error) throw error;
+              log = log.filter(l => l.id !== logId);
+              renderLogbuch();
+              renderWeekSummary();
+              renderCharts();
+              renderGradPyramide();
+            } catch (err) { alert('Konnte nicht gelöscht werden.'); }
+          });
         });
       });
     }
 
-    renderLog();
+    renderLogbuch();
     renderWeekSummary();
     renderCharts();
     renderGradPyramide();
-    renderEinheitenList();
 
     // ---- Training-Session: Workout starten/beenden, Übungen abarbeiten ----
     const sessionWorkoutSelect = document.getElementById('sessionWorkoutSelect');
@@ -2376,7 +2410,7 @@
           card.dataset.done = 'true';
           card.querySelector('[data-ex-status]').textContent = '✓ Gespeichert';
           card.querySelector('[data-ex-body]').hidden = true;
-          renderLog();
+          renderLogbuch();
           renderWeekSummary();
           renderCharts();
           renderGradPyramide();
@@ -2405,6 +2439,7 @@
         sessionStartBtn.disabled = false;
         if (error || !data) { alert('Training konnte nicht gestartet werden. Bitte erneut versuchen.'); return; }
         einheiten.unshift(data);
+        expandedEinheiten.add(data.id);
         renderPlanList();
         renderPlanWocheBanner();
         renderWochenplan();
@@ -2428,7 +2463,7 @@
       const dauer = Math.floor((Date.now() - sess.startedAt) / 1000);
       client.from('trainingseinheiten').update({ dauer_sekunden: dauer }).eq('id', sess.einheitId).select().single().then(({ data }) => {
         if (data) einheiten = einheiten.map(e => e.id === data.id ? data : e);
-        renderEinheitenList();
+        renderLogbuch();
         renderPlanList();
         renderPlanWocheBanner();
         renderWochenplan();
