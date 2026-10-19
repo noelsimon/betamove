@@ -37,6 +37,25 @@
   .tpl-card span { font-size:11.5px; opacity:0.6; }
   .tpl-card-remove { position:absolute; top:6px; right:8px; cursor:pointer; font:inherit; font-size:12px; background:transparent; border:0; opacity:0.5; padding:2px 4px; }
   .tpl-card-remove:hover { opacity:0.9; }
+
+  .zyklus-pill { cursor:pointer; font:inherit; font-size:12.5px; font-weight:600; padding:6px 13px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); opacity:0.7; }
+  .zyklus-pill[data-active="true"] { background: var(--color-accent-2-500); border-color: var(--color-accent-2-500); color:#ffffff; opacity:1; }
+  .zyklus-block-picker { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:18px; }
+  .zyklus-block-btn { flex:none; cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:9px 14px; border-radius:12px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); opacity:0.75; white-space:nowrap; position:relative; }
+  .zyklus-block-btn[data-active="true"] { background: var(--color-accent); border-color: var(--color-accent); color:#ffffff; opacity:1; }
+  .zyklus-block-btn .zyklus-now-pip { position:absolute; top:-5px; right:-5px; width:10px; height:10px; border-radius:50%; background: var(--color-warn); border:2px solid var(--color-bg); }
+  .zyklus-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
+  .zyklus-week { border-radius:14px; padding:14px 14px 12px; display:flex; flex-direction:column; gap:8px; background:#ffffff; border:2px solid transparent; }
+  .zyklus-week[data-now="true"] { border-color: var(--color-warn); }
+  .zyklus-week-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .zyklus-week-nr { font-size:16px; font-weight:700; }
+  .zyklus-now-badge { font-size:9.5px; font-weight:700; color:#fff; background: var(--color-warn); border-radius:999px; padding:2px 8px; letter-spacing:0.03em; }
+  .zyklus-phase-tag { align-self:flex-start; font-size:11.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:3px 10px; border-radius:999px; color:#fff; }
+  .zyklus-bar-track { height:64px; display:flex; align-items:flex-end; }
+  .zyklus-bar { width:100%; border-radius:7px 7px 0 0; min-height:12px; }
+  .zyklus-pensum { font-size:13px; font-weight:600; }
+  .zyklus-note { font-size:11.5px; opacity:0.65; line-height:1.4; }
+  .zyklus-date { font-size:10.5px; opacity:0.55; }
 </style>
 </head>
 <body>
@@ -95,6 +114,7 @@
         <div id="trainingTabs" style="display:flex;gap:10px;margin-bottom:28px">
           <button type="button" data-tab="plan" class="training-tab">Plan</button>
           <button type="button" data-tab="logbuch" class="training-tab">Logbuch</button>
+          <button type="button" data-tab="zyklus" class="training-tab">Zyklus</button>
         </div>
 
         <div id="tabPlan">
@@ -381,6 +401,35 @@
             <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
         </div>
+
+        <div id="tabZyklus" hidden>
+          <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+            <div id="zyklusEmpty" hidden>
+              <h3 style="margin:0 0 8px;font-size:21px">Zyklus</h3>
+              <p style="margin:0;font-size:15px;opacity:0.65">Noch kein aktiver Trainingsplan. Lege unter „Plan" einen Trainingsplan an und aktiviere ihn, um hier die Belastungs-/Entlastungs-Übersicht zu sehen.</p>
+            </div>
+            <div id="zyklusContent" hidden>
+              <h3 id="zyklusPlanName" style="margin:0 0 2px;font-size:21px"></h3>
+              <p id="zyklusPlanHint" style="margin:0 0 16px;font-size:13.5px;opacity:0.6"></p>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+                <span style="font-size:13px;font-weight:600;opacity:0.65">Mikrozyklus-Länge</span>
+                <div id="zyklusLaengePills" style="display:flex;gap:6px">
+                  <button type="button" class="zyklus-pill" data-len="3">3 Wochen</button>
+                  <button type="button" class="zyklus-pill" data-len="4">4 Wochen</button>
+                </div>
+              </div>
+
+              <div class="zyklus-block-picker" id="zyklusBlockPicker"></div>
+              <div class="zyklus-grid" id="zyklusGrid"></div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:18px;font-size:12.5px;opacity:0.65">
+                <div style="display:flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:var(--color-accent-2-300)"></span>Belastung, aufbauend</div>
+                <div style="display:flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:var(--color-warn)"></span>Entlastung / Pausewoche</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -455,7 +504,7 @@
 // Plan/Logbuch-Umschalter: rein clientseitig, unabhängig vom Konto-Laden.
 (function () {
   const tabs = document.querySelectorAll('.training-tab[data-tab]');
-  const panels = { plan: document.getElementById('tabPlan'), logbuch: document.getElementById('tabLogbuch') };
+  const panels = { plan: document.getElementById('tabPlan'), logbuch: document.getElementById('tabLogbuch'), zyklus: document.getElementById('tabZyklus') };
   function activate(name) {
     tabs.forEach(t => t.dataset.active = String(t.dataset.tab === name));
     Object.keys(panels).forEach(k => { if (panels[k]) panels[k].hidden = k !== name; });

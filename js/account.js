@@ -791,6 +791,8 @@
     let trainingsplanEintraege = [];
     let planZyklen = [];
     let eigeneVorlagen = [];
+    let zyklusSelectedBlock = 0;
+    let zyklusAutoSelect = true;
     try {
       const [zieleRes, logRes, uebungenRes, workoutsRes, workoutUebungenRes, einheitenRes, artenRes, plaeneRes, planEintraegeRes, zyklenRes, vorlagenRes] = await Promise.all([
         client.from('trainingsziele').select('*').order('created_at', { ascending: false }),
@@ -922,6 +924,7 @@
           ${(!planItems.length && !items.length) ? '<div class="wp-day-item" style="opacity:0.4;border-top:0">—</div>' : ''}
         </div>`;
       }).join('');
+      if (typeof renderZyklus === 'function') renderZyklus();
     }
     renderWochenplan();
 
@@ -949,6 +952,134 @@
         if (e.workout_id !== eintrag.workout_id || !e.datum) return false;
         const d = new Date(e.datum + 'T00:00:00');
         return d >= range.start && d <= range.end;
+      });
+    }
+
+    // ---- Zyklus: Mikrozyklus-Blöcke mit Belastung/Entlastung ----
+    function istEntlastungPhase(phase) {
+      return /entlast|deload|pause|regenerat/i.test(phase || '');
+    }
+    function zyklusFarbe(stufe, max) {
+      const stufen = ['var(--color-accent-2-300)', 'var(--color-accent-2-400)', 'var(--color-accent-700)'];
+      const idx = Math.min(stufen.length - 1, Math.max(0, Math.round((stufe / Math.max(1, max)) * (stufen.length - 1))));
+      return stufen[idx];
+    }
+    function wochenFuerPlan(plan) {
+      const out = [];
+      for (let nr = 1; nr <= plan.wochen_anzahl; nr++) {
+        const entries = trainingsplanEintraege.filter(e => e.plan_id === plan.id && e.woche_nr === nr);
+        const phase = entries.length ? (entries.find(e => e.phase) || entries[0]).phase : null;
+        let pensum = 0;
+        entries.forEach(e => {
+          if (!e.workout_id) return;
+          pensum += workoutUebungenFor(e.workout_id).reduce((sum, u) => sum + (u.saetze || 1), 0);
+        });
+        out.push({ nr, phase, pensum });
+      }
+      return out;
+    }
+    function blocksFuer(wochen, laenge) {
+      const out = [];
+      for (let i = 0; i < wochen.length; i += laenge) out.push(wochen.slice(i, i + laenge));
+      return out;
+    }
+
+    function renderZyklus() {
+      const empty = document.getElementById('zyklusEmpty');
+      const content = document.getElementById('zyklusContent');
+      if (!empty || !content) return;
+      const plan = trainingsplaene.find(p => p.aktiv);
+      if (!plan) {
+        empty.hidden = false;
+        content.hidden = true;
+        return;
+      }
+      empty.hidden = true;
+      content.hidden = false;
+
+      document.getElementById('zyklusPlanName').textContent = plan.name;
+      const startFmt = new Date(plan.start_datum + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      document.getElementById('zyklusPlanHint').textContent = plan.wochen_anzahl + ' Wochen gesamt · gestartet am ' + startFmt;
+
+      const laengePills = document.getElementById('zyklusLaengePills');
+      const laenge = plan.mikrozyklus_wochen || 4;
+      laengePills.querySelectorAll('.zyklus-pill').forEach(p => { p.dataset.active = String(Number(p.dataset.len) === laenge); });
+
+      const wochen = wochenFuerPlan(plan);
+      const heuteWoche = currentWeekNrForPlan(plan);
+      const blocks = blocksFuer(wochen, laenge);
+
+      zyklusSelectedBlock = Math.max(0, Math.min(zyklusSelectedBlock, blocks.length - 1));
+      if (zyklusAutoSelect) {
+        blocks.forEach((blk, i) => { if (heuteWoche && blk.some(w => w.nr === heuteWoche)) zyklusSelectedBlock = i; });
+        zyklusAutoSelect = false;
+      }
+
+      const picker = document.getElementById('zyklusBlockPicker');
+      picker.innerHTML = blocks.map((blk, i) => {
+        const isNowBlock = heuteWoche && blk.some(w => w.nr === heuteWoche);
+        return `<button type="button" class="zyklus-block-btn" data-active="${i === zyklusSelectedBlock}" data-i="${i}">Block ${i + 1} · W${blk[0].nr}–${blk[blk.length - 1].nr}${isNowBlock ? '<span class="zyklus-now-pip"></span>' : ''}</button>`;
+      }).join('');
+      picker.querySelectorAll('[data-i]').forEach(btn => {
+        btn.addEventListener('click', () => { zyklusSelectedBlock = Number(btn.dataset.i); zyklusAutoSelect = false; renderZyklus(); });
+      });
+
+      const grid = document.getElementById('zyklusGrid');
+      const blk = blocks[zyklusSelectedBlock] || [];
+      const maxPensum = Math.max(1, ...blk.map(w => w.pensum));
+      let belastungIdx = 0;
+      const belastungMax = blk.filter(w => !istEntlastungPhase(w.phase)).length - 1;
+      let vorher = null;
+
+      grid.innerHTML = blk.map(w => {
+        const ent = istEntlastungPhase(w.phase);
+        const farbe = ent ? 'var(--color-warn)' : zyklusFarbe(belastungIdx, belastungMax);
+        const isNow = heuteWoche === w.nr;
+        let pensumHtml;
+        if (!w.pensum && vorher == null) {
+          pensumHtml = '<div class="zyklus-pensum" style="opacity:0.45">Keine Workouts geplant</div>';
+        } else if (vorher == null) {
+          pensumHtml = '<div class="zyklus-pensum">Basis</div>';
+        } else if (!vorher) {
+          pensumHtml = '<div class="zyklus-pensum">–</div>';
+        } else {
+          const delta = Math.round(((w.pensum - vorher) / vorher) * 100);
+          pensumHtml = '<div class="zyklus-pensum" style="color:' + (delta >= 0 ? 'var(--color-accent-700)' : 'var(--color-warn)') + '">' + (delta >= 0 ? '↑ +' + delta : '↓ ' + delta) + '% Pensum</div>';
+        }
+        const barHeight = Math.max(10, Math.round((w.pensum / maxPensum) * 64));
+        const html = `<div class="zyklus-week" data-now="${isNow}">
+          <div class="zyklus-week-top">
+            <div class="zyklus-week-nr">Woche ${w.nr}</div>
+            ${isNow ? '<span class="zyklus-now-badge">JETZT</span>' : ''}
+          </div>
+          <div class="zyklus-phase-tag" style="background:${farbe}">${ent ? 'Entlastung' : 'Belastung'}</div>
+          <div class="zyklus-bar-track"><div class="zyklus-bar" style="height:${barHeight}px;background:${farbe}"></div></div>
+          ${pensumHtml}
+          ${ent ? '<div class="zyklus-note">Gewicht &amp; Umfang runter — Erholung im Fokus.</div>' : ''}
+        </div>`;
+        vorher = w.pensum;
+        if (!ent) belastungIdx++;
+        return html;
+      }).join('');
+    }
+
+    const zyklusLaengePills = document.getElementById('zyklusLaengePills');
+    if (zyklusLaengePills) {
+      zyklusLaengePills.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.zyklus-pill');
+        if (!btn) return;
+        const plan = trainingsplaene.find(p => p.aktiv);
+        if (!plan) return;
+        const next = Number(btn.dataset.len);
+        if ((plan.mikrozyklus_wochen || 4) === next) return;
+        try {
+          const { error } = await client.from('trainingsplaene').update({ mikrozyklus_wochen: next }).eq('id', plan.id);
+          if (error) throw error;
+          plan.mikrozyklus_wochen = next;
+          zyklusSelectedBlock = 0;
+          zyklusAutoSelect = true;
+          renderZyklus();
+        } catch (err) { alert('Konnte nicht gespeichert werden.'); }
       });
     }
 

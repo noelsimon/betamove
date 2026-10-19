@@ -42,6 +42,11 @@
   --font-heading-weight: 600;
   --font-body: "Poppins", system-ui, sans-serif;
 
+  /* Warmer Kontrastfarbe für die Zyklus-Ansicht (Entlastungswochen) — einziger
+     bewusster Bruch aus der Blau-Palette, damit "runter/Pause" sofort auffällt. */
+  --color-warn: #a85d49;
+  --color-warn-bg: #f0ddd6;
+
   /* Not present in the design-token export — chosen to match the rounded,
      soft-shadow look used throughout the canvas. */
   --radius-sm: 10px;
