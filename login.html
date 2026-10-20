@@ -108,7 +108,7 @@
             <span>Ich akzeptiere die <a href="agb">AGB</a> und habe die <a href="datenschutz">Datenschutzerklärung</a> zur Kenntnis genommen.</span>
           </label>
           <p id="registerError" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-700)"></p>
-          <p id="registerSuccess" hidden style="margin:0;font-size:14.5px;color:var(--color-accent-2-700)"></p>
+          <p id="registerSuccess" hidden style="margin:0;font-size:14.5px;font-weight:600;color:var(--color-accent-2-800);background:var(--color-accent-2-100);border-radius:var(--radius-md);padding:14px 16px"></p>
           <button type="submit" id="registerSubmit" class="btn btn-primary" style="font-size:16px;padding:14px 26px;margin-top:4px">Konto erstellen</button>
         </form>
       </div>
@@ -265,9 +265,15 @@
     });
     btn.disabled = false; btn.textContent = 'Konto erstellen';
     if (error) { errEl.hidden = false; errEl.textContent = friendlyAuthError(error); return; }
-    if (data && data.session) {
-      // Sofort eingeloggt (E-Mail-Bestätigung ist in diesem Projekt aus) —
-      // Profilzeile gleich anlegen und direkt weiter.
+    // Bewusst zuerst prüfen, ob die E-Mail schon bestätigt ist (data.user.*),
+    // statt uns nur auf "ist data.session da?" zu verlassen: manche Supabase-
+    // Konfigurationen liefern trotz aktivierter E-Mail-Bestätigung sofort
+    // eine Session zurück — dann wurde hier bisher fälschlich direkt
+    // weitergeleitet, statt den "Schau in deine Mails"-Hinweis zu zeigen.
+    const alreadyConfirmed = !!(data && data.user && (data.user.confirmed_at || data.user.email_confirmed_at));
+    if (data && data.session && alreadyConfirmed) {
+      // Wirklich sofort eingeloggt (E-Mail-Bestätigung ist in diesem Projekt
+      // aus) — Profilzeile gleich anlegen und direkt weiter.
       try { await client.from('profiles').upsert({ id: data.user.id, vorname, nachname, email, level }, { onConflict: 'id' }); } catch (e2) {}
       location.href = nextUrl();
       return;
