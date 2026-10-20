@@ -13,9 +13,13 @@
 //                       eine Person eingeloggt ist (siehe anmeldung)
 
 (function () {
-  // Login-Adresse der Kursleitung — muss exakt zu den Admin-Policies in
-  // supabase/schema-admin-kommentare.sql passen (auth.jwt() ->> 'email').
-  const ADMIN_EMAIL = 'noel.uhlrich@gmail.com';
+  // Login-Adressen der Kursleitung/Admins — müssen exakt zur admin_emails-
+  // Tabelle bzw. is_betamove_admin() in der Datenbank passen (siehe
+  // supabase/schema-admin-multi.sql). Neue Admin-Adresse hinzufügen: hier UND
+  // per INSERT in public.admin_emails eintragen, sonst sieht die Person zwar
+  // den Admin-Link, aber die Datenbank-Policies lassen sie nichts lesen/ändern
+  // (oder umgekehrt).
+  const ADMIN_EMAILS = ['noel.uhlrich@gmail.com', 'annalenafritz@outlook.com'];
 
   function escapeHtml(value) {
     if (value === null || value === undefined) return '';
@@ -268,7 +272,7 @@
       showAdminStatus('<p style="margin:0 0 16px;font-size:15.5px">Bitte melde dich mit deinem Admin-Konto an.</p><a href="login?next=' + encodeURIComponent(here) + '" class="btn btn-primary" style="font-size:15px;padding:12px 22px">Anmelden</a>');
       return null;
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!ADMIN_EMAILS.includes(session.user.email)) {
       showAdminStatus('<p style="margin:0;font-size:15.5px;color:var(--color-accent-700)">Dieser Bereich ist nur für die Kursleitung zugänglich.</p>');
       return null;
     }
@@ -386,7 +390,7 @@
     });
 
     const navEl = document.querySelector('[data-r="konto-nav"]');
-    if (navEl && session.user.email === ADMIN_EMAIL && !navEl.querySelector('[data-admin-link]')) {
+    if (navEl && ADMIN_EMAILS.includes(session.user.email) && !navEl.querySelector('[data-admin-link]')) {
       const adminLink = document.createElement('a');
       adminLink.href = 'admin-kurse';
       adminLink.dataset.adminLink = 'true';
