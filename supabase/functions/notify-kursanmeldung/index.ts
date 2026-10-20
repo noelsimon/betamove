@@ -186,7 +186,8 @@ function customerEmailHtml(r: KursanmeldungRecord): string {
     : "";
   const body = `
     ${buchungsnummerBox}
-    <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">Danke, ${escapeHtml(r.vorname)}! Wir haben deine Anmeldung für <strong>${escapeHtml(r.kurs_titel)}</strong> erhalten und melden uns innerhalb von 48 Stunden per E-Mail mit der Bestätigung und allen Details.</p>
+    <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">Grüezi ${escapeHtml(r.vorname)}! Wir haben deine Anmeldung für <strong>${escapeHtml(r.kurs_titel)}</strong> erhalten. Wir melden uns 1–2 Wochen vor dem Kursbeginn per E-Mail mit allen Details.</p>
+    <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">In der Zwischenzeit kannst du dich bei BETAMOVE anmelden und die Lernplattform nutzen. Dort kannst du auch deinen Kurs verwalten und Training effektiv steuern. Klick dazu hier: <a href="https://betamove.de/login" style="color:#1c1c1a;font-weight:600;">Mein Konto</a>.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;margin:18px 0;">
       <tr>
         <td style="padding:8px 12px;border-bottom:1px solid #eceae5;font-size:14px;color:#6b6b66;white-space:nowrap;vertical-align:top;">Kurs</td>
@@ -201,7 +202,9 @@ function customerEmailHtml(r: KursanmeldungRecord): string {
         <td style="padding:8px 12px;font-size:14px;color:#1c1c1a;">${escapeHtml(formatLeihmaterial(r.leihmaterial))}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:14px;color:#6b6b66;">Das ist eine automatische Bestätigung, dass deine Anmeldung bei uns angekommen ist — die Anmeldung selbst ist damit noch nicht verbindlich bestätigt. Fragen in der Zwischenzeit? Antworte einfach auf diese E-Mail oder schreib uns über das Kontaktformular auf der Website.</p>`;
+    <p style="margin:0 0 10px;font-size:14px;color:#1c1c1a;"><strong>Das ist eine automatische und verbindliche Bestätigung deiner Kursbuchung.</strong></p>
+    <p style="margin:0 0 10px;font-size:14px;color:#6b6b66;">Hier sind nochmal alle wichtigen rechtlichen Informationen im Überblick: <a href="https://betamove.de/impressum" style="color:#6b6b66;">Impressum</a> · <a href="https://betamove.de/agb" style="color:#6b6b66;">AGB</a> · <a href="https://betamove.de/datenschutz" style="color:#6b6b66;">Datenschutz</a></p>
+    <p style="margin:0;font-size:14px;color:#6b6b66;">Hast du Fragen oder brauchst etwas von BETAMOVE? Antworte einfach auf diese E-Mail oder schreib uns über das Kontaktformular auf der Website.</p>`;
 
   return emailLayout("Deine Anmeldung ist bei uns angekommen", body);
 }
