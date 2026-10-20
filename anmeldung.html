@@ -663,6 +663,11 @@
   window.BM_COURSES_READY.then(() => {
     preselectFromQuery();
     renderOptions();
+    // Kommt die Person schon mit einem Kurs aus der URL (Button "Anmelden"
+    // auf kurse/index.html), ist Schritt 1 ("Kurs wählen") überflüssig —
+    // sie hat den Kurs dort ja gerade erst ausgesucht. Direkt mit den
+    // Kontaktdaten weitermachen statt die Kursliste nochmal zu zeigen.
+    if (f.courseIds.length) step = 2;
     render();
   });
 })();
