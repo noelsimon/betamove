@@ -222,7 +222,7 @@
     const searchBlob = (c.title+' '+c.teaser+' '+c.beschreibung).toLowerCase();
     const badge = c.levelBadge || c.level;
     const capacityTag = c.maxTeilnehmer
-      ? '<span class="tag '+(c.ausgebucht?'tag-accent':'tag-neutral')+'" style="font-size:12px">'+(c.ausgebucht?'Ausgebucht':c.plaetzeFrei+' Plätze frei')+'</span>'
+      ? '<span class="tag '+(c.ausgebucht?'tag-accent':'tag-neutral')+'" style="font-size:12px">'+(c.ausgebucht?'Ausgebucht':(c.plaetzeFrei===1?'1 Platz frei':c.plaetzeFrei+' Plätze frei'))+'</span>'
       : '';
     const anmeldenBtn = c.ausgebucht
       ? '<button type="button" class="btn btn-secondary" disabled style="font-size:15px;padding:12px 22px;opacity:0.6;cursor:not-allowed">Ausgebucht</button>'
