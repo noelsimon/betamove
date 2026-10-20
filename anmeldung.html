@@ -597,7 +597,15 @@
 
     try {
       const userId = window.bmCurrentUserId ? await window.bmCurrentUserId() : null;
-      const { data, error } = await client.from('kursanmeldungen').insert({
+      // Bewusst die id selbst erzeugen und NICHT .select() auf den Insert
+      // anhängen: "anon" darf aus kursanmeldungen nichts lesen (auch nicht
+      // die gerade selbst eingefügte Zeile) — ein Insert mit RETURNING
+      // (das .select() intern auslöst) scheitert dadurch zuverlässig an der
+      // RLS-Regel, obwohl der Insert selbst erlaubt wäre. Die id lokal zu
+      // kennen reicht hier völlig, um sie für die Teilnehmer*innen zu nutzen.
+      const anmeldungId = crypto.randomUUID();
+      const { error } = await client.from('kursanmeldungen').insert({
+        id: anmeldungId,
         user_id: userId,
         vorname: document.getElementById('fn').value.trim(),
         nachname: document.getElementById('ln').value.trim(),
@@ -613,11 +621,11 @@
         gutschein_code: f.voucher.trim() || null,
         anmerkungen: document.getElementById('nt').value.trim() || null,
         agb_akzeptiert: true,
-      }).select().single();
+      });
       if (error) throw error;
       if (f.teilnehmer.length) {
         const { error: teilnehmerError } = await client.from('kursanmeldung_teilnehmer').insert(
-          f.teilnehmer.map(t => ({ anmeldung_id: data.id, name: t.name, notiz: t.notiz }))
+          f.teilnehmer.map(t => ({ anmeldung_id: anmeldungId, name: t.name, notiz: t.notiz }))
         );
         // Die Buchung selbst steht schon sicher, ein Fehler hier soll die
         // Anmeldung nicht als Ganzes scheitern lassen (z.B. bei einem
