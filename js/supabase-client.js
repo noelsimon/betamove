@@ -14,7 +14,20 @@
     return !value || /^DEINE?-SUPABASE/.test(String(value).trim());
   }
 
+  // WICHTIG: genau EIN Client pro Seite, nicht pro Aufruf. Ein neuer
+  // Supabase-Client via createClient() startet seine Session-Prüfung/
+  // Token-Erneuerung jedes Mal neu — rief eine Seite bmGetSupabaseClient()
+  // an mehreren Stellen auf (z.B. einmal zum Prüfen "bist du eingeloggt?"
+  // und kurz danach nochmal für den eigentlichen Insert), liefen das zwei
+  // unabhängige Client-Instanzen, die nicht zuverlässig denselben,
+  // aktuellen Login-Status hatten — das hat Kursanmeldungen vereinzelt mit
+  // "new row violates row-level security policy" scheitern lassen, auch
+  // wenn die Person korrekt eingeloggt war.
+  let cachedResult;
+
   function bmGetSupabaseClient() {
+    if (cachedResult) return cachedResult;
+
     const cfg = window.BETAMOVE_SUPABASE;
 
     if (!cfg || looksLikePlaceholder(cfg.url) || looksLikePlaceholder(cfg.anonKey)) {
@@ -25,7 +38,8 @@
     }
     try {
       const client = window.supabase.createClient(cfg.url, cfg.anonKey);
-      return { client, error: null };
+      cachedResult = { client, error: null };
+      return cachedResult;
     } catch (e) {
       return { client: null, error: 'init_failed' };
     }
