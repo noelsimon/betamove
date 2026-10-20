@@ -90,14 +90,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const notice = document.createElement('div');
     notice.className = 'privacy-notice';
     notice.setAttribute('role', 'status');
-    notice.innerHTML = '<p>Diese Seite verwendet keine Cookies und kein Tracking – nur technisch notwendigen lokalen Speicher für Login und Lernfortschritt. <a href="datenschutz#local-storage">Mehr dazu</a></p><button type="button">Verstanden</button>';
+    notice.innerHTML = '<span class="privacy-notice-text">Keine Cookies, kein Tracking – nur lokaler Speicher für Login &amp; Fortschritt.</span><a href="datenschutz#local-storage">Mehr dazu</a><button type="button">Verstanden</button>';
     document.body.appendChild(notice);
 
     const chatFabWrap = document.querySelector('.chat-fab-wrap');
     if (chatFabWrap) chatFabWrap.classList.add('lifted');
 
+    // Der Hinweis ist "position: fixed" und schwebt dadurch IM Content statt
+    // im normalen Dokumentfluss — auf schmalen Handys bricht der Text auf
+    // 2-3 Zeilen um und der Balken wird so hoch, dass er Buttons am
+    // unteren Bildschirmrand (z.B. "+ Neuer Plan", "Bearbeiten") komplett
+    // verdeckt und deren Klicks schluckt, obwohl sie für das Auge sichtbar
+    // scheinen. Fix: dem Body am unteren Rand genau so viel Platz
+    // reservieren, wie der Hinweis hoch ist, solange er sichtbar ist —
+    // dadurch rutscht der eigentliche Seiteninhalt darüber und nichts
+    // landet mehr unsichtbar dahinter. Höhe per ResizeObserver
+    // nachführen, da sich der Zeilenumbruch bei Drehung/Resize ändert.
+    function syncBodyPadding() {
+      document.body.style.paddingBottom = notice.offsetHeight + 'px';
+    }
+    syncBodyPadding();
+    let resizeObserver = null;
+    if (typeof ResizeObserver === 'function') {
+      resizeObserver = new ResizeObserver(syncBodyPadding);
+      resizeObserver.observe(notice);
+    } else {
+      window.addEventListener('resize', syncBodyPadding);
+    }
+
     notice.querySelector('button').addEventListener('click', () => {
       notice.remove();
+      document.body.style.paddingBottom = '';
+      if (resizeObserver) resizeObserver.disconnect();
+      else window.removeEventListener('resize', syncBodyPadding);
       if (chatFabWrap) chatFabWrap.classList.remove('lifted');
       try { localStorage.setItem(KEY, '1'); } catch (e) {}
     });
