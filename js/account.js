@@ -179,9 +179,25 @@
 
   // Für die Kursbuchung (anmeldung): liefert die eingeloggte user_id
   // oder null, damit die Buchung optional mit dem Konto verknüpft wird.
+  //
+  // Bewusst client.auth.getUser() statt getSession(): getSession() liest nur
+  // den lokal gespeicherten Token, ohne ihn zu prüfen — ist der Token
+  // zwischenzeitlich abgelaufen oder ungültig (z.B. Tab lange offen/im
+  // Hintergrund), liefert getSession() trotzdem noch eine user_id, obwohl
+  // die eigentliche Anfrage beim Insert dann als "anon" (auth.uid() = NULL)
+  // ankommt — das hat die RLS-Regel "user_id IS NULL OR user_id = auth.uid()"
+  // zuverlässig blockiert und die Kursanmeldung komplett lahmgelegt.
+  // getUser() prüft den Token dagegen aktiv beim Supabase-Server, sodass die
+  // zurückgegebene user_id immer zu dem passt, was die Datenbank gleich
+  // sieht.
   window.bmCurrentUserId = async function () {
-    const session = await getSession();
-    return session ? session.user.id : null;
+    const client = getClient();
+    if (!client) return null;
+    try {
+      const { data, error } = await withTimeout(client.auth.getUser(), 7000);
+      if (error || !data || !data.user) return null;
+      return data.user.id;
+    } catch (e) { return null; }
   };
 
   // Für die Prüfungsseiten: prüft, ob die aktuell eingeloggte Person diese
