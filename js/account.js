@@ -293,7 +293,11 @@
   function syncNavHeader(session) {
     const navLogin = document.querySelector('.nav-login');
     if (navLogin && session) {
-      navLogin.setAttribute('href', 'konto');
+      // Absoluter Pfad (nicht nur "konto"): diese Funktion läuft auf JEDER
+      // Seite, auch auf welchen, die wie kurse/index.html eine Ebene tiefer
+      // liegen (URL /kurse/) — ein relativer Link hätte sich dort zu
+      // /kurse/konto aufgelöst (404), statt zu /konto.
+      navLogin.setAttribute('href', '/konto');
       const span = navLogin.querySelector('span');
       if (span) span.textContent = 'Mein Konto';
     }
@@ -392,7 +396,7 @@
     const navEl = document.querySelector('[data-r="konto-nav"]');
     if (navEl && ADMIN_EMAILS.includes(session.user.email) && !navEl.querySelector('[data-admin-link]')) {
       const adminLink = document.createElement('a');
-      adminLink.href = 'admin-kurse';
+      adminLink.href = '/admin-kurse';
       adminLink.dataset.adminLink = 'true';
       adminLink.style.cssText = 'text-decoration:none;font-size:15.5px;font-weight:500;padding:13px 18px;border-radius:999px;background:#ffffff;color:var(--color-accent-700);border:2px dashed var(--color-accent-300);display:flex;align-items:center;gap:10px';
       adminLink.textContent = 'Kursverwaltung (Admin)';
