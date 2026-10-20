@@ -42,6 +42,7 @@ const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET");
 
 interface KursanmeldungRecord {
   id?: string;
+  buchungsnummer?: string;
   vorname: string;
   nachname: string;
   email: string;
@@ -138,6 +139,7 @@ function emailLayout(title: string, bodyHtml: string): string {
 
 function ownerEmailHtml(r: KursanmeldungRecord): string {
   const rows: Array<[string, string]> = [
+    ["Buchungsnummer", r.buchungsnummer ? `<strong>${escapeHtml(r.buchungsnummer)}</strong>` : "—"],
     ["Name", `${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)}`],
     ["E-Mail", escapeHtml(r.email)],
     ["Telefon", escapeHtml(r.telefon) || "—"],
@@ -171,7 +173,19 @@ function ownerEmailHtml(r: KursanmeldungRecord): string {
 }
 
 function customerEmailHtml(r: KursanmeldungRecord): string {
+  const buchungsnummerBox = r.buchungsnummer
+    ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#1c1c1a;border-radius:8px;overflow:hidden;margin:0 0 18px;">
+      <tr>
+        <td style="padding:14px 18px;">
+          <span style="display:block;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#b9b8b2;">Deine Buchungsnummer</span>
+          <span style="display:block;font-size:20px;font-weight:700;color:#ffffff;margin-top:2px;">${escapeHtml(r.buchungsnummer)}</span>
+        </td>
+      </tr>
+    </table>`
+    : "";
   const body = `
+    ${buchungsnummerBox}
     <p style="margin:0 0 14px;font-size:15.5px;color:#3a3a36;">Danke, ${escapeHtml(r.vorname)}! Wir haben deine Anmeldung für <strong>${escapeHtml(r.kurs_titel)}</strong> erhalten und melden uns innerhalb von 48 Stunden per E-Mail mit der Bestätigung und allen Details.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#faf9f7;border-radius:8px;overflow:hidden;margin:18px 0;">
       <tr>
@@ -261,7 +275,7 @@ Deno.serve(async (req: Request) => {
 
   results.owner = await sendEmail(
     OWNER_EMAIL,
-    `Neue Kursanmeldung: ${record.vorname} ${record.nachname} — ${record.kurs_titel}`,
+    `Neue Kursanmeldung${record.buchungsnummer ? " (" + record.buchungsnummer + ")" : ""}: ${record.vorname} ${record.nachname} — ${record.kurs_titel}`,
     ownerEmailHtml(record),
   );
   if (!results.owner.ok) {
@@ -270,7 +284,7 @@ Deno.serve(async (req: Request) => {
 
   results.customer = await sendEmail(
     record.email,
-    `Deine Anmeldung für ${record.kurs_titel} ist eingegangen`,
+    `Deine Anmeldung für ${record.kurs_titel} ist eingegangen${record.buchungsnummer ? " — " + record.buchungsnummer : ""}`,
     customerEmailHtml(record),
   );
   if (!results.customer.ok) {
