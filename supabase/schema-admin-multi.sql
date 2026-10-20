@@ -31,6 +31,14 @@ create table if not exists public.admin_emails (
 
 comment on table public.admin_emails is 'Login-Adressen mit Admin-/Kursleitungs-Rechten. Kein direkter Lesezugriff für anon/authenticated — nur über is_betamove_admin() geprüft.';
 
+-- RLS an, aber bewusst OHNE jede Policy: damit ist die Tabelle für anon/
+-- authenticated komplett gesperrt (auch ohne diese Zeile schon der Fall, da
+-- keine GRANTs vergeben werden — RLS zusätzlich als zweite Absicherung).
+-- is_betamove_admin() liest trotzdem weiter: die Funktion läuft "security
+-- definer" mit den Rechten ihres Besitzers, und Tabellen-Besitzer umgehen
+-- RLS auf ihre eigenen Tabellen grundsätzlich.
+alter table public.admin_emails enable row level security;
+
 insert into public.admin_emails (email) values
   ('noel.uhlrich@gmail.com'),
   ('annalenafritz@outlook.com')
