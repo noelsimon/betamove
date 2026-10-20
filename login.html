@@ -19,6 +19,11 @@
   .auth-tab[data-active="true"] { background: var(--color-accent); color: #ffffff; }
   .chip { cursor:pointer; font:inherit; font-size:14.5px; padding:9px 16px; border-radius:999px; border:2px solid var(--color-divider); background:#ffffff; color:var(--color-text); }
   .chip[data-active="true"] { border-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+  .pw-field { position:relative; }
+  .pw-field .input { padding-right:46px; }
+  .pw-toggle { cursor:pointer; position:absolute; right:4px; top:50%; transform:translateY(-50%); width:36px; height:36px; border:0; background:transparent; border-radius:var(--radius-md); color:var(--color-text); opacity:0.55; display:grid; place-items:center; }
+  .pw-toggle:hover { opacity:0.9; background:var(--color-surface); }
+  .pw-hint { margin:-6px 0 0; font-size:12.5px; opacity:0.6; }
 </style>
 </head>
 <body>
@@ -93,7 +98,27 @@
             <div class="field"><label for="rg-ln">Nachname</label><input id="rg-ln" class="input" style="min-height:46px;font-size:16px" placeholder="Muster"></div>
           </div>
           <div class="field"><label for="rg-em">E-Mail</label><input id="rg-em" type="email" class="input" style="min-height:46px;font-size:16px" placeholder="anna@example.de"></div>
-          <div class="field"><label for="rg-pw">Passwort</label><input id="rg-pw" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="Mindestens 6 Zeichen"></div>
+          <div class="field">
+            <label for="rg-pw">Passwort</label>
+            <div class="pw-field">
+              <input id="rg-pw" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="Mindestens 6 Zeichen" autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle="rg-pw" aria-label="Passwort anzeigen" aria-pressed="false">
+                <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg class="icon-eye-off" hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </button>
+            </div>
+            <p class="pw-hint">Mind. 6 Zeichen, mit Groß- und Kleinbuchstaben, einer Zahl und einem Sonderzeichen.</p>
+          </div>
+          <div class="field">
+            <label for="rg-pw2">Passwort wiederholen</label>
+            <div class="pw-field">
+              <input id="rg-pw2" type="password" class="input" style="min-height:46px;font-size:16px" placeholder="Passwort wiederholen" autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle="rg-pw2" aria-label="Passwort anzeigen" aria-pressed="false">
+                <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg class="icon-eye-off" hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </button>
+            </div>
+          </div>
           <div>
             <div style="font-size:14px;font-weight:600;margin-bottom:9px">Dein Kletterlevel</div>
             <div style="display:flex;gap:9px;flex-wrap:wrap">
@@ -192,6 +217,22 @@
     document.querySelectorAll('.level-opt').forEach(b => b.dataset.active = String(b===btn));
   }));
 
+  // Passwort-Augen-Icon: zeigt/verbirgt den Klartext im jeweiligen Feld.
+  document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
+    const input = document.getElementById(btn.dataset.pwToggle);
+    const eye = btn.querySelector('.icon-eye');
+    const eyeOff = btn.querySelector('.icon-eye-off');
+    if (!input) return;
+    btn.addEventListener('click', () => {
+      const toText = input.type === 'password';
+      input.type = toText ? 'text' : 'password';
+      eye.hidden = toText;
+      eyeOff.hidden = !toText;
+      btn.setAttribute('aria-pressed', String(toText));
+      btn.setAttribute('aria-label', toText ? 'Passwort verbergen' : 'Passwort anzeigen');
+    });
+  });
+
   // Kommt der Link von der Kursbuchung (anmeldung), ist die E-Mail schon
   // bekannt und "Konto erstellen" die naheliegende Wahl.
   const prefillEmail = new URLSearchParams(location.search).get('email');
@@ -245,11 +286,19 @@
     const nachname = document.getElementById('rg-ln').value.trim();
     const email = document.getElementById('rg-em').value.trim();
     const password = document.getElementById('rg-pw').value;
+    const password2 = document.getElementById('rg-pw2').value;
     const levelBtn = document.querySelector('.level-opt[data-active="true"]');
     const level = levelBtn ? levelBtn.textContent.trim() : null;
     const agbOk = document.getElementById('rgAgb').checked;
-    if (!vorname || !nachname || !email || !password) { errEl.hidden = false; errEl.textContent = 'Bitte alle Felder ausfüllen.'; return; }
+    if (!vorname || !nachname || !email || !password || !password2) { errEl.hidden = false; errEl.textContent = 'Bitte alle Felder ausfüllen.'; return; }
     if (password.length < 6) { errEl.hidden = false; errEl.textContent = 'Das Passwort muss mindestens 6 Zeichen haben.'; return; }
+    // Komplexität bewusst vor dem Abgleich beider Felder geprüft: wer ein zu
+    // einfaches Passwort zweimal gleich eintippt, soll den Komplexitäts-
+    // Hinweis sehen, nicht nur "stimmt nicht überein".
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      errEl.hidden = false; errEl.textContent = 'Das Passwort muss Groß- und Kleinbuchstaben, eine Zahl und ein Sonderzeichen enthalten.'; return;
+    }
+    if (password !== password2) { errEl.hidden = false; errEl.textContent = 'Die Passwörter stimmen nicht überein.'; return; }
     if (!agbOk) { errEl.hidden = false; errEl.textContent = 'Bitte AGB und Datenschutzerklärung akzeptieren.'; return; }
     btn.disabled = true; btn.textContent = 'Erstellt Konto …';
     const { data, error } = await client.auth.signUp({
