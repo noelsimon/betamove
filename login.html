@@ -263,7 +263,10 @@
     if (typeof window.bmGetSupabaseClient !== 'function') { errEl.hidden = false; errEl.textContent = 'Login ist auf dieser Seite noch nicht eingerichtet.'; return; }
     const { client, error: cfgErr } = window.bmGetSupabaseClient();
     if (!client) { errEl.hidden = false; errEl.textContent = 'Login ist gerade nicht erreichbar (' + cfgErr + ').'; return; }
-    const email = document.getElementById('li-em').value.trim();
+    // Klein geschrieben: Supabase behandelt E-Mails case-sensitiv.
+    // "Anna@Example.de" und "anna@example.de" wären sonst zwei verschiedene
+    // Konten, obwohl es für die Person "dieselbe Mail" ist.
+    const email = document.getElementById('li-em').value.trim().toLowerCase();
     const password = document.getElementById('li-pw').value;
     if (!email || !password) { errEl.hidden = false; errEl.textContent = 'Bitte E-Mail und Passwort eingeben.'; return; }
     btn.disabled = true; btn.textContent = 'Meldet an …';
@@ -284,7 +287,10 @@
     if (!client) { errEl.hidden = false; errEl.textContent = 'Registrierung ist gerade nicht erreichbar (' + cfgErr + ').'; return; }
     const vorname = document.getElementById('rg-fn').value.trim();
     const nachname = document.getElementById('rg-ln').value.trim();
-    const email = document.getElementById('rg-em').value.trim();
+    // Klein geschrieben, aus demselben Grund wie beim Login: verhindert, dass
+    // z.B. "Anna@Example.de" und "anna@example.de" als zwei verschiedene
+    // Konten angelegt werden können.
+    const email = document.getElementById('rg-em').value.trim().toLowerCase();
     const password = document.getElementById('rg-pw').value;
     const password2 = document.getElementById('rg-pw2').value;
     const levelBtn = document.querySelector('.level-opt[data-active="true"]');

@@ -609,7 +609,11 @@
         user_id: userId,
         vorname: document.getElementById('fn').value.trim(),
         nachname: document.getElementById('ln').value.trim(),
-        email: document.getElementById('em').value.trim(),
+        // Klein geschrieben: so passt die Adresse später beim Login exakt zu
+        // der (ebenfalls klein geschriebenen) E-Mail des Kontos — sonst
+        // würde claim_kursanmeldungen_by_email() diese Buchung nicht finden,
+        // nur weil hier z.B. "Anna@Example.de" statt "anna@example.de" stand.
+        email: document.getElementById('em').value.trim().toLowerCase(),
         telefon: document.getElementById('ph').value.trim() || null,
         kurs_id: f.courseIds.join(','),
         kurs_titel: list.map(c => c.title).join(', '),
