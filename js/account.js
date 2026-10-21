@@ -3950,7 +3950,7 @@
       doc.setFillColor(brand[0], brand[1], brand[2]);
       doc.circle(marginX + circleD / 2, y, circleD / 2, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(255, 255, 255);
-      doc.text(initials, marginX + circleD / 2, y + 1.3, { align: 'center' });
+      doc.text(initials, marginX + circleD / 2, y, { align: 'center', baseline: 'middle' });
     }
     const brandTextX = marginX + circleD + 4;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(text[0], text[1], text[2]);
@@ -4019,10 +4019,12 @@
         const pillColors = erg.label === 'Bestanden' ? { bg: okBg, fg: okFg } : { bg: warnBg, fg: warnFg };
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
         const pillW = doc.getTextWidth(erg.label) + 6;
+        const pillH = 5;
+        const pillCenterY = y - 1.6;
         doc.setFillColor(pillColors.bg[0], pillColors.bg[1], pillColors.bg[2]);
-        doc.roundedRect(cols[4][0], y - 3.6, pillW, 5.2, 2.6, 2.6, 'F');
+        doc.roundedRect(cols[4][0], pillCenterY - pillH / 2, pillW, pillH, 2.5, 2.5, 'F');
         doc.setTextColor(pillColors.fg[0], pillColors.fg[1], pillColors.fg[2]);
-        doc.text(erg.label, cols[4][0] + 3, y);
+        doc.text(erg.label, cols[4][0] + 3, pillCenterY, { baseline: 'middle' });
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
 
         y += 8;
