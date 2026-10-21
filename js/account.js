@@ -3260,8 +3260,16 @@
             <div class="field"><label for="sfPhone">Handynummer</label><input id="sfPhone" class="input" required></div>
             <div class="field"><label for="sfBirth">Geburtsdatum</label><input id="sfBirth" type="date" class="input" required></div>
             <div class="field" style="grid-column:1/-1"><label for="sfAddress">Adresse</label><input id="sfAddress" class="input" required></div>
-            <div class="field"><label for="sfOrg">Tätig für</label><input id="sfOrg" class="input" placeholder="BETAMOVE (Standard, wenn leer)"></div>
-            <div class="field"><label for="sfQual">Qualifikationsnachweis</label><input id="sfQual" class="input" placeholder="z.B. DGUV 312-906, Zert.-Nr. …" required></div>
+            <div class="field">
+              <label>Tätig für</label>
+              <div style="display:inline-flex;gap:4px;background:var(--color-surface);border-radius:999px;padding:4px">
+                <button type="button" id="sfOrgBetamove" class="konto-nav-link active" style="padding:9px 16px;font-size:13.5px">BETAMOVE</button>
+                <button type="button" id="sfOrgExtern" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Extern</button>
+              </div>
+            </div>
+            <div class="field" id="sfOrgNameGroup" hidden><label for="sfOrgName">Name der Organisation</label><input id="sfOrgName" class="input" placeholder="z.B. Boulderwelt Dresden GmbH"></div>
+            <div class="field" style="grid-column:1/-1"><label for="sfQual">Qualifikationsnachweis (Beschreibung)</label><input id="sfQual" class="input" placeholder="z.B. DGUV 312-906, Zert.-Nr. …" required></div>
+            <div class="field" style="grid-column:1/-1"><label for="sfZertifikat">Zertifikat hochladen (PDF oder Bild)</label><input id="sfZertifikat" type="file" accept=".pdf,.jpg,.jpeg,.png" class="input" required></div>
           </div>
           <div><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Antrag absenden</button></div>
           <div id="sachFormError" class="form-error" hidden></div>
@@ -3270,21 +3278,52 @@
         document.getElementById('sachFormBox').hidden = false;
         document.getElementById('sachApplyBtn').hidden = true;
       });
+      let sfOrgIsExtern = false;
+      document.getElementById('sfOrgBetamove').addEventListener('click', () => {
+        sfOrgIsExtern = false;
+        document.getElementById('sfOrgBetamove').classList.add('active');
+        document.getElementById('sfOrgExtern').classList.remove('active');
+        document.getElementById('sfOrgNameGroup').hidden = true;
+      });
+      document.getElementById('sfOrgExtern').addEventListener('click', () => {
+        sfOrgIsExtern = true;
+        document.getElementById('sfOrgExtern').classList.add('active');
+        document.getElementById('sfOrgBetamove').classList.remove('active');
+        document.getElementById('sfOrgNameGroup').hidden = false;
+      });
       document.getElementById('sachFormBox').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const errBox = document.getElementById('sachFormError');
+        errBox.hidden = true;
+        const orgName = document.getElementById('sfOrgName').value.trim();
+        if (sfOrgIsExtern && !orgName) {
+          errBox.hidden = false;
+          errBox.textContent = 'Bitte den Namen der Organisation angeben.';
+          return;
+        }
+        const file = document.getElementById('sfZertifikat').files[0];
+        if (!file) {
+          errBox.hidden = false;
+          errBox.textContent = 'Bitte ein Zertifikat hochladen.';
+          return;
+        }
         try {
+          const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          const path = userId + '/' + Date.now() + '-' + safeName;
+          const { error: upErr } = await client.storage.from('psa-zertifikate').upload(path, file);
+          if (upErr) throw upErr;
           const { error } = await client.from('psa_sachkundige').insert({
             user_id: userId,
             handynummer: document.getElementById('sfPhone').value.trim(),
             geburtsdatum: document.getElementById('sfBirth').value,
             adresse: document.getElementById('sfAddress').value.trim(),
-            organisation: document.getElementById('sfOrg').value.trim() || 'BETAMOVE',
-            qualifikationsnachweis: document.getElementById('sfQual').value.trim()
+            organisation: sfOrgIsExtern ? orgName : 'BETAMOVE',
+            qualifikationsnachweis: document.getElementById('sfQual').value.trim(),
+            zertifikat_pfad: path
           });
           if (error) throw error;
           await renderSachBoxFor(client, userId);
         } catch (err) {
-          const errBox = document.getElementById('sachFormError');
           errBox.hidden = false;
           errBox.textContent = 'Antrag konnte nicht gesendet werden — bitte Pflichtfelder prüfen.';
         }
@@ -3390,16 +3429,24 @@
     doc.save('Pruefbescheinigung_' + kunde.name.replace(/\s+/g, '-') + '_' + material.kategorie.replace(/\s+/g, '-') + '.pdf');
   }
 
-  async function renderKunden(ctx) {
-    const { client, session, profile } = ctx;
+  // Gemeinsamer Sachkundig-Check für konto-kunden und konto-kunde.
+  async function fetchSachRow(client, userId) {
+    const { data: sachRow } = await client.from('psa_sachkundige').select('*').eq('user_id', userId).maybeSingle();
+    const today = new Date().toISOString().slice(0, 10);
+    const isSach = !!sachRow && sachRow.status === 'freigeschaltet' && (!sachRow.freigeschaltet_bis || sachRow.freigeschaltet_bis >= today);
+    return { sachRow, isSach };
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kunden — Kundenliste (nur freigeschaltete Sachkundige)
+  // --------------------------------------------------------------------
+  async function renderKundenListe(ctx) {
+    const { client, session } = ctx;
     const userId = session.user.id;
     const gateEl = document.getElementById('kundenGate');
     const areaEl = document.getElementById('kundenArea');
 
-    const { data: sachRow } = await client.from('psa_sachkundige').select('*').eq('user_id', userId).maybeSingle();
-    const today = new Date().toISOString().slice(0, 10);
-    const isSach = !!sachRow && sachRow.status === 'freigeschaltet' && (!sachRow.freigeschaltet_bis || sachRow.freigeschaltet_bis >= today);
-
+    const { sachRow, isSach } = await fetchSachRow(client, userId);
     if (!isSach) {
       gateEl.hidden = false;
       areaEl.hidden = true;
@@ -3412,158 +3459,31 @@
     areaEl.hidden = false;
 
     let kunden = [];
-    let materialByKunde = {};
-    let pruefByMaterial = {};
-    let openKundeId = null;
+    let countByKunde = {};
 
     async function loadAll() {
       const { data } = await client.from('kunden').select('*').eq('erstellt_von', userId).order('created_at', { ascending: false });
       kunden = data || [];
-      materialByKunde = {};
-      pruefByMaterial = {};
+      countByKunde = {};
       const kIds = kunden.map(k => k.id);
       if (kIds.length) {
-        const { data: mat } = await client.from('psa_material').select('*').in('kunde_id', kIds).order('created_at', { ascending: false });
-        (mat || []).forEach(m => { (materialByKunde[m.kunde_id] = materialByKunde[m.kunde_id] || []).push(m); });
-        const matIds = (mat || []).map(m => m.id);
-        if (matIds.length) {
-          const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', matIds).order('pruefdatum', { ascending: false });
-          (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
-        }
+        const { data: mat } = await client.from('psa_material').select('*').in('kunde_id', kIds);
+        (mat || []).forEach(m => { countByKunde[m.kunde_id] = (countByKunde[m.kunde_id] || 0) + 1; });
       }
-    }
-
-    function renderMaterialDetail(kunde, m) {
-      const pruef = pruefByMaterial[m.id] || [];
-      return `
-        <div style="border-top:1px solid var(--color-divider);margin-top:10px;padding-top:12px">
-          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-            ${(pruef.length ? pruef : []).map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') || '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
-          </div>
-          <form data-m-pruef="${m.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
-            <div class="field" style="min-width:160px"><label>Ergebnis</label>
-              <select class="input" data-f="ergebnis" required>
-                <option value="gut">Gut – weiter verwenden</option>
-                <option value="mangel">Mangel festgestellt</option>
-                <option value="aussondern">Aussondern</option>
-              </select>
-            </div>
-            <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
-            <button type="submit" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfung eintragen</button>
-          </form>
-          <button type="button" class="btn btn-secondary" data-m-pdf="${m.id}" style="font-size:13px;padding:9px 16px">Prüfbescheinigung herunterladen</button>
-        </div>`;
-    }
-
-    function renderKundeCard(k) {
-      const items = materialByKunde[k.id] || [];
-      const open = openKundeId === k.id;
-      return `
-        <div class="card elev-sm" style="gap:0">
-          <button type="button" data-k-toggle="${k.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:15.5px">${escapeHtml(k.name)}</div>
-              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml([k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben')}</div>
-            </div>
-            <span class="tag tag-neutral">${items.length} Gegenstände</span>
-          </button>
-          ${open ? `
-          <div style="border-top:1px solid var(--color-divider);margin-top:14px;padding-top:16px">
-            <button type="button" class="btn btn-secondary" data-k-newmaterial="${k.id}" style="font-size:13.5px;padding:10px 16px;margin-bottom:14px">+ Neues PSA für ${escapeHtml(k.name)}</button>
-            <form data-k-material-form="${k.id}" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:var(--color-surface);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
-              <div class="field"><label>Kategorie</label><select class="input" data-f="kategorie">${PSA_KATEGORIEN.map(kt => `<option>${escapeHtml(kt)}</option>`).join('')}</select></div>
-              <div class="field"><label>Materialart</label><select class="input" data-f="materialart"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option></select></div>
-              <div class="field"><label>Hersteller</label><input class="input" data-f="hersteller"></div>
-              <div class="field"><label>Modellbezeichnung</label><input class="input" data-f="modellbezeichnung"></div>
-              <div class="field"><label>Seriennummer</label><input class="input" data-f="seriennummer"></div>
-              <div class="field"><label>Chargennummer</label><input class="input" data-f="chargennummer"></div>
-              <div class="field"><label>Herstellungsdatum</label><input type="date" class="input" data-f="herstellungsdatum"></div>
-              <div class="field"><label>Max. Lebensdauer (Jahre)</label><input type="number" min="1" max="99" class="input" data-f="max_lebensdauer_jahre"></div>
-              <div class="field" style="grid-column:1/-1"><label>Prüfrhythmus</label>
-                <select class="input" data-f="pruefrhythmus_monate"><option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option></select>
-              </div>
-              <div style="grid-column:1/-1"><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">PSA anlegen</button></div>
-            </form>
-            ${items.map(m => `
-              <div style="margin-bottom:14px">
-                <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(m))}</div>
-                <div style="font-size:12px;opacity:0.65">${escapeHtml(itemMetaLine(m))}</div>
-                ${renderMaterialDetail(k, m)}
-              </div>`).join('') || '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch kein PSA für diese Kund*in erfasst.</p>'}
-          </div>` : ''}
-        </div>`;
     }
 
     function render() {
       const listEl = document.getElementById('kundenList');
       document.getElementById('kundenEmpty').hidden = kunden.length > 0;
-      listEl.innerHTML = kunden.map(renderKundeCard).join('');
-      wireEvents();
-    }
-
-    function wireEvents() {
-      document.querySelectorAll('[data-k-toggle]').forEach(el => {
-        el.addEventListener('click', () => { const id = el.dataset.kToggle; openKundeId = openKundeId === id ? null : id; render(); });
-      });
-      document.querySelectorAll('[data-k-newmaterial]').forEach(el => {
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const form = document.querySelector('[data-k-material-form="' + el.dataset.kNewmaterial + '"]');
-          if (form) form.hidden = !form.hidden;
-        });
-      });
-      document.querySelectorAll('[data-k-material-form]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const kundeId = form.dataset.kMaterialForm;
-          const val = (name) => form.querySelector('[data-f="' + name + '"]').value;
-          const payload = {
-            user_id: userId,
-            kunde_id: kundeId,
-            eigentuemer_typ: 'kunde',
-            ist_psa: true,
-            kategorie: val('kategorie'),
-            materialart: val('materialart') || null,
-            hersteller: val('hersteller').trim() || null,
-            modellbezeichnung: val('modellbezeichnung').trim() || null,
-            seriennummer: val('seriennummer').trim() || null,
-            chargennummer: val('chargennummer').trim() || null,
-            herstellungsdatum: val('herstellungsdatum') || null,
-            max_lebensdauer_jahre: val('max_lebensdauer_jahre') ? Number(val('max_lebensdauer_jahre')) : null,
-            pruefrhythmus_monate: Number(val('pruefrhythmus_monate'))
-          };
-          await client.from('psa_material').insert(payload);
-          await loadAll();
-          render();
-        });
-      });
-      document.querySelectorAll('[data-m-pruef]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const materialId = form.dataset.mPruef;
-          await client.from('psa_pruefprotokoll').insert({
-            material_id: materialId,
-            geprueft_von: userId,
-            ergebnis: form.querySelector('[data-f="ergebnis"]').value,
-            notiz: form.querySelector('[data-f="notiz"]').value.trim() || null
-          });
-          await loadAll();
-          render();
-        });
-      });
-      document.querySelectorAll('[data-m-pdf]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const materialId = btn.dataset.mPdf;
-          const kunde = kunden.find(k => (materialByKunde[k.id] || []).some(m => m.id === materialId));
-          const material = (materialByKunde[kunde.id] || []).find(m => m.id === materialId);
-          const pruef = pruefByMaterial[materialId] || [];
-          const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow.organisation };
-          generatePruefbescheinigungPdf(kunde, material, pruef, aussteller);
-        });
-      });
+      listEl.innerHTML = kunden.map(k => `
+        <a href="konto-kunde?id=${encodeURIComponent(k.id)}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:15.5px">${escapeHtml(k.name)}</div>
+            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml([k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben')}</div>
+          </div>
+          <span class="tag tag-neutral">${countByKunde[k.id] || 0} Gegenstände</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:0.5"><path d="m9 18 6-6-6-6"></path></svg>
+        </a>`).join('');
     }
 
     const newBtn = document.getElementById('kundeNewBtn');
@@ -3599,6 +3519,161 @@
   }
 
   // --------------------------------------------------------------------
+  // Seite: konto-kunde — Material einer einzelnen Kund*in (?id=)
+  // --------------------------------------------------------------------
+  async function renderKundeDetail(ctx) {
+    const { client, session, profile } = ctx;
+    const userId = session.user.id;
+    const kundeId = new URLSearchParams(location.search).get('id');
+    const gateEl = document.getElementById('kundeGate');
+    const areaEl = document.getElementById('kundeArea');
+
+    const { sachRow, isSach } = await fetchSachRow(client, userId);
+    if (!isSach) {
+      gateEl.hidden = false;
+      areaEl.hidden = true;
+      document.getElementById('kundeGateText').innerHTML = 'Du bist noch keine freigeschaltete Sachkundige Person. <a href="konto-psa">Zum PSA-Prüftool</a>';
+      return;
+    }
+
+    const { data: kunde } = kundeId ? await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : { data: null };
+    if (!kunde) {
+      gateEl.hidden = false;
+      areaEl.hidden = true;
+      document.getElementById('kundeGateText').innerHTML = 'Diese Kund*in wurde nicht gefunden. <a href="konto-kunden">Zurück zur Kundenliste</a>';
+      return;
+    }
+    gateEl.hidden = true;
+    areaEl.hidden = false;
+
+    document.getElementById('kundeTitel').textContent = 'Material von ' + kunde.name;
+    document.getElementById('kundeStammdaten').innerHTML = [
+      ['Name', kunde.name], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email], ['Telefon', kunde.telefon]
+    ].filter(([, v]) => v).map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
+
+    let items = [];
+    let pruefByMaterial = {};
+    let openId = null;
+
+    async function loadAll() {
+      const { data } = await client.from('psa_material').select('*').eq('kunde_id', kunde.id).order('created_at', { ascending: false });
+      items = data || [];
+      pruefByMaterial = {};
+      const ids = items.map(i => i.id);
+      if (ids.length) {
+        const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false });
+        (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
+      }
+    }
+
+    function renderDetail(m) {
+      const pruef = pruefByMaterial[m.id] || [];
+      return `
+        <div style="border-top:1px solid var(--color-divider);margin-top:12px;padding-top:14px">
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+            ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
+          </div>
+          <form data-m-pruef="${m.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div class="field" style="min-width:160px"><label>Ergebnis</label>
+              <select class="input" data-f="ergebnis" required>
+                <option value="gut">Gut – weiter verwenden</option>
+                <option value="mangel">Mangel festgestellt</option>
+                <option value="aussondern">Aussondern</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
+            <button type="submit" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfung eintragen</button>
+          </form>
+          <button type="button" class="btn btn-secondary" data-m-pdf="${m.id}" style="font-size:13px;padding:9px 16px">Prüfbescheinigung herunterladen</button>
+        </div>`;
+    }
+
+    function render() {
+      const listEl = document.getElementById('kmList');
+      document.getElementById('kmEmpty').hidden = items.length > 0;
+      listEl.innerHTML = items.map(m => {
+        const pruef = pruefByMaterial[m.id] || [];
+        const status = psaStatus(m, pruef[0] ? pruef[0].pruefdatum : null);
+        const open = openId === m.id;
+        return `
+        <div class="card elev-sm" style="gap:0">
+          <button type="button" data-toggle-open="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
+              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
+            </div>
+            ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : '<span class="tag tag-neutral">keine Prüfung</span>'}
+          </button>
+          ${open ? renderDetail(m) : ''}
+        </div>`;
+      }).join('');
+      wireEvents();
+    }
+
+    function wireEvents() {
+      document.querySelectorAll('[data-toggle-open]').forEach(el => {
+        el.addEventListener('click', () => { const id = el.dataset.toggleOpen; openId = openId === id ? null : id; render(); });
+      });
+      document.querySelectorAll('[data-m-pruef]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          await client.from('psa_pruefprotokoll').insert({
+            material_id: form.dataset.mPruef,
+            geprueft_von: userId,
+            ergebnis: form.querySelector('[data-f="ergebnis"]').value,
+            notiz: form.querySelector('[data-f="notiz"]').value.trim() || null
+          });
+          await loadAll();
+          render();
+        });
+      });
+      document.querySelectorAll('[data-m-pdf]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const material = items.find(m => m.id === btn.dataset.mPdf);
+          const pruef = pruefByMaterial[btn.dataset.mPdf] || [];
+          const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow.organisation };
+          generatePruefbescheinigungPdf(kunde, material, pruef, aussteller);
+        });
+      });
+    }
+
+    const kmKategorie = document.getElementById('kmKategorie');
+    kmKategorie.innerHTML = PSA_KATEGORIEN.map(kt => `<option>${escapeHtml(kt)}</option>`).join('');
+    const newBtn = document.getElementById('kmNewBtn');
+    const formBox = document.getElementById('kmFormBox');
+    const cancelBtn = document.getElementById('kmFormCancel');
+    newBtn.addEventListener('click', () => { formBox.reset(); formBox.hidden = false; formBox.scrollIntoView({ behavior: 'smooth' }); });
+    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
+    formBox.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        user_id: userId,
+        kunde_id: kunde.id,
+        eigentuemer_typ: 'kunde',
+        ist_psa: true,
+        kategorie: kmKategorie.value,
+        materialart: document.getElementById('kmMaterialart').value || null,
+        hersteller: document.getElementById('kmHersteller').value.trim() || null,
+        modellbezeichnung: document.getElementById('kmModell').value.trim() || null,
+        seriennummer: document.getElementById('kmSeriennummer').value.trim() || null,
+        chargennummer: document.getElementById('kmChargennummer').value.trim() || null,
+        herstellungsdatum: document.getElementById('kmHerstellungsdatum').value || null,
+        max_lebensdauer_jahre: document.getElementById('kmLebensdauer').value ? Number(document.getElementById('kmLebensdauer').value) : null,
+        pruefrhythmus_monate: Number(document.getElementById('kmPruefrhythmus').value)
+      };
+      await client.from('psa_material').insert(payload);
+      formBox.hidden = true;
+      await loadAll();
+      render();
+    });
+
+    await loadAll();
+    render();
+  }
+
+  // --------------------------------------------------------------------
   // Einstieg
   // --------------------------------------------------------------------
   document.addEventListener('DOMContentLoaded', async () => {
@@ -3611,7 +3686,8 @@
       'konto-weg': renderWeg,
       'konto-training': renderTraining,
       'konto-psa': renderPsa,
-      'konto-kunden': renderKunden
+      'konto-kunden': renderKundenListe,
+      'konto-kunde': renderKundeDetail
     };
 
     if (accountPages[page]) {
