@@ -3215,15 +3215,18 @@
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
     const kundeId = params.get('kunde');
+    const verbundenId = params.get('verbunden');
     const gateEl = document.getElementById('pGate');
     const areaEl = document.getElementById('pArea');
 
-    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).eq('user_id', userId).maybeSingle() : { data: null };
+    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).maybeSingle() : { data: null };
     if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
     document.getElementById('pItemName').textContent = itemName(it);
-    const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId) : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
+    const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId)
+      : verbundenId ? 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId)
+      : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
     document.getElementById('pBackLink').href = backHref;
 
     document.getElementById('pForm').addEventListener('submit', async (e) => {
@@ -3312,6 +3315,92 @@
         renderPsaInaktiv(ctx);
       });
     });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-verbindungen — Zugriff für Sachkundige Personen
+  // per Code gewähren/verwalten (eigenes Material)
+  // --------------------------------------------------------------------
+  async function renderPsaVerbindungen(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    let verbindungen = [];
+    let profilesById = {};
+
+    async function loadAll() {
+      const { data } = await client.from('psa_kunde_verbindungen').select('*').eq('kunde_user_id', userId).order('created_at', { ascending: false });
+      verbindungen = data || [];
+      profilesById = {};
+      const ids = verbindungen.map(v => v.sachkundiger_user_id);
+      if (ids.length) {
+        const { data: profiles } = await client.from('profiles').select('*').in('id', ids);
+        (profiles || []).forEach(p => { profilesById[p.id] = p; });
+      }
+    }
+
+    function sachName(v) {
+      const p = profilesById[v.sachkundiger_user_id];
+      return p ? (p.vorname + ' ' + p.nachname).trim() : 'Unbekannt';
+    }
+
+    function render() {
+      const listEl = document.getElementById('pvList');
+      document.getElementById('pvEmpty').hidden = verbindungen.length > 0;
+      listEl.innerHTML = verbindungen.map(v => `
+        <div class="card elev-sm" style="gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="font-weight:600;font-size:15px">${escapeHtml(sachName(v))}</div>
+            <button type="button" class="btn btn-secondary" data-trennen="${v.id}" style="font-size:13px;padding:8px 14px">Verbindung trennen</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:10px;font-size:13.5px;cursor:pointer">
+            <input type="checkbox" data-bearbeiten="${v.id}" ${v.bearbeiten_erlaubt ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--color-accent)">
+            Darf auch Material für mich anlegen/bearbeiten
+          </label>
+        </div>`).join('');
+
+      document.querySelectorAll('[data-trennen]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Verbindung wirklich trennen?')) return;
+          await client.from('psa_kunde_verbindungen').delete().eq('id', btn.dataset.trennen);
+          await loadAll();
+          render();
+        });
+      });
+      document.querySelectorAll('[data-bearbeiten]').forEach(cb => {
+        cb.addEventListener('change', async () => {
+          await client.from('psa_kunde_verbindungen').update({ bearbeiten_erlaubt: cb.checked }).eq('id', cb.dataset.bearbeiten);
+        });
+      });
+    }
+
+    const form = document.getElementById('pvForm');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errBox = document.getElementById('pvFormError');
+        const savedBox = document.getElementById('pvFormSaved');
+        errBox.hidden = true;
+        if (savedBox) savedBox.hidden = true;
+        const codeInput = document.getElementById('pvCode');
+        const code = codeInput.value.trim();
+        if (!code) return;
+        try {
+          const { error } = await client.rpc('psa_verbindung_herstellen', { code });
+          if (error) throw error;
+          codeInput.value = '';
+          if (savedBox) savedBox.hidden = false;
+          await loadAll();
+          render();
+        } catch (err) {
+          errBox.hidden = false;
+          errBox.textContent = 'Code ungültig oder abgelaufen.';
+        }
+      });
+    }
+
+    await loadAll();
+    render();
   }
 
   // --------------------------------------------------------------------
@@ -3595,35 +3684,86 @@
     gateEl.hidden = true;
     areaEl.hidden = false;
 
-    let kunden = [];
-    let countByKunde = {};
+    let rows = [];
+
+    async function renderCodeBox() {
+      const box = document.getElementById('codeBox');
+      if (!box) return;
+      let code = sachRow.verbindungscode;
+      if (!code) {
+        try {
+          const { data, error } = await client.rpc('psa_verbindungscode_erzeugen');
+          if (error) throw error;
+          code = data;
+        } catch (e) { /* bleibt leer bei Fehler */ }
+      }
+      box.innerHTML = code ? `
+        <div style="font-size:11.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;opacity:0.6">Dein Verbindungscode</div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:0.08em">${escapeHtml(code)}</div>
+        <div style="font-size:13px;opacity:0.7">Gib diesen Code an Kund*innen weiter, die ihr Material selbst pflegen. Sie tragen ihn unter "Mein Material → Verbindungen" ein — danach siehst du ihre Liste hier, ohne sie selbst anzulegen.</div>
+      ` : '';
+    }
 
     async function loadAll() {
-      const { data } = await client.from('kunden').select('*').eq('erstellt_von', userId).order('created_at', { ascending: false });
-      kunden = data || [];
-      countByKunde = {};
-      const kIds = kunden.map(k => k.id);
-      if (kIds.length) {
-        const { data: mat } = await client.from('psa_material').select('*').in('kunde_id', kIds);
-        (mat || []).forEach(m => { countByKunde[m.kunde_id] = (countByKunde[m.kunde_id] || 0) + 1; });
-      }
+      const [{ data: kunden }, { data: verbindungen }] = await Promise.all([
+        client.from('kunden').select('*').eq('erstellt_von', userId).order('created_at', { ascending: false }),
+        client.from('psa_kunde_verbindungen').select('*').eq('sachkundiger_user_id', userId).order('created_at', { ascending: false })
+      ]);
+
+      const kIds = (kunden || []).map(k => k.id);
+      const vUserIds = (verbindungen || []).map(v => v.kunde_user_id);
+      const [{ data: matKunden }, { data: matVerbunden }, { data: profiles }] = await Promise.all([
+        kIds.length ? client.from('psa_material').select('*').in('kunde_id', kIds) : Promise.resolve({ data: [] }),
+        vUserIds.length ? client.from('psa_material').select('*').in('user_id', vUserIds).is('kunde_id', null) : Promise.resolve({ data: [] }),
+        vUserIds.length ? client.from('profiles').select('*').in('id', vUserIds) : Promise.resolve({ data: [] })
+      ]);
+
+      const countByKunde = {};
+      (matKunden || []).forEach(m => { countByKunde[m.kunde_id] = (countByKunde[m.kunde_id] || 0) + 1; });
+      const countByUser = {};
+      (matVerbunden || []).forEach(m => { countByUser[m.user_id] = (countByUser[m.user_id] || 0) + 1; });
+      const profilesById = {};
+      (profiles || []).forEach(p => { profilesById[p.id] = p; });
+
+      const shadowRows = (kunden || []).map(k => ({
+        kind: 'kunde',
+        name: k.name,
+        meta: [k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben',
+        count: countByKunde[k.id] || 0,
+        href: 'konto-kunde?id=' + encodeURIComponent(k.id)
+      }));
+      const connectedRows = (verbindungen || []).map(v => {
+        const p = profilesById[v.kunde_user_id];
+        const name = p ? (p.vorname + ' ' + p.nachname).trim() : 'Unbekannt';
+        return {
+          kind: 'verbunden',
+          name,
+          meta: 'eigenes Konto',
+          count: countByUser[v.kunde_user_id] || 0,
+          href: 'konto-kunde?verbunden=' + encodeURIComponent(v.kunde_user_id)
+        };
+      });
+
+      rows = shadowRows.concat(connectedRows).sort((a, b) => a.name.localeCompare(b.name, 'de'));
     }
 
     function render() {
       const listEl = document.getElementById('kundenList');
-      document.getElementById('kundenEmpty').hidden = kunden.length > 0;
-      listEl.innerHTML = kunden.map(k => `
-        <a href="konto-kunde?id=${encodeURIComponent(k.id)}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
-          ${initialsAvatar(k.name, 44)}
+      document.getElementById('kundenEmpty').hidden = rows.length > 0;
+      listEl.innerHTML = rows.map(r => `
+        <a href="${r.href}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          ${initialsAvatar(r.name, 44)}
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:15.5px">${escapeHtml(k.name)}</div>
-            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml([k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben')}</div>
+            <div style="font-weight:600;font-size:15.5px">${escapeHtml(r.name)}</div>
+            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(r.meta)}</div>
           </div>
-          <span class="tag tag-neutral">${countByKunde[k.id] || 0} Gegenstände</span>
+          ${r.kind === 'verbunden' ? '<span class="tag tag-accent-2">eigenes Konto</span>' : ''}
+          <span class="tag tag-neutral">${r.count} Gegenstände</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:0.5"><path d="m9 18 6-6-6-6"></path></svg>
         </a>`).join('');
     }
 
+    await renderCodeBox();
     await loadAll();
     render();
   }
@@ -3634,11 +3774,13 @@
   async function renderKundeDetail(ctx) {
     const { client, session, profile } = ctx;
     const userId = session.user.id;
-    const kundeId = new URLSearchParams(location.search).get('id');
+    const params = new URLSearchParams(location.search);
+    const kundeId = params.get('id');
+    const verbundenId = params.get('verbunden');
     const gateEl = document.getElementById('kundeGate');
     const areaEl = document.getElementById('kundeArea');
 
-    const { sachRow, isSach } = await fetchSachRow(client, userId);
+    const { isSach } = await fetchSachRow(client, userId);
     if (!isSach) {
       gateEl.hidden = false;
       areaEl.hidden = true;
@@ -3646,7 +3788,19 @@
       return;
     }
 
-    const { data: kunde } = kundeId ? await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : { data: null };
+    let kunde = null;
+    if (kundeId) {
+      const { data } = await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle();
+      if (data) kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer, email: data.email, telefon: data.telefon, verbunden: false };
+    } else if (verbundenId) {
+      const [{ data: verbindung }, { data: profilRow }] = await Promise.all([
+        client.from('psa_kunde_verbindungen').select('*').eq('kunde_user_id', verbundenId).eq('sachkundiger_user_id', userId).maybeSingle(),
+        client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
+      ]);
+      if (verbindung && profilRow) {
+        kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null, email: profilRow.email, telefon: null, verbunden: true, userId: verbundenId, bearbeiten: !!verbindung.bearbeiten_erlaubt };
+      }
+    }
     if (!kunde) {
       gateEl.hidden = false;
       areaEl.hidden = true;
@@ -3661,12 +3815,18 @@
       ['Name', kunde.name], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email], ['Telefon', kunde.telefon]
     ].filter(([, v]) => v).map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
 
+    const pruefParam = kunde.verbunden ? '&verbunden=' + encodeURIComponent(kunde.userId) : '&kunde=' + encodeURIComponent(kunde.id);
+    const zertKundeParam = kunde.verbunden ? 'verbunden=' + encodeURIComponent(kunde.userId) : 'kunde=' + encodeURIComponent(kunde.id);
+
     let items = [];
     let pruefByMaterial = {};
     let openId = null;
 
     async function loadAll() {
-      const { data } = await client.from('psa_material').select('*').eq('kunde_id', kunde.id).order('created_at', { ascending: false });
+      const query = kunde.verbunden
+        ? client.from('psa_material').select('*').eq('user_id', kunde.userId).is('kunde_id', null).order('created_at', { ascending: false })
+        : client.from('psa_material').select('*').eq('kunde_id', kunde.id).order('created_at', { ascending: false });
+      const { data } = await query;
       items = data || [];
       pruefByMaterial = {};
       const ids = items.map(i => i.id);
@@ -3684,8 +3844,8 @@
             ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a href="konto-psa-pruefung?id=${encodeURIComponent(m.id)}&kunde=${encodeURIComponent(kunde.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Neue Prüfung durchführen</a>
-            <a href="konto-zertifikat?kunde=${encodeURIComponent(kunde.id)}&material=${encodeURIComponent(m.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfbescheinigung ansehen</a>
+            <a href="konto-psa-pruefung?id=${encodeURIComponent(m.id)}${pruefParam}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Neue Prüfung durchführen</a>
+            <a href="konto-zertifikat?${zertKundeParam}&material=${encodeURIComponent(m.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfbescheinigung ansehen</a>
           </div>
         </div>`;
     }
@@ -3715,7 +3875,13 @@
       });
     }
 
-    document.getElementById('kmNewBtn').href = 'konto-kunde-neu-material?kunde=' + encodeURIComponent(kunde.id);
+    const newBtn = document.getElementById('kmNewBtn');
+    if (kunde.verbunden && !kunde.bearbeiten) {
+      newBtn.hidden = true;
+      newBtn.insertAdjacentHTML('afterend', '<p style="margin:0 0 18px;font-size:13.5px;opacity:0.65">Diese Person verwaltet ihr Material selbst — du kannst prüfen, aber keine neuen Gegenstände für sie anlegen.</p>');
+    } else {
+      newBtn.href = kunde.verbunden ? 'konto-kunde-neu-material?verbunden=' + encodeURIComponent(kunde.userId) : 'konto-kunde-neu-material?kunde=' + encodeURIComponent(kunde.id);
+    }
 
     await loadAll();
     render();
@@ -3764,15 +3930,30 @@
   async function renderKundeNeuMaterial(ctx) {
     const { client, session } = ctx;
     const userId = session.user.id;
-    const kundeId = new URLSearchParams(location.search).get('kunde');
+    const params = new URLSearchParams(location.search);
+    const kundeId = params.get('kunde');
+    const verbundenId = params.get('verbunden');
     const gateEl = document.getElementById('kmGate');
     const areaEl = document.getElementById('kmArea');
 
-    const { data: kunde } = kundeId ? await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : { data: null };
+    let kunde = null;
+    if (kundeId) {
+      const { data } = await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle();
+      if (data) kunde = { id: data.id, name: data.name, verbunden: false };
+    } else if (verbundenId) {
+      const [{ data: verbindung }, { data: profilRow }] = await Promise.all([
+        client.from('psa_kunde_verbindungen').select('*').eq('kunde_user_id', verbundenId).eq('sachkundiger_user_id', userId).maybeSingle(),
+        client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
+      ]);
+      if (verbindung && verbindung.bearbeiten_erlaubt && profilRow) {
+        kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), verbunden: true, userId: verbundenId };
+      }
+    }
     if (!kunde) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
-    document.getElementById('kmBackLink').href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+    const backHref = kunde.verbunden ? 'konto-kunde?verbunden=' + encodeURIComponent(kunde.userId) : 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+    document.getElementById('kmBackLink').href = backHref;
     document.getElementById('kmKundeName').textContent = kunde.name;
     document.getElementById('kmInitials').textContent = kunde.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
@@ -3781,10 +3962,10 @@
 
     document.getElementById('kmForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const payload = {
-        user_id: userId,
-        kunde_id: kunde.id,
-        eigentuemer_typ: 'kunde',
+      const payload = kunde.verbunden
+        ? { user_id: kunde.userId, kunde_id: null, eigentuemer_typ: 'eigen' }
+        : { user_id: userId, kunde_id: kunde.id, eigentuemer_typ: 'kunde' };
+      Object.assign(payload, {
         ist_psa: true,
         kategorie: kategorieSel.value,
         materialart: document.getElementById('kmMaterialart').value || null,
@@ -3795,9 +3976,9 @@
         herstellungsdatum: document.getElementById('kmHerstellungsdatum').value || null,
         max_lebensdauer_jahre: document.getElementById('kmLebensdauer').value ? Number(document.getElementById('kmLebensdauer').value) : null,
         pruefrhythmus_monate: Number(document.getElementById('kmPruefrhythmus').value)
-      };
+      });
       await client.from('psa_material').insert(payload);
-      location.href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+      location.href = backHref;
     });
   }
 
@@ -3809,20 +3990,26 @@
     const userId = session.user.id;
     const params = new URLSearchParams(location.search);
     const kundeId = params.get('kunde');
+    const verbundenId = params.get('verbunden');
     const materialId = params.get('material');
     const gateEl = document.getElementById('zGate');
     const areaEl = document.getElementById('zArea');
 
     const { sachRow } = await fetchSachRow(client, userId);
 
-    const [{ data: kunde }, { data: material }] = await Promise.all([
-      kundeId ? client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : Promise.resolve({ data: null }),
-      materialId ? client.from('psa_material').select('*').eq('id', materialId).eq('user_id', userId).maybeSingle() : Promise.resolve({ data: null })
-    ]);
+    let kunde = null;
+    if (kundeId) {
+      const { data } = await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle();
+      if (data) kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer };
+    } else if (verbundenId) {
+      const { data: profilRow } = await client.from('profiles').select('*').eq('id', verbundenId).maybeSingle();
+      if (profilRow) kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null };
+    }
+    const { data: material } = materialId ? await client.from('psa_material').select('*').eq('id', materialId).maybeSingle() : { data: null };
     if (!kunde || !material) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
-    document.getElementById('zBackLink').href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+    document.getElementById('zBackLink').href = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId) : 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId);
 
     const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').eq('material_id', material.id).order('pruefdatum', { ascending: false });
     const pruefListe = pruef || [];
@@ -3863,6 +4050,7 @@
       'konto-psa-pruefung': renderPsaPruefung,
       'konto-psa-verleih': renderPsaVerleih,
       'konto-psa-inaktiv': renderPsaInaktiv,
+      'konto-psa-verbindungen': renderPsaVerbindungen,
       'konto-psa-neu': noop,
       'konto-psa-neu-eigen': renderPsaNeuEigen,
       'konto-psa-neu-inventar': renderPsaNeuInventar,
