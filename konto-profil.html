@@ -95,6 +95,18 @@
             <div class="field"><label for="fKoerpergewicht">Körpergewicht (kg, optional)</label><input id="fKoerpergewicht" class="input" type="number" min="20" max="300" step="0.1" style="min-height:46px;font-size:16px" placeholder="z.B. 68"></div>
             <p style="margin:8px 0 0;font-size:13px;opacity:0.6">Nur für dich: wird im Trainings-Logbuch genutzt, um bei kg-Übungen (z.B. Zusatzgewicht am Hangboard) den Anteil am Körpergewicht anzuzeigen.</p>
           </div>
+          <div style="margin-top:24px">
+            <div style="font-size:14px;font-weight:600;margin-bottom:10px">Dieses Konto ist für</div>
+            <div style="display:inline-flex;gap:4px;background:var(--color-surface);border-radius:999px;padding:4px">
+              <button type="button" id="fKontoPrivat" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Privatperson</button>
+              <button type="button" id="fKontoUnternehmen" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Unternehmen / Kletterschule</button>
+            </div>
+            <div id="fFirmaFields" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px;max-width:560px">
+              <div class="field"><label for="fFirmenname">Firmenname</label><input id="fFirmenname" class="input" maxlength="200" placeholder="z.B. Kletterschule BETAMOVE"></div>
+              <div class="field" style="grid-column:1/-1"><label for="fFirmenadresse">Firmenanschrift (optional)</label><input id="fFirmenadresse" class="input" maxlength="300" placeholder="Straße Nr., PLZ Ort"></div>
+            </div>
+            <p style="margin:10px 0 0;font-size:13px;opacity:0.6">Prüft eine Sachkundige Person dein Material, steht auf der Prüfbescheinigung dann der Firmenname statt deines privaten Namens (du bleibst als Ansprechpartner*in sichtbar).</p>
+          </div>
           <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:28px">
             <button type="button" id="saveProfileBtn" class="btn btn-primary" style="font-size:16px;padding:14px 26px">Änderungen speichern</button>
             <span id="profileSaved" hidden style="font-size:15px;font-weight:600;color:var(--color-accent-2-700)">✓ Gespeichert</span>

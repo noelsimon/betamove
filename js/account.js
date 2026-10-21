@@ -550,6 +550,24 @@
       });
     });
 
+    const btnKontoPrivat = document.getElementById('fKontoPrivat');
+    const btnKontoUnternehmen = document.getElementById('fKontoUnternehmen');
+    const firmaFieldsBox = document.getElementById('fFirmaFields');
+    const firmennameInput = document.getElementById('fFirmenname');
+    const firmenadresseInput = document.getElementById('fFirmenadresse');
+    let istUnternehmen = !!profile.ist_unternehmen;
+    if (firmennameInput) firmennameInput.value = profile.firmenname || '';
+    if (firmenadresseInput) firmenadresseInput.value = profile.firmenadresse || '';
+    function renderKontoTypToggle() {
+      if (!btnKontoPrivat || !btnKontoUnternehmen) return;
+      btnKontoPrivat.classList.toggle('active', !istUnternehmen);
+      btnKontoUnternehmen.classList.toggle('active', istUnternehmen);
+      if (firmaFieldsBox) firmaFieldsBox.hidden = !istUnternehmen;
+    }
+    renderKontoTypToggle();
+    if (btnKontoPrivat) btnKontoPrivat.addEventListener('click', () => { istUnternehmen = false; renderKontoTypToggle(); });
+    if (btnKontoUnternehmen) btnKontoUnternehmen.addEventListener('click', () => { istUnternehmen = true; renderKontoTypToggle(); });
+
     const saveBtn = document.getElementById('saveProfileBtn');
     const savedMsg = document.getElementById('profileSaved');
     const errMsg = document.getElementById('profileError');
@@ -558,6 +576,11 @@
         e.preventDefault();
         if (savedMsg) savedMsg.hidden = true;
         if (errMsg) errMsg.hidden = true;
+        if (istUnternehmen && firmennameInput && !firmennameInput.value.trim()) {
+          errMsg.hidden = false;
+          errMsg.textContent = 'Bitte den Firmennamen angeben.';
+          return;
+        }
         const activeLevel = document.querySelector('.level-opt[data-active="true"]');
         const koerpergewichtVal = fields.koerpergewicht && fields.koerpergewicht.value ? Number(fields.koerpergewicht.value) : null;
         const payload = {
@@ -566,7 +589,10 @@
           nachname: (fields.nachname && fields.nachname.value.trim()) || profile.nachname,
           email: profile.email || session.user.email,
           level: activeLevel ? activeLevel.textContent.trim() : profile.level,
-          koerpergewicht_kg: koerpergewichtVal
+          koerpergewicht_kg: koerpergewichtVal,
+          ist_unternehmen: istUnternehmen,
+          firmenname: istUnternehmen && firmennameInput ? firmennameInput.value.trim() : null,
+          firmenadresse: istUnternehmen && firmenadresseInput ? (firmenadresseInput.value.trim() || null) : null
         };
         try {
           const { error } = await client.from('profiles').upsert(payload, { onConflict: 'id' });
@@ -3075,6 +3101,17 @@
     return '<span style="width:46px;height:46px;flex:none;border-radius:12px;background:var(--color-surface);display:inline-flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg></span>';
   }
 
+  // Anzeigename für eine verbundene Kund*in (echtes Konto): Firmenname statt
+  // privatem Namen, wenn das Konto als Unternehmen markiert ist — z.B. für
+  // Prüfbescheinigungen, auf denen die Kletterschule stehen soll, nicht die
+  // Privatperson dahinter. ansprechpartner trägt dann den privaten Namen zur
+  // Nachvollziehbarkeit.
+  function profilKundenName(p) {
+    const persoenlich = ((p.vorname || '') + ' ' + (p.nachname || '')).trim();
+    if (p.ist_unternehmen && p.firmenname) return { name: p.firmenname, ansprechpartner: persoenlich };
+    return { name: persoenlich, ansprechpartner: null };
+  }
+
   function initialsAvatar(name, size) {
     const s = size || 40;
     const initials = (name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
@@ -3903,7 +3940,7 @@
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
     doc.text('Ausgestellt für', marginX, y); y += 7;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(40);
-    doc.text(kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '') + (kunde.email ? ' · ' + kunde.email : ''), marginX, y); y += 12;
+    doc.text(kunde.name + (kunde.ansprechpartner ? ' · Ansprechpartner: ' + kunde.ansprechpartner : '') + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '') + (kunde.email ? ' · ' + kunde.email : ''), marginX, y); y += 12;
 
     // Tabellenkopf
     const cols = [[marginX, 'Artikel-Nr.'], [marginX + 32, 'Seriennummer'], [marginX + 70, 'Bezeichnung'], [marginX + 125, 'Prüfdatum'], [marginX + 155, 'Ergebnis']];
@@ -4031,11 +4068,11 @@
       }));
       const connectedRows = (verbindungen || []).map(v => {
         const p = profilesById[v.kunde_user_id];
-        const name = p ? (p.vorname + ' ' + p.nachname).trim() : 'Unbekannt';
+        const { name, ansprechpartner } = p ? profilKundenName(p) : { name: 'Unbekannt', ansprechpartner: null };
         return {
           kind: 'verbunden',
           name,
-          meta: 'eigenes Konto',
+          meta: ansprechpartner ? 'eigenes Konto · Ansprechpartner: ' + ansprechpartner : 'eigenes Konto',
           count: countByUser[v.kunde_user_id] || 0,
           href: 'konto-kunde?verbunden=' + encodeURIComponent(v.kunde_user_id)
         };
@@ -4095,7 +4132,8 @@
         client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
       ]);
       if (verbindung && profilRow) {
-        kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null, email: profilRow.email, telefon: null, verbunden: true, userId: verbundenId, bearbeiten: !!verbindung.bearbeiten_erlaubt };
+        const { name: kName, ansprechpartner } = profilKundenName(profilRow);
+        kunde = { id: null, name: kName, ansprechpartner, kundennummer: null, email: profilRow.email, telefon: null, verbunden: true, userId: verbundenId, bearbeiten: !!verbindung.bearbeiten_erlaubt };
       }
     }
     if (!kunde) {
@@ -4109,7 +4147,7 @@
 
     document.getElementById('kundeTitel').textContent = 'Material von ' + kunde.name;
     document.getElementById('kundeStammdaten').innerHTML = [
-      ['Name', kunde.name], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email], ['Telefon', kunde.telefon]
+      ['Name', kunde.name], ['Ansprechpartner*in', kunde.ansprechpartner], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email], ['Telefon', kunde.telefon]
     ].filter(([, v]) => v).map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
 
     const pruefParam = kunde.verbunden ? '&verbunden=' + encodeURIComponent(kunde.userId) : '&kunde=' + encodeURIComponent(kunde.id);
@@ -4247,7 +4285,7 @@
         client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
       ]);
       if (verbindung && verbindung.bearbeiten_erlaubt && profilRow) {
-        kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), verbunden: true, userId: verbundenId };
+        kunde = { id: null, name: profilKundenName(profilRow).name, verbunden: true, userId: verbundenId };
       }
     }
     if (!kunde) { gateEl.hidden = false; areaEl.hidden = true; return; }
@@ -4319,9 +4357,14 @@
       if (data) { kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer, email: data.email }; scopeKundeId = data.id; }
     } else if (verbundenId) {
       const { data: profilRow } = await client.from('profiles').select('*').eq('id', verbundenId).maybeSingle();
-      if (profilRow) { kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null, email: profilRow.email }; scopeUserId = verbundenId; }
+      if (profilRow) {
+        const { name: kName, ansprechpartner } = profilKundenName(profilRow);
+        kunde = { id: null, name: kName, ansprechpartner, kundennummer: null, email: profilRow.email };
+        scopeUserId = verbundenId;
+      }
     } else {
-      kunde = { id: null, name: (profile.vorname + ' ' + profile.nachname).trim(), kundennummer: null, email: profile.email };
+      const { name: kName, ansprechpartner } = profilKundenName(profile);
+      kunde = { id: null, name: kName, ansprechpartner, kundennummer: null, email: profile.email };
     }
     if (!kunde) { gateEl.hidden = false; areaEl.hidden = true; return; }
 
@@ -4367,7 +4410,7 @@
       : 'konto-psa';
 
     document.getElementById('zKunde').innerHTML = [
-      ['Name', kunde.name, true], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email]
+      ['Name', kunde.name, true], ['Ansprechpartner*in', kunde.ansprechpartner], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email]
     ].filter(([, v]) => v).map(([label, v, bold]) => `<div>${bold ? '<strong>' + escapeHtml(v) + '</strong>' : escapeHtml(label) + ': ' + escapeHtml(v)}</div>`).join('');
 
     const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null, unternehmenAdresse: sachRow ? sachRow.unternehmen_adresse : null };
