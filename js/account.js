@@ -28,6 +28,23 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
+  // Zwei-Knopf-Umschalter (z.B. "BETAMOVE/Extern", "Privat/Unternehmen"),
+  // wie an mehreren Stellen im Konto gebraucht. Gibt ein Objekt mit
+  // Live-Getter `.on` zurück, statt dass jede Stelle ihre eigene
+  // Zustandsvariable + Klassen-Toggling mitschleppt.
+  function wirePillToggle(btnOff, btnOn, startOn, onPaint) {
+    let on = !!startOn;
+    function paint() {
+      if (btnOff) btnOff.classList.toggle('active', !on);
+      if (btnOn) btnOn.classList.toggle('active', on);
+      if (onPaint) onPaint(on);
+    }
+    if (btnOff) btnOff.addEventListener('click', () => { on = false; paint(); });
+    if (btnOn) btnOn.addEventListener('click', () => { on = true; paint(); });
+    paint();
+    return { get on() { return on; } };
+  }
+
   // --------------------------------------------------------------------
   // Kursname zu einer kurs_id — liest live aus der Kurse-Tabelle
   // (window.BM_COURSES), damit hier nichts doppelt gepflegt werden muss.
@@ -550,23 +567,15 @@
       });
     });
 
-    const btnKontoPrivat = document.getElementById('fKontoPrivat');
-    const btnKontoUnternehmen = document.getElementById('fKontoUnternehmen');
     const firmaFieldsBox = document.getElementById('fFirmaFields');
     const firmennameInput = document.getElementById('fFirmenname');
     const firmenadresseInput = document.getElementById('fFirmenadresse');
-    let istUnternehmen = !!profile.ist_unternehmen;
     if (firmennameInput) firmennameInput.value = profile.firmenname || '';
     if (firmenadresseInput) firmenadresseInput.value = profile.firmenadresse || '';
-    function renderKontoTypToggle() {
-      if (!btnKontoPrivat || !btnKontoUnternehmen) return;
-      btnKontoPrivat.classList.toggle('active', !istUnternehmen);
-      btnKontoUnternehmen.classList.toggle('active', istUnternehmen);
-      if (firmaFieldsBox) firmaFieldsBox.hidden = !istUnternehmen;
-    }
-    renderKontoTypToggle();
-    if (btnKontoPrivat) btnKontoPrivat.addEventListener('click', () => { istUnternehmen = false; renderKontoTypToggle(); });
-    if (btnKontoUnternehmen) btnKontoUnternehmen.addEventListener('click', () => { istUnternehmen = true; renderKontoTypToggle(); });
+    const kontoTypToggle = wirePillToggle(
+      document.getElementById('fKontoPrivat'), document.getElementById('fKontoUnternehmen'),
+      profile.ist_unternehmen, on => { if (firmaFieldsBox) firmaFieldsBox.hidden = !on; }
+    );
 
     const saveBtn = document.getElementById('saveProfileBtn');
     const savedMsg = document.getElementById('profileSaved');
@@ -576,7 +585,7 @@
         e.preventDefault();
         if (savedMsg) savedMsg.hidden = true;
         if (errMsg) errMsg.hidden = true;
-        if (istUnternehmen && firmennameInput && !firmennameInput.value.trim()) {
+        if (kontoTypToggle.on && firmennameInput && !firmennameInput.value.trim()) {
           errMsg.hidden = false;
           errMsg.textContent = 'Bitte den Firmennamen angeben.';
           return;
@@ -590,9 +599,9 @@
           email: profile.email || session.user.email,
           level: activeLevel ? activeLevel.textContent.trim() : profile.level,
           koerpergewicht_kg: koerpergewichtVal,
-          ist_unternehmen: istUnternehmen,
-          firmenname: istUnternehmen && firmennameInput ? firmennameInput.value.trim() : null,
-          firmenadresse: istUnternehmen && firmenadresseInput ? (firmenadresseInput.value.trim() || null) : null
+          ist_unternehmen: kontoTypToggle.on,
+          firmenname: kontoTypToggle.on && firmennameInput ? firmennameInput.value.trim() : null,
+          firmenadresse: kontoTypToggle.on && firmenadresseInput ? (firmenadresseInput.value.trim() || null) : null
         };
         try {
           const { error } = await client.from('profiles').upsert(payload, { onConflict: 'id' });
@@ -675,32 +684,26 @@
       const { sachRow, isSach } = await fetchSachRow(client, session.user.id);
       if (isSach) {
         unternehmenBox.hidden = false;
-        const btnBetamove = document.getElementById('uOrgBetamove');
-        const btnExtern = document.getElementById('uOrgExtern');
         const orgFieldsBox = document.getElementById('uOrgFields');
         const orgNameInput = document.getElementById('uOrgName');
         const orgAdresseInput = document.getElementById('uOrgAdresse');
-        let isExtern = !!(sachRow.organisation && sachRow.organisation.trim().toLowerCase() !== 'betamove');
-        orgNameInput.value = isExtern ? (sachRow.organisation || '') : '';
+        const orgIsExtern = !!(sachRow.organisation && sachRow.organisation.trim().toLowerCase() !== 'betamove');
+        orgNameInput.value = orgIsExtern ? (sachRow.organisation || '') : '';
         orgAdresseInput.value = sachRow.unternehmen_adresse || '';
-        function renderOrgToggle() {
-          btnBetamove.classList.toggle('active', !isExtern);
-          btnExtern.classList.toggle('active', isExtern);
-          orgFieldsBox.hidden = !isExtern;
-        }
-        renderOrgToggle();
-        btnBetamove.addEventListener('click', () => { isExtern = false; renderOrgToggle(); });
-        btnExtern.addEventListener('click', () => { isExtern = true; renderOrgToggle(); });
+        const orgToggle = wirePillToggle(
+          document.getElementById('uOrgBetamove'), document.getElementById('uOrgExtern'),
+          orgIsExtern, on => { orgFieldsBox.hidden = !on; }
+        );
         const orgSaveBtn = document.getElementById('uOrgSaveBtn');
         const orgSaved = document.getElementById('uOrgSaved');
         orgSaveBtn.addEventListener('click', async () => {
           orgSaved.hidden = true;
-          if (isExtern && !orgNameInput.value.trim()) { alert('Bitte den Firmennamen angeben.'); return; }
+          if (orgToggle.on && !orgNameInput.value.trim()) { alert('Bitte den Firmennamen angeben.'); return; }
           orgSaveBtn.disabled = true;
           try {
             const { error } = await client.rpc('psa_sachkundige_update_unternehmensdaten', {
-              p_organisation: isExtern ? orgNameInput.value.trim() : 'BETAMOVE',
-              p_adresse: isExtern ? (orgAdresseInput.value.trim() || null) : null
+              p_organisation: orgToggle.on ? orgNameInput.value.trim() : 'BETAMOVE',
+              p_adresse: orgToggle.on ? (orgAdresseInput.value.trim() || null) : null
             });
             if (error) throw error;
             orgSaved.hidden = false;
@@ -3660,7 +3663,7 @@
       profilesById = {};
       const ids = verbindungen.map(v => v.sachkundiger_user_id);
       if (ids.length) {
-        const { data: profiles } = await client.from('profiles').select('*').in('id', ids);
+        const { data: profiles } = await client.from('profiles').select('id, vorname, nachname').in('id', ids);
         (profiles || []).forEach(p => { profilesById[p.id] = p; });
       }
     }
@@ -3824,25 +3827,16 @@
       document.getElementById('sachFormBox').hidden = false;
       document.getElementById('sachApplyBtn').hidden = true;
     });
-    let sfOrgIsExtern = false;
-    document.getElementById('sfOrgBetamove').addEventListener('click', () => {
-      sfOrgIsExtern = false;
-      document.getElementById('sfOrgBetamove').classList.add('active');
-      document.getElementById('sfOrgExtern').classList.remove('active');
-      document.getElementById('sfOrgNameGroup').hidden = true;
-    });
-    document.getElementById('sfOrgExtern').addEventListener('click', () => {
-      sfOrgIsExtern = true;
-      document.getElementById('sfOrgExtern').classList.add('active');
-      document.getElementById('sfOrgBetamove').classList.remove('active');
-      document.getElementById('sfOrgNameGroup').hidden = false;
-    });
+    const sfOrgToggle = wirePillToggle(
+      document.getElementById('sfOrgBetamove'), document.getElementById('sfOrgExtern'),
+      false, on => { document.getElementById('sfOrgNameGroup').hidden = !on; }
+    );
     document.getElementById('sachFormBox').addEventListener('submit', async (e) => {
       e.preventDefault();
       const errBox = document.getElementById('sachFormError');
       errBox.hidden = true;
       const orgName = document.getElementById('sfOrgName').value.trim();
-      if (sfOrgIsExtern && !orgName) {
+      if (sfOrgToggle.on && !orgName) {
         errBox.hidden = false;
         errBox.textContent = 'Bitte den Namen der Organisation angeben.';
         return;
@@ -3862,7 +3856,7 @@
           handynummer: document.getElementById('sfPhone').value.trim(),
           geburtsdatum: document.getElementById('sfBirth').value,
           adresse: document.getElementById('sfAddress').value.trim(),
-          organisation: sfOrgIsExtern ? orgName : 'BETAMOVE',
+          organisation: sfOrgToggle.on ? orgName : 'BETAMOVE',
           qualifikationsnachweis: document.getElementById('sfQual').value.trim(),
           zertifikat_pfad: path
         };
@@ -4122,7 +4116,7 @@
       const [{ data: matKunden }, { data: matVerbunden }, { data: profiles }] = await Promise.all([
         kIds.length ? client.from('psa_material').select('*').in('kunde_id', kIds) : Promise.resolve({ data: [] }),
         vUserIds.length ? client.from('psa_material').select('*').in('user_id', vUserIds).is('kunde_id', null) : Promise.resolve({ data: [] }),
-        vUserIds.length ? client.from('profiles').select('*').in('id', vUserIds) : Promise.resolve({ data: [] })
+        vUserIds.length ? client.from('profiles').select('id, vorname, nachname, ist_unternehmen, firmenname').in('id', vUserIds) : Promise.resolve({ data: [] })
       ]);
 
       const countByKunde = {};
@@ -4202,7 +4196,7 @@
     } else if (verbundenId) {
       const [{ data: verbindung }, { data: profilRow }] = await Promise.all([
         client.from('psa_kunde_verbindungen').select('*').eq('kunde_user_id', verbundenId).eq('sachkundiger_user_id', userId).maybeSingle(),
-        client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
+        client.from('profiles').select('vorname, nachname, email, ist_unternehmen, firmenname').eq('id', verbundenId).maybeSingle()
       ]);
       if (verbindung && profilRow) {
         const { name: kName, ansprechpartner } = profilKundenName(profilRow);
@@ -4355,7 +4349,7 @@
     } else if (verbundenId) {
       const [{ data: verbindung }, { data: profilRow }] = await Promise.all([
         client.from('psa_kunde_verbindungen').select('*').eq('kunde_user_id', verbundenId).eq('sachkundiger_user_id', userId).maybeSingle(),
-        client.from('profiles').select('*').eq('id', verbundenId).maybeSingle()
+        client.from('profiles').select('vorname, nachname, ist_unternehmen, firmenname').eq('id', verbundenId).maybeSingle()
       ]);
       if (verbindung && verbindung.bearbeiten_erlaubt && profilRow) {
         kunde = { id: null, name: profilKundenName(profilRow).name, verbunden: true, userId: verbundenId };
@@ -4429,7 +4423,7 @@
       const { data } = await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle();
       if (data) { kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer, email: data.email }; scopeKundeId = data.id; }
     } else if (verbundenId) {
-      const { data: profilRow } = await client.from('profiles').select('*').eq('id', verbundenId).maybeSingle();
+      const { data: profilRow } = await client.from('profiles').select('vorname, nachname, email, ist_unternehmen, firmenname').eq('id', verbundenId).maybeSingle();
       if (profilRow) {
         const { name: kName, ansprechpartner } = profilKundenName(profilRow);
         kunde = { id: null, name: kName, ansprechpartner, kundennummer: null, email: profilRow.email };
