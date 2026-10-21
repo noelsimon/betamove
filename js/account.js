@@ -2976,7 +2976,31 @@
     const days = Math.round((next - new Date()) / 86400000);
     if (days < 0) return { label: 'ÜBERFÄLLIG', bg: 'var(--color-warn-bg)', fg: 'var(--color-warn)', next };
     if (days <= 30) return { label: 'bald fällig', bg: '#f7ecd2', fg: '#8a6a1f', next };
-    return { label: 'in Ordnung', bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)', next };
+    return { label: 'in Ordnung', bg: '#dcebe0', fg: '#2f6b45', next };
+  }
+
+  const PSA_ERGEBNIS_DOT = {
+    gut: { bg: '#dcebe0', fg: '#2f6b45' },
+    mangel: { bg: '#f7ecd2', fg: '#8a6a1f' },
+    aussondern: { bg: 'var(--color-warn-bg)', fg: 'var(--color-warn)' }
+  };
+
+  function pruefCheckIcon(ergebnis) {
+    const c = PSA_ERGEBNIS_DOT[ergebnis] || PSA_ERGEBNIS_DOT.gut;
+    const path = ergebnis === 'aussondern'
+      ? '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
+      : '<path d="M20 6 9 17l-5-5"></path>';
+    return `<span style="width:28px;height:28px;flex:none;border-radius:50%;background:${c.bg};display:inline-flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c.fg}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+  }
+
+  function itemIcon() {
+    return '<span style="width:46px;height:46px;flex:none;border-radius:12px;background:var(--color-surface);display:inline-flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg></span>';
+  }
+
+  function initialsAvatar(name, size) {
+    const s = size || 40;
+    const initials = (name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+    return `<span style="width:${s}px;height:${s}px;flex:none;border-radius:50%;background:var(--color-surface);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(s * 0.34)}px;color:var(--color-accent-700)">${escapeHtml(initials)}</span>`;
   }
 
   function itemMetaLine(it) {
@@ -3024,7 +3048,7 @@
       const late = statuses.filter(s => s && s.label === 'ÜBERFÄLLIG').length;
       document.getElementById('psaStats').innerHTML = [
         [String(items.filter(i => i.aktiv).length), 'Gegenstände gesamt', 'var(--color-surface)', 'var(--color-text)'],
-        [String(ok), 'in Ordnung', 'var(--color-accent-2-100)', 'var(--color-accent-2-800)'],
+        [String(ok), 'in Ordnung', '#dcebe0', '#2f6b45'],
         [String(soon), 'bald fällig (< 30 Tage)', '#f7ecd2', '#8a6a1f'],
         [String(late), 'überfällig', 'var(--color-warn-bg)', 'var(--color-warn)']
       ].map(([n, label, bg, fg]) => `
@@ -3047,6 +3071,7 @@
         const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
         return `
         <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" class="card elev-sm hover-border" style="flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          ${itemIcon()}
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(it))}</div>
             <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(it))}</div>
@@ -3162,11 +3187,11 @@
       const content = document.getElementById('pdTabContent');
       if (historyTab === 'pruef') {
         content.innerHTML = pruef.length ? pruef.map(p => `
-          <div style="padding:12px 0;border-top:1px solid var(--color-divider)"><strong>${psaFmtDate(p.pruefdatum)}</strong> · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`
+          <div style="padding:12px 0;border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:12px">${pruefCheckIcon(p.ergebnis)}<span><strong>${psaFmtDate(p.pruefdatum)}</strong> · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`
         ).join('') : '<p style="margin:0;font-size:14.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
       } else {
         content.innerHTML = leihe.length ? leihe.map(l => `
-          <div style="padding:12px 0;border-top:1px solid var(--color-divider)">${escapeHtml(l.ausgeliehen_an)} · ${psaFmtDate(l.ausgegeben_am)} → ${l.zurueckgegeben_am ? psaFmtDate(l.zurueckgegeben_am) : 'offen'}</div>`
+          <div style="padding:12px 0;border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:12px">${pruefCheckIcon(l.zurueckgegeben_am ? 'gut' : 'mangel')}<span>${escapeHtml(l.ausgeliehen_an)} · ${psaFmtDate(l.ausgegeben_am)} → ${l.zurueckgegeben_am ? psaFmtDate(l.zurueckgegeben_am) : 'offen'}</span></div>`
         ).join('') : '<p style="margin:0;font-size:14.5px;opacity:0.65">Noch keine Ausleihe.</p>';
       }
     }
@@ -3237,6 +3262,7 @@
     document.getElementById('vAusgeliehenEmpty').hidden = ausgeliehen.length > 0;
     document.getElementById('vAusgeliehenList').innerHTML = ausgeliehen.map(({ it, laufend }) => `
       <div class="card elev-sm" style="flex-direction:row;align-items:center;gap:16px">
+        ${itemIcon()}
         <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" style="flex:1;min-width:0;text-decoration:none;color:inherit">
           <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
           <div style="font-size:12.5px;opacity:0.65">an ${escapeHtml(laufend.ausgeliehen_an)} · seit ${psaFmtDate(laufend.ausgegeben_am)}</div>
@@ -3247,6 +3273,7 @@
     document.getElementById('vVerfuegbarEmpty').hidden = verfuegbar.length > 0;
     document.getElementById('vVerfuegbarList').innerHTML = verfuegbar.map(it => `
       <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" class="card elev-sm hover-border" style="flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+        ${itemIcon()}
         <div style="flex:1;font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
         <span class="tag tag-accent-2">im Lager</span>
       </a>`).join('');
@@ -3271,6 +3298,7 @@
     document.getElementById('iEmpty').hidden = items.length > 0;
     document.getElementById('iList').innerHTML = items.map(it => `
       <div class="card elev-sm" style="flex-direction:row;align-items:center;gap:16px">
+        ${itemIcon()}
         <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" style="flex:1;min-width:0;text-decoration:none;color:inherit">
           <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
           <div style="font-size:12.5px;opacity:0.65">${escapeHtml(itemMetaLine(it))}</div>
@@ -3586,6 +3614,7 @@
       document.getElementById('kundenEmpty').hidden = kunden.length > 0;
       listEl.innerHTML = kunden.map(k => `
         <a href="konto-kunde?id=${encodeURIComponent(k.id)}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          ${initialsAvatar(k.name, 44)}
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:15.5px">${escapeHtml(k.name)}</div>
             <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml([k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben')}</div>
@@ -3652,7 +3681,7 @@
       return `
         <div style="border-top:1px solid var(--color-divider);margin-top:12px;padding-top:14px">
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-            ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
+            ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <a href="konto-psa-pruefung?id=${encodeURIComponent(m.id)}&kunde=${encodeURIComponent(kunde.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Neue Prüfung durchführen</a>
@@ -3671,6 +3700,7 @@
         return `
         <div class="card elev-sm" style="gap:0">
           <button type="button" data-toggle-open="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
+            ${itemIcon()}
             <div style="flex:1;min-width:0">
               <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
               <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
@@ -3801,7 +3831,7 @@
     document.getElementById('zMaterialName').textContent = itemName(material);
     document.getElementById('zMaterialMeta').textContent = itemMetaLine(material);
     document.getElementById('zPruefListe').innerHTML = pruefListe.length ? pruefListe.map(p => `
-      <div style="font-size:13.5px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
+      <div style="font-size:13.5px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
 
     const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null };
     document.getElementById('zAussteller').textContent = aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + ')' : '');
