@@ -430,8 +430,8 @@
       }
     }
 
-    const vorname = (profile && profile.vorname) || session.user.user_metadata.vorname || 'Kletterer*in';
-    const nachname = (profile && profile.nachname) || session.user.user_metadata.nachname || '';
+    const vorname = (profile && profile.vorname) || (session.user.user_metadata || {}).vorname || 'Kletterer*in';
+    const nachname = (profile && profile.nachname) || (session.user.user_metadata || {}).nachname || '';
     const email = (profile && profile.email) || session.user.email || '';
     const level = (profile && profile.level) || '';
     const initials = ((vorname[0] || '') + (nachname[0] || '')).toUpperCase() || 'BM';
@@ -3026,7 +3026,7 @@
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         const profile = await fetchProfile(client, session.user.id);
-        const autorName = (profile && profile.vorname) || session.user.user_metadata.vorname || 'Kletterer*in';
+        const autorName = (profile && profile.vorname) || (session.user.user_metadata || {}).vorname || 'Kletterer*in';
         try {
           await client.from('kommentare').insert({ artikel_id: articleId, user_id: session.user.id, autor_name: autorName, text });
           textEl.value = '';
