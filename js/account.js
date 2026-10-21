@@ -2979,6 +2979,17 @@
     return { label: 'in Ordnung', bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)', next };
   }
 
+  function itemMetaLine(it) {
+    const parts = [it.kategorie];
+    if (it.materialart) parts.push(it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall');
+    if (it.hersteller) parts.push(it.hersteller);
+    return parts.join(' · ');
+  }
+
+  function itemName(it) {
+    return [it.hersteller, it.modellbezeichnung].filter(Boolean).join(' — ') || it.kategorie;
+  }
+
   async function renderPsa(ctx) {
     const { client, session } = ctx;
     const userId = session.user.id;
@@ -3011,17 +3022,6 @@
       if (scope === 'psa') return aktive.filter(i => i.ist_psa);
       if (scope === 'inventar') return aktive.filter(i => !i.ist_psa);
       return aktive;
-    }
-
-    function itemMetaLine(it) {
-      const parts = [it.kategorie];
-      if (it.materialart) parts.push(it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall');
-      if (it.hersteller) parts.push(it.hersteller);
-      return parts.join(' · ');
-    }
-
-    function itemName(it) {
-      return [it.hersteller, it.modellbezeichnung].filter(Boolean).join(' — ') || it.kategorie;
     }
 
     function renderDetail(it) {
@@ -3238,6 +3238,364 @@
 
     await loadAll();
     renderList();
+    await renderSachBoxFor(client, userId);
+  }
+
+  // --------------------------------------------------------------------
+  // Sachkundige-Status/Antrag — wird auf konto-psa im #sachBox angezeigt.
+  // Eigene, von admin_emails getrennte Rolle (siehe schema-psa-sachkundige.sql).
+  // --------------------------------------------------------------------
+  async function renderSachBoxFor(client, userId) {
+    const box = document.getElementById('sachBox');
+    if (!box) return;
+    const { data: row } = await client.from('psa_sachkundige').select('*').eq('user_id', userId).maybeSingle();
+
+    if (!row) {
+      box.innerHTML = `
+        <h3 style="margin:0;font-size:17px">Sachkundige Person werden</h3>
+        <p style="margin:0;font-size:14px;opacity:0.75">Damit darfst du zusätzlich Kund*innen anlegen und deren PSA prüfen (siehe "Kundenmaterial").</p>
+        <button type="button" id="sachApplyBtn" class="btn btn-secondary" style="font-size:14px;padding:10px 18px;align-self:flex-start">Antrag stellen</button>
+        <form id="sachFormBox" hidden style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            <div class="field"><label for="sfPhone">Handynummer</label><input id="sfPhone" class="input" required></div>
+            <div class="field"><label for="sfBirth">Geburtsdatum</label><input id="sfBirth" type="date" class="input" required></div>
+            <div class="field" style="grid-column:1/-1"><label for="sfAddress">Adresse</label><input id="sfAddress" class="input" required></div>
+            <div class="field"><label for="sfOrg">Tätig für</label><input id="sfOrg" class="input" placeholder="BETAMOVE (Standard, wenn leer)"></div>
+            <div class="field"><label for="sfQual">Qualifikationsnachweis</label><input id="sfQual" class="input" placeholder="z.B. DGUV 312-906, Zert.-Nr. …" required></div>
+          </div>
+          <div><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Antrag absenden</button></div>
+          <div id="sachFormError" class="form-error" hidden></div>
+        </form>`;
+      document.getElementById('sachApplyBtn').addEventListener('click', () => {
+        document.getElementById('sachFormBox').hidden = false;
+        document.getElementById('sachApplyBtn').hidden = true;
+      });
+      document.getElementById('sachFormBox').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const { error } = await client.from('psa_sachkundige').insert({
+            user_id: userId,
+            handynummer: document.getElementById('sfPhone').value.trim(),
+            geburtsdatum: document.getElementById('sfBirth').value,
+            adresse: document.getElementById('sfAddress').value.trim(),
+            organisation: document.getElementById('sfOrg').value.trim() || 'BETAMOVE',
+            qualifikationsnachweis: document.getElementById('sfQual').value.trim()
+          });
+          if (error) throw error;
+          await renderSachBoxFor(client, userId);
+        } catch (err) {
+          const errBox = document.getElementById('sachFormError');
+          errBox.hidden = false;
+          errBox.textContent = 'Antrag konnte nicht gesendet werden — bitte Pflichtfelder prüfen.';
+        }
+      });
+      return;
+    }
+
+    if (row.status === 'offen') {
+      box.innerHTML = '<p style="margin:0;font-size:14.5px"><strong>Antrag auf Sachkundige-Freischaltung eingereicht</strong> — wird von der Kursleitung geprüft.</p>';
+    } else if (row.status === 'abgelehnt') {
+      box.innerHTML = '<p style="margin:0;font-size:14.5px">Dein Antrag auf Sachkundige-Freischaltung wurde nicht angenommen. Bei Fragen wende dich an <a href="kontakt">die Kursleitung</a>.</p>';
+    } else {
+      box.innerHTML = '<p style="margin:0;font-size:14.5px"><strong>Freigeschaltete Sachkundige Person</strong>' + (row.freigeschaltet_bis ? ' — gültig bis ' + psaFmtDate(row.freigeschaltet_bis) : '') + '.</p><a href="konto-kunden" class="btn btn-secondary" style="font-size:14px;padding:10px 18px;align-self:flex-start;margin-top:8px">Zum Kundenmaterial</a>';
+    }
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kunden — Kundenmaterial (nur freigeschaltete Sachkundige)
+  // --------------------------------------------------------------------
+  let kundenLogoDataUrlPromise = null;
+  function loadKundenLogoDataUrl() {
+    if (!kundenLogoDataUrlPromise) {
+      kundenLogoDataUrlPromise = fetch('assets-min/logo.png')
+        .then(res => res.blob())
+        .then(blob => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }))
+        .catch(() => null);
+    }
+    return kundenLogoDataUrlPromise;
+  }
+
+  async function generatePruefbescheinigungPdf(kunde, material, pruefListe, aussteller) {
+    if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const marginX = 18;
+    const pageWidth = 210;
+    const brand = [17, 74, 122];
+    const istBetamove = !aussteller.organisation || aussteller.organisation.trim().toLowerCase() === 'betamove';
+    const logoDataUrl = istBetamove ? await loadKundenLogoDataUrl() : null;
+
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    const textX = marginX + (logoDataUrl ? 27 : 0);
+    if (logoDataUrl) { try { doc.addImage(logoDataUrl, 'PNG', marginX, 4, 22, 22); } catch (e) {} }
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text(istBetamove ? 'BETAMOVE' : (aussteller.organisation || ''), textX, 13);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.text('Prüfbescheinigung PSA', textX, 19);
+
+    let y = 42;
+    doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+    doc.text(itemName(material), marginX, y); y += 10;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
+    doc.text('Kund*in', marginX, y); y += 7;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(40);
+    doc.text(kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : ''), marginX, y); y += 10;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
+    doc.text('Material', marginX, y); y += 7;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(40);
+    const stammLines = [
+      'Kategorie: ' + material.kategorie + (material.materialart ? ' · ' + material.materialart : ''),
+      material.seriennummer ? 'Seriennummer: ' + material.seriennummer : (material.chargennummer ? 'Chargennummer: ' + material.chargennummer : null),
+      material.herstellungsdatum ? 'Herstellungsdatum: ' + psaFmtDate(material.herstellungsdatum) : null,
+      material.pruefrhythmus_monate ? 'Prüfrhythmus: alle ' + material.pruefrhythmus_monate + ' Monate' : null
+    ].filter(Boolean);
+    stammLines.forEach(line => { doc.text(line, marginX, y); y += 6; });
+    y += 4;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
+    doc.text('Prüfhistorie', marginX, y); y += 8;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    if (!pruefListe.length) {
+      doc.setTextColor(120); doc.text('Noch keine Prüfung eingetragen.', marginX, y); y += 6;
+    } else {
+      pruefListe.forEach(p => {
+        doc.setTextColor(40);
+        doc.text(psaFmtDate(p.pruefdatum) + ' · ' + (PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis), marginX, y); y += 6;
+        if (p.notiz) { doc.setTextColor(100); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(p.notiz, pageWidth - marginX * 2 - 4), marginX + 4, y); y += 6; doc.setFontSize(10); }
+      });
+    }
+    y += 8;
+
+    doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.5);
+    doc.line(marginX, y, pageWidth - marginX, y); y += 8;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40);
+    doc.text('Geprüft von: ' + aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + ')' : ''), marginX, y); y += 6;
+    doc.text('Ausgestellt am: ' + new Date().toLocaleDateString('de-DE'), marginX, y); y += 10;
+
+    doc.setFontSize(8.5); doc.setTextColor(120);
+    const disclaimer = istBetamove
+      ? 'BETAMOVE · betamove.de'
+      : 'Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung.';
+    doc.text(doc.splitTextToSize(disclaimer, pageWidth - marginX * 2), marginX, 282);
+
+    doc.save('Pruefbescheinigung_' + kunde.name.replace(/\s+/g, '-') + '_' + material.kategorie.replace(/\s+/g, '-') + '.pdf');
+  }
+
+  async function renderKunden(ctx) {
+    const { client, session, profile } = ctx;
+    const userId = session.user.id;
+    const gateEl = document.getElementById('kundenGate');
+    const areaEl = document.getElementById('kundenArea');
+
+    const { data: sachRow } = await client.from('psa_sachkundige').select('*').eq('user_id', userId).maybeSingle();
+    const today = new Date().toISOString().slice(0, 10);
+    const isSach = !!sachRow && sachRow.status === 'freigeschaltet' && (!sachRow.freigeschaltet_bis || sachRow.freigeschaltet_bis >= today);
+
+    if (!isSach) {
+      gateEl.hidden = false;
+      areaEl.hidden = true;
+      document.getElementById('kundenGateText').textContent = sachRow && sachRow.status === 'offen'
+        ? 'Dein Antrag auf Sachkundige-Freischaltung wird noch geprüft.'
+        : 'Du bist noch keine freigeschaltete Sachkundige Person.';
+      return;
+    }
+    gateEl.hidden = true;
+    areaEl.hidden = false;
+
+    let kunden = [];
+    let materialByKunde = {};
+    let pruefByMaterial = {};
+    let openKundeId = null;
+
+    async function loadAll() {
+      const { data } = await client.from('kunden').select('*').eq('erstellt_von', userId).order('created_at', { ascending: false });
+      kunden = data || [];
+      materialByKunde = {};
+      pruefByMaterial = {};
+      const kIds = kunden.map(k => k.id);
+      if (kIds.length) {
+        const { data: mat } = await client.from('psa_material').select('*').in('kunde_id', kIds).order('created_at', { ascending: false });
+        (mat || []).forEach(m => { (materialByKunde[m.kunde_id] = materialByKunde[m.kunde_id] || []).push(m); });
+        const matIds = (mat || []).map(m => m.id);
+        if (matIds.length) {
+          const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', matIds).order('pruefdatum', { ascending: false });
+          (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
+        }
+      }
+    }
+
+    function renderMaterialDetail(kunde, m) {
+      const pruef = pruefByMaterial[m.id] || [];
+      return `
+        <div style="border-top:1px solid var(--color-divider);margin-top:10px;padding-top:12px">
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+            ${(pruef.length ? pruef : []).map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') || '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
+          </div>
+          <form data-m-pruef="${m.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div class="field" style="min-width:160px"><label>Ergebnis</label>
+              <select class="input" data-f="ergebnis" required>
+                <option value="gut">Gut – weiter verwenden</option>
+                <option value="mangel">Mangel festgestellt</option>
+                <option value="aussondern">Aussondern</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
+            <button type="submit" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfung eintragen</button>
+          </form>
+          <button type="button" class="btn btn-secondary" data-m-pdf="${m.id}" style="font-size:13px;padding:9px 16px">Prüfbescheinigung herunterladen</button>
+        </div>`;
+    }
+
+    function renderKundeCard(k) {
+      const items = materialByKunde[k.id] || [];
+      const open = openKundeId === k.id;
+      return `
+        <div class="card elev-sm" style="gap:0">
+          <button type="button" data-k-toggle="${k.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:15.5px">${escapeHtml(k.name)}</div>
+              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml([k.kundennummer, k.email, k.telefon].filter(Boolean).join(' · ') || 'keine weiteren Angaben')}</div>
+            </div>
+            <span class="tag tag-neutral">${items.length} Gegenstände</span>
+          </button>
+          ${open ? `
+          <div style="border-top:1px solid var(--color-divider);margin-top:14px;padding-top:16px">
+            <button type="button" class="btn btn-secondary" data-k-newmaterial="${k.id}" style="font-size:13.5px;padding:10px 16px;margin-bottom:14px">+ Neues PSA für ${escapeHtml(k.name)}</button>
+            <form data-k-material-form="${k.id}" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:var(--color-surface);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
+              <div class="field"><label>Kategorie</label><select class="input" data-f="kategorie">${PSA_KATEGORIEN.map(kt => `<option>${escapeHtml(kt)}</option>`).join('')}</select></div>
+              <div class="field"><label>Materialart</label><select class="input" data-f="materialart"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option></select></div>
+              <div class="field"><label>Hersteller</label><input class="input" data-f="hersteller"></div>
+              <div class="field"><label>Modellbezeichnung</label><input class="input" data-f="modellbezeichnung"></div>
+              <div class="field"><label>Seriennummer</label><input class="input" data-f="seriennummer"></div>
+              <div class="field"><label>Chargennummer</label><input class="input" data-f="chargennummer"></div>
+              <div class="field"><label>Herstellungsdatum</label><input type="date" class="input" data-f="herstellungsdatum"></div>
+              <div class="field"><label>Max. Lebensdauer (Jahre)</label><input type="number" min="1" max="99" class="input" data-f="max_lebensdauer_jahre"></div>
+              <div class="field" style="grid-column:1/-1"><label>Prüfrhythmus</label>
+                <select class="input" data-f="pruefrhythmus_monate"><option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option></select>
+              </div>
+              <div style="grid-column:1/-1"><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">PSA anlegen</button></div>
+            </form>
+            ${items.map(m => `
+              <div style="margin-bottom:14px">
+                <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(m))}</div>
+                <div style="font-size:12px;opacity:0.65">${escapeHtml(itemMetaLine(m))}</div>
+                ${renderMaterialDetail(k, m)}
+              </div>`).join('') || '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch kein PSA für diese Kund*in erfasst.</p>'}
+          </div>` : ''}
+        </div>`;
+    }
+
+    function render() {
+      const listEl = document.getElementById('kundenList');
+      document.getElementById('kundenEmpty').hidden = kunden.length > 0;
+      listEl.innerHTML = kunden.map(renderKundeCard).join('');
+      wireEvents();
+    }
+
+    function wireEvents() {
+      document.querySelectorAll('[data-k-toggle]').forEach(el => {
+        el.addEventListener('click', () => { const id = el.dataset.kToggle; openKundeId = openKundeId === id ? null : id; render(); });
+      });
+      document.querySelectorAll('[data-k-newmaterial]').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const form = document.querySelector('[data-k-material-form="' + el.dataset.kNewmaterial + '"]');
+          if (form) form.hidden = !form.hidden;
+        });
+      });
+      document.querySelectorAll('[data-k-material-form]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const kundeId = form.dataset.kMaterialForm;
+          const val = (name) => form.querySelector('[data-f="' + name + '"]').value;
+          const payload = {
+            user_id: userId,
+            kunde_id: kundeId,
+            eigentuemer_typ: 'kunde',
+            ist_psa: true,
+            kategorie: val('kategorie'),
+            materialart: val('materialart') || null,
+            hersteller: val('hersteller').trim() || null,
+            modellbezeichnung: val('modellbezeichnung').trim() || null,
+            seriennummer: val('seriennummer').trim() || null,
+            chargennummer: val('chargennummer').trim() || null,
+            herstellungsdatum: val('herstellungsdatum') || null,
+            max_lebensdauer_jahre: val('max_lebensdauer_jahre') ? Number(val('max_lebensdauer_jahre')) : null,
+            pruefrhythmus_monate: Number(val('pruefrhythmus_monate'))
+          };
+          await client.from('psa_material').insert(payload);
+          await loadAll();
+          render();
+        });
+      });
+      document.querySelectorAll('[data-m-pruef]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const materialId = form.dataset.mPruef;
+          await client.from('psa_pruefprotokoll').insert({
+            material_id: materialId,
+            geprueft_von: userId,
+            ergebnis: form.querySelector('[data-f="ergebnis"]').value,
+            notiz: form.querySelector('[data-f="notiz"]').value.trim() || null
+          });
+          await loadAll();
+          render();
+        });
+      });
+      document.querySelectorAll('[data-m-pdf]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const materialId = btn.dataset.mPdf;
+          const kunde = kunden.find(k => (materialByKunde[k.id] || []).some(m => m.id === materialId));
+          const material = (materialByKunde[kunde.id] || []).find(m => m.id === materialId);
+          const pruef = pruefByMaterial[materialId] || [];
+          const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow.organisation };
+          generatePruefbescheinigungPdf(kunde, material, pruef, aussteller);
+        });
+      });
+    }
+
+    const newBtn = document.getElementById('kundeNewBtn');
+    const formBox = document.getElementById('kundeFormBox');
+    const cancelBtn = document.getElementById('kundeFormCancel');
+    const errBox = document.getElementById('kundeFormError');
+    newBtn.addEventListener('click', () => { formBox.reset(); errBox.hidden = true; formBox.hidden = false; formBox.scrollIntoView({ behavior: 'smooth' }); });
+    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
+    formBox.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('kfName').value.trim();
+      if (!name) return;
+      try {
+        const { error } = await client.from('kunden').insert({
+          erstellt_von: userId,
+          name,
+          kundennummer: document.getElementById('kfKundennummer').value.trim() || null,
+          email: document.getElementById('kfEmail').value.trim() || null,
+          telefon: document.getElementById('kfTelefon').value.trim() || null
+        });
+        if (error) throw error;
+        formBox.hidden = true;
+        await loadAll();
+        render();
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Kunde konnte nicht angelegt werden.';
+      }
+    });
+
+    await loadAll();
+    render();
   }
 
   // --------------------------------------------------------------------
@@ -3252,7 +3610,8 @@
       'konto-qualifikationen': renderQualifikationen,
       'konto-weg': renderWeg,
       'konto-training': renderTraining,
-      'konto-psa': renderPsa
+      'konto-psa': renderPsa,
+      'konto-kunden': renderKunden
     };
 
     if (accountPages[page]) {
