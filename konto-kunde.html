@@ -75,30 +75,7 @@
 
           <dl id="kundeStammdaten" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 20px;background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:20px 24px;margin:0 0 26px"></dl>
 
-          <button type="button" id="kmNewBtn" class="btn btn-primary" style="font-size:15px;padding:12px 22px;margin-bottom:18px">+ Neues PSA hinzufügen</button>
-
-          <form id="kmFormBox" class="card elev-sm" hidden style="margin-bottom:26px;gap:16px">
-            <h3 style="margin:0;font-size:18px">Neues PSA hinzufügen</h3>
-            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
-              <div class="field"><label for="kmKategorie">Kategorie</label><select id="kmKategorie" class="input"></select></div>
-              <div class="field"><label for="kmMaterialart">Materialart</label>
-                <select id="kmMaterialart" class="input"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option></select>
-              </div>
-              <div class="field"><label for="kmHersteller">Hersteller</label><input id="kmHersteller" class="input"></div>
-              <div class="field"><label for="kmModell">Modellbezeichnung</label><input id="kmModell" class="input"></div>
-              <div class="field"><label for="kmSeriennummer">Seriennummer</label><input id="kmSeriennummer" class="input"></div>
-              <div class="field"><label for="kmChargennummer">Chargennummer</label><input id="kmChargennummer" class="input"></div>
-              <div class="field"><label for="kmHerstellungsdatum">Herstellungsdatum</label><input id="kmHerstellungsdatum" type="date" class="input"></div>
-              <div class="field"><label for="kmLebensdauer">Max. Lebensdauer (Jahre)</label><input id="kmLebensdauer" type="number" min="1" max="99" class="input"></div>
-              <div class="field" style="grid-column:1/-1"><label for="kmPruefrhythmus">Prüfrhythmus</label>
-                <select id="kmPruefrhythmus" class="input"><option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option></select>
-              </div>
-            </div>
-            <div style="display:flex;gap:10px">
-              <button type="submit" class="btn btn-primary" style="font-size:15px;padding:12px 22px">PSA anlegen</button>
-              <button type="button" id="kmFormCancel" class="btn btn-secondary" style="font-size:15px;padding:12px 22px">Abbrechen</button>
-            </div>
-          </form>
+          <a id="kmNewBtn" href="#" class="btn btn-primary" style="font-size:15px;padding:12px 22px;margin-bottom:18px;display:inline-block">+ Neues PSA hinzufügen</a>
 
           <div id="kmList" style="display:flex;flex-direction:column;gap:12px"></div>
           <p id="kmEmpty" style="margin:18px 0 0;font-size:15.5px;opacity:0.7" hidden>Noch kein PSA für diese Kund*in erfasst.</p>

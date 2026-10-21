@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neue PSA hinzufügen — BETAMOVE Konto</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="ausbildung">Ausbildung</a>
+      <a href="team">Team</a>
+      <a href="ueber-uns">Über uns</a>
+      <a href="wissen">Wissen</a>
+      <a href="kontakt">Kontakt</a>
+    </nav>
+    <div data-r="navactions">
+      <a href="anmeldung" class="btn btn-primary" style="font-size:15px;padding:10px 20px">Kurs buchen</a>
+      <a href="login" class="nav-login">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Anmelden</span>
+      </a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
+<div class="preview-banner">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+  <span>Lädt dein Konto …</span>
+</div>
+
+    <div data-r="dash" style="display:grid;grid-template-columns:264px minmax(0,1fr);gap:36px;align-items:start">
+      <aside data-r="dashside" style="position:sticky;top:96px;display:flex;flex-direction:column;gap:18px">
+        <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.2);padding:24px 22px;text-align:center;box-shadow:var(--shadow-sm)">
+          <div data-acc="initials" style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-family:var(--font-heading);font-size:30px">–</div>
+          <div data-acc="name" style="font-family:var(--font-heading);font-size:21px;line-height:1.2">…</div>
+          <div data-acc="email" style="font-size:13.5px;opacity:0.65;margin-top:5px;word-break:break-word"></div>
+          <div data-acc="level" hidden style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--color-accent-700);background:var(--color-surface);border-radius:999px;padding:7px 12px;display:inline-block"></div>
+        </div>
+        <nav data-r="konto-nav" style="display:flex;flex-direction:column;gap:6px">
+<a href="konto" class="konto-nav-link">Übersicht</a>
+<a href="konto-weg" class="konto-nav-link">Mein Ausbildungsweg</a>
+<a href="konto-qualifikationen" class="konto-nav-link">Qualifikationen</a>
+<a href="konto-lernen" class="konto-nav-link">Mein Lernstand</a>
+<a href="konto-training" class="konto-nav-link">Training</a>
+<a href="konto-psa" class="konto-nav-link active">PSA-Prüftool</a>
+<a href="konto-kunden" class="konto-nav-link">Kundenmaterial</a>
+<a href="konto-profil" class="konto-nav-link">Profil</a>
+        </nav>
+        <button type="button" id="logoutBtn" style="cursor:pointer;font:inherit;font-size:14.5px;font-weight:600;padding:12px 18px;border-radius:999px;border:2px solid var(--color-divider);background:transparent;color:var(--color-text)">Abmelden</button>
+      </aside>
+      <div>
+        <a href="konto-psa-neu" style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;margin-bottom:14px;text-decoration:none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+          Zurück
+        </a>
+        <h1 style="margin:0 0 26px;font-size:28px">Neue PSA hinzufügen</h1>
+
+        <form id="neForm" class="card elev-sm" style="max-width:720px;gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+            <div class="field"><label for="neKategorie">Kategorie</label><select id="neKategorie" class="input"></select></div>
+            <div class="field"><label for="neMaterialart">Materialart</label>
+              <select id="neMaterialart" class="input"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option></select>
+            </div>
+            <div class="field"><label for="neHersteller">Hersteller</label><input id="neHersteller" class="input" placeholder="z.B. Edelrid"></div>
+            <div class="field"><label for="neModell">Modellbezeichnung</label><input id="neModell" class="input" placeholder="z.B. Jay III"></div>
+            <div class="field"><label for="neSeriennummer">Seriennummer <span style="font-weight:400;opacity:0.7">(oder Chargennummer)</span></label><input id="neSeriennummer" class="input"></div>
+            <div class="field"><label for="neChargennummer">Chargennummer</label><input id="neChargennummer" class="input"></div>
+            <div class="field"><label for="neHerstellungsdatum">Herstellungsdatum</label><input id="neHerstellungsdatum" type="date" class="input"></div>
+            <div class="field"><label for="neKaufdatum">Kaufdatum</label><input id="neKaufdatum" type="date" class="input"></div>
+            <div class="field"><label for="neErsteNutzung">Datum erste Nutzung</label><input id="neErsteNutzung" type="date" class="input"></div>
+            <div class="field"><label for="neLebensdauer">Max. Lebensdauer (Jahre)</label><input id="neLebensdauer" type="number" min="1" max="99" class="input" placeholder="z.B. 10"></div>
+            <div class="field" style="grid-column:1/-1"><label for="nePruefrhythmus">Prüfrhythmus</label>
+              <select id="nePruefrhythmus" class="input">
+                <option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option>
+              </select>
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:12px;background:var(--color-surface);border-radius:var(--radius-md);padding:14px 18px;cursor:pointer">
+            <input type="checkbox" id="neAusleihbar" style="width:20px;height:20px;accent-color:var(--color-accent);flex:none">
+            <span style="font-size:14.5px;font-weight:600">Zum Ausleihen freigeben</span>
+          </label>
+          <div><button type="submit" class="btn btn-primary" style="font-size:15px;padding:13px 24px">PSA anlegen</button></div>
+          <div id="neFormError" class="form-error" hidden></div>
+        </form>
+      </div>
+    </div>
+  </main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse">Kurse</a>
+      <a href="ausbildung">Ausbildungsprogramm</a>
+      <a href="anmeldung">Anmeldung</a>
+      <a href="team">Team</a>
+      <a href="ueber-uns">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen">Wissen</a>
+      <a href="konto">Mein Konto</a>
+      <a href="kontakt">Kontakt</a>
+      <a href="agb">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum">Impressum</a>
+      <a href="datenschutz">Datenschutz</a>
+      <a href="widerruf">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js?v=20261020"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js?v=20261020"></script>
+</body>
+</html>

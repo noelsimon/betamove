@@ -2996,99 +2996,44 @@
 
     let items = [];
     let pruefByMaterial = {};
-    let ausleiheByMaterial = {};
     let scope = 'psa';
-    let openId = null;
 
     async function loadAll() {
-      const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).order('created_at', { ascending: false });
       items = mat || [];
       const ids = items.map(i => i.id);
       pruefByMaterial = {};
-      ausleiheByMaterial = {};
       if (ids.length) {
-        const [{ data: pruef }, { data: leihe }] = await Promise.all([
-          client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false }),
-          client.from('psa_ausleihe').select('*').in('material_id', ids).order('ausgegeben_am', { ascending: false })
-        ]);
+        const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false });
         (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
-        (leihe || []).forEach(l => { (ausleiheByMaterial[l.material_id] = ausleiheByMaterial[l.material_id] || []).push(l); });
       }
     }
 
     function visibleItems() {
-      if (scope === 'inaktiv') return items.filter(i => !i.aktiv);
       const aktive = items.filter(i => i.aktiv);
       if (scope === 'psa') return aktive.filter(i => i.ist_psa);
       if (scope === 'inventar') return aktive.filter(i => !i.ist_psa);
       return aktive;
     }
 
-    function renderDetail(it) {
-      const pruef = pruefByMaterial[it.id] || [];
-      const letzte = pruef[0] ? pruef[0].pruefdatum : null;
-      const leihe = ausleiheByMaterial[it.id] || [];
-      const laufend = leihe.find(l => !l.zurueckgegeben_am);
-
-      const stammdaten = [
-        ['Seriennummer', it.seriennummer], ['Chargennummer', it.chargennummer],
-        ['Herstellungsdatum', it.herstellungsdatum ? psaFmtDate(it.herstellungsdatum) : null],
-        ['Kaufdatum', it.kaufdatum ? psaFmtDate(it.kaufdatum) : null],
-        ['Erste Nutzung', it.erste_nutzung ? psaFmtDate(it.erste_nutzung) : null],
-        ['Max. Lebensdauer', it.max_lebensdauer_jahre ? it.max_lebensdauer_jahre + ' Jahre' : null],
-        ['Prüfrhythmus', it.pruefrhythmus_monate ? 'alle ' + it.pruefrhythmus_monate + ' Monate' : 'kein Rhythmus']
-      ].filter(([, v]) => v);
-
-      return `
-        <div style="border-top:1px solid var(--color-divider);margin-top:14px;padding-top:16px;display:flex;flex-direction:column;gap:18px">
-          <dl style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 20px;margin:0">
-            ${stammdaten.map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('')}
-          </dl>
-
-          ${it.ist_psa ? `
-          <div>
-            <h4 style="margin:0 0 10px;font-size:15px">Prüfhistorie</h4>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-              ${pruef.length ? pruef.map(p => `
-                <div style="background:var(--color-surface);border-radius:var(--radius-sm);padding:10px 14px;font-size:13.5px">
-                  <strong>${psaFmtDate(p.pruefdatum)}</strong> · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}
-                </div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
-            </div>
-            <form data-pruef-form="${it.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-              <div class="field" style="min-width:160px"><label>Ergebnis</label>
-                <select class="input" data-f="ergebnis" required>
-                  <option value="gut">Gut – weiter verwenden</option>
-                  <option value="mangel">Mangel festgestellt</option>
-                  <option value="aussondern">Aussondern</option>
-                </select>
-              </div>
-              <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
-              <button type="submit" class="btn btn-secondary" style="font-size:14px;padding:11px 18px">Prüfung eintragen</button>
-            </form>
-          </div>` : ''}
-
-          ${it.ausleihbar ? `
-          <div>
-            <h4 style="margin:0 0 10px;font-size:15px">Verleih</h4>
-            ${laufend
-              ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f7ecd2;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:10px">
-                   <span style="font-size:13.5px">Ausgeliehen an <strong>${escapeHtml(laufend.ausgeliehen_an)}</strong> seit ${psaFmtDate(laufend.ausgegeben_am)}</span>
-                   <button type="button" class="btn btn-secondary" data-ausleihe-return="${laufend.id}" style="font-size:13px;padding:8px 14px">Zurückgeben</button>
-                 </div>`
-              : `<form data-ausleihe-form="${it.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
-                   <div class="field" style="flex:1;min-width:200px"><label>An wen?</label><input class="input" data-f="an" required maxlength="160" placeholder="Name"></div>
-                   <button type="submit" class="btn btn-secondary" style="font-size:14px;padding:11px 18px">Ausleihen</button>
-                 </form>`}
-            <div style="display:flex;flex-direction:column;gap:6px">
-              ${leihe.filter(l => l !== laufend).map(l => `
-                <div style="font-size:12.5px;opacity:0.75">${escapeHtml(l.ausgeliehen_an)} · ${psaFmtDate(l.ausgegeben_am)} → ${l.zurueckgegeben_am ? psaFmtDate(l.zurueckgegeben_am) : 'offen'}</div>`).join('')}
-            </div>
-          </div>` : ''}
-
-          <div>
-            <button type="button" class="btn btn-secondary" data-toggle-aktiv="${it.id}" style="font-size:13px;padding:9px 16px">${it.aktiv ? 'Als inaktiv markieren (aussondern)' : 'Wieder aktivieren'}</button>
-          </div>
-        </div>`;
+    function renderStats() {
+      const aktive = items.filter(i => i.aktiv && i.ist_psa);
+      const statuses = aktive.map(it => psaStatus(it, (pruefByMaterial[it.id] || [])[0] ? pruefByMaterial[it.id][0].pruefdatum : null));
+      const ok = statuses.filter(s => s && s.label === 'in Ordnung').length;
+      const soon = statuses.filter(s => s && s.label === 'bald fällig').length;
+      const late = statuses.filter(s => s && s.label === 'ÜBERFÄLLIG').length;
+      document.getElementById('psaStats').innerHTML = [
+        [String(items.filter(i => i.aktiv).length), 'Gegenstände gesamt', 'var(--color-surface)', 'var(--color-text)'],
+        [String(ok), 'in Ordnung', 'var(--color-accent-2-100)', 'var(--color-accent-2-800)'],
+        [String(soon), 'bald fällig (< 30 Tage)', '#f7ecd2', '#8a6a1f'],
+        [String(late), 'überfällig', 'var(--color-warn-bg)', 'var(--color-warn)']
+      ].map(([n, label, bg, fg]) => `
+        <div style="background:${bg};border-radius:var(--radius-lg);padding:18px 20px">
+          <div style="font-size:26px;font-weight:700;color:${fg}">${n}</div>
+          <div style="font-size:12.5px;color:${fg};margin-top:2px;opacity:0.85">${label}</div>
+        </div>`).join('');
+      const inaktivLink = document.getElementById('psaInaktivLink');
+      if (inaktivLink) inaktivLink.textContent = 'Inaktives Material anzeigen (' + items.filter(i => !i.aktiv).length + ') →';
     }
 
     function renderList() {
@@ -3100,73 +3045,18 @@
       listEl.innerHTML = list.map(it => {
         const pruef = pruefByMaterial[it.id] || [];
         const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
-        const open = openId === it.id;
         return `
-        <div class="card elev-sm" style="gap:0">
-          <button type="button" data-toggle-open="${it.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(it))}</div>
-              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(it))}</div>
-            </div>
-            ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : (it.ist_psa ? '<span class="tag tag-neutral">keine Prüfung</span>' : '')}
-            ${it.ausleihbar ? '<span class="tag tag-accent-2">ausleihbar</span>' : ''}
-          </button>
-          ${open ? renderDetail(it) : ''}
-        </div>`;
+        <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" class="card elev-sm hover-border" style="flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(it))}</div>
+            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(it))}</div>
+          </div>
+          ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : (it.ist_psa ? '<span class="tag tag-neutral">keine Prüfung</span>' : '')}
+          ${it.ausleihbar ? '<span class="tag tag-accent-2">ausleihbar</span>' : ''}
+        </a>`;
       }).join('');
-      wireListEvents();
     }
 
-    function wireListEvents() {
-      document.querySelectorAll('[data-toggle-open]').forEach(el => {
-        el.addEventListener('click', () => { const id = el.dataset.toggleOpen; openId = openId === id ? null : id; renderList(); });
-      });
-      document.querySelectorAll('[data-toggle-aktiv]').forEach(el => {
-        el.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const id = el.dataset.toggleAktiv;
-          const it = items.find(i => i.id === id);
-          if (!it) return;
-          await client.from('psa_material').update({ aktiv: !it.aktiv }).eq('id', id);
-          await loadAll();
-          renderList();
-        });
-      });
-      document.querySelectorAll('[data-pruef-form]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const materialId = form.dataset.pruefForm;
-          const ergebnis = form.querySelector('[data-f="ergebnis"]').value;
-          const notiz = form.querySelector('[data-f="notiz"]').value.trim();
-          await client.from('psa_pruefprotokoll').insert({ material_id: materialId, geprueft_von: userId, ergebnis, notiz: notiz || null });
-          await loadAll();
-          renderList();
-        });
-      });
-      document.querySelectorAll('[data-ausleihe-form]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const materialId = form.dataset.ausleiheForm;
-          const an = form.querySelector('[data-f="an"]').value.trim();
-          if (!an) return;
-          await client.from('psa_ausleihe').insert({ material_id: materialId, ausgeliehen_an: an });
-          await loadAll();
-          renderList();
-        });
-      });
-      document.querySelectorAll('[data-ausleihe-return]').forEach(el => {
-        el.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          await client.from('psa_ausleihe').update({ zurueckgegeben_am: new Date().toISOString().slice(0, 10) }).eq('id', el.dataset.ausleiheReturn);
-          await loadAll();
-          renderList();
-        });
-      });
-    }
-
-    // Scope-Filter
     document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.scope === scope);
       btn.addEventListener('click', () => {
@@ -3176,69 +3066,288 @@
       });
     });
 
-    // Neu-Formular
-    const formBox = document.getElementById('psaFormBox');
-    const newBtn = document.getElementById('psaNewBtn');
-    const cancelBtn = document.getElementById('psaFormCancel');
-    const errBox = document.getElementById('psaFormError');
-    const fIstPsa = document.getElementById('fIstPsa');
-    const fKategorie = document.getElementById('fKategorie');
-    const psaOnlyGroups = ['fMaterialartGroup', 'fSeriennummerGroup', 'fChargennummerGroup', 'fHerstellungsdatumGroup', 'fKaufdatumGroup', 'fErsteNutzungGroup', 'fLebensdauerGroup'];
+    await loadAll();
+    renderStats();
+    renderList();
+    await renderSachBoxFor(client, userId);
+  }
 
-    function syncFormForType() {
-      const isPsa = fIstPsa.checked;
-      const kats = isPsa ? PSA_KATEGORIEN : INVENTAR_KATEGORIEN;
-      fKategorie.innerHTML = kats.map(k => `<option>${escapeHtml(k)}</option>`).join('');
-      psaOnlyGroups.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = !isPsa; });
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-detail — Gegenstand-Detail für eigenes Material (?id=)
+  // --------------------------------------------------------------------
+  async function renderPsaDetail(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const id = new URLSearchParams(location.search).get('id');
+    const gateEl = document.getElementById('pdGate');
+    const areaEl = document.getElementById('pdArea');
+
+    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).eq('user_id', userId).maybeSingle() : { data: null };
+    if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    let pruef = [];
+    let leihe = [];
+    let historyTab = 'pruef';
+
+    async function loadAll() {
+      const [{ data: p }, { data: l }] = await Promise.all([
+        client.from('psa_pruefprotokoll').select('*').eq('material_id', it.id).order('pruefdatum', { ascending: false }),
+        client.from('psa_ausleihe').select('*').eq('material_id', it.id).order('ausgegeben_am', { ascending: false })
+      ]);
+      pruef = p || [];
+      leihe = l || [];
     }
-    fIstPsa.addEventListener('change', syncFormForType);
-    syncFormForType();
 
-    newBtn.addEventListener('click', () => {
-      formBox.reset();
-      fIstPsa.checked = true;
-      syncFormForType();
-      errBox.hidden = true;
-      formBox.hidden = false;
-      formBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function renderHeader() {
+      document.getElementById('pdTitel').textContent = itemName(it);
+      const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+      const pill = document.getElementById('pdStatusPill');
+      if (status) { pill.hidden = false; pill.textContent = status.label; pill.style.background = status.bg; pill.style.color = status.fg; }
+      else { pill.hidden = true; }
+
+      const stammdaten = [
+        ['Kategorie', it.kategorie], ['Materialart', it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : it.materialart === 'textil_metall' ? 'Textil + Metall' : null],
+        ['Hersteller', it.hersteller], ['Seriennummer', it.seriennummer], ['Chargennummer', it.chargennummer],
+        ['Herstellungsdatum', it.herstellungsdatum ? psaFmtDate(it.herstellungsdatum) : null],
+        ['Kaufdatum', it.kaufdatum ? psaFmtDate(it.kaufdatum) : null],
+        ['Erste Nutzung', it.erste_nutzung ? psaFmtDate(it.erste_nutzung) : null],
+        ['Max. Lebensdauer', it.max_lebensdauer_jahre ? it.max_lebensdauer_jahre + ' Jahre' : null],
+        ['Prüfrhythmus', it.pruefrhythmus_monate ? 'alle ' + it.pruefrhythmus_monate + ' Monate' : 'kein Rhythmus']
+      ].filter(([, v]) => v);
+      document.getElementById('pdStammdaten').innerHTML = stammdaten.map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
+
+      document.getElementById('pdPruefenLink').href = 'konto-psa-pruefung?id=' + encodeURIComponent(it.id);
+      const aktivBtn = document.getElementById('pdToggleAktivBtn');
+      aktivBtn.textContent = it.aktiv ? 'Als inaktiv markieren (aussondern)' : 'Wieder aktivieren';
+      aktivBtn.onclick = async () => { await client.from('psa_material').update({ aktiv: !it.aktiv }).eq('id', it.id); it.aktiv = !it.aktiv; renderHeader(); };
+
+      const ausleihBox = document.getElementById('pdAusleihBox');
+      const verleihTabBtn = document.getElementById('pdVerleihTabBtn');
+      if (it.ausleihbar) {
+        verleihTabBtn.hidden = false;
+        const laufend = leihe.find(l => !l.zurueckgegeben_am);
+        ausleihBox.hidden = false;
+        if (laufend) {
+          ausleihBox.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:14.5px">Ausgeliehen an <strong>${escapeHtml(laufend.ausgeliehen_an)}</strong> seit ${psaFmtDate(laufend.ausgegeben_am)}</span>
+            <button type="button" id="pdAusleiheReturnBtn" class="btn btn-secondary" style="font-size:13.5px;padding:9px 16px">Zurückgeben</button>
+          </div>`;
+          document.getElementById('pdAusleiheReturnBtn').addEventListener('click', async () => {
+            await client.from('psa_ausleihe').update({ zurueckgegeben_am: new Date().toISOString().slice(0, 10) }).eq('id', laufend.id);
+            await loadAll(); renderHeader(); renderTabs();
+          });
+        } else {
+          ausleihBox.innerHTML = `<form id="pdAusleiheForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="flex:1;min-width:200px"><label>An wen ausleihen?</label><input class="input" id="pdAusleiheAn" required maxlength="160" placeholder="Name"></div>
+            <button type="submit" class="btn btn-secondary" style="font-size:14px;padding:11px 18px">Ausleihen</button>
+          </form>`;
+          document.getElementById('pdAusleiheForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const an = document.getElementById('pdAusleiheAn').value.trim();
+            if (!an) return;
+            await client.from('psa_ausleihe').insert({ material_id: it.id, ausgeliehen_an: an });
+            await loadAll(); renderHeader(); renderTabs();
+          });
+        }
+      } else {
+        verleihTabBtn.hidden = true;
+        ausleihBox.hidden = true;
+        if (historyTab === 'verleih') historyTab = 'pruef';
+      }
+    }
+
+    function renderTabs() {
+      document.querySelectorAll('#pdTabs [data-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === historyTab && !btn.hidden));
+      const content = document.getElementById('pdTabContent');
+      if (historyTab === 'pruef') {
+        content.innerHTML = pruef.length ? pruef.map(p => `
+          <div style="padding:12px 0;border-top:1px solid var(--color-divider)"><strong>${psaFmtDate(p.pruefdatum)}</strong> · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`
+        ).join('') : '<p style="margin:0;font-size:14.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
+      } else {
+        content.innerHTML = leihe.length ? leihe.map(l => `
+          <div style="padding:12px 0;border-top:1px solid var(--color-divider)">${escapeHtml(l.ausgeliehen_an)} · ${psaFmtDate(l.ausgegeben_am)} → ${l.zurueckgegeben_am ? psaFmtDate(l.zurueckgegeben_am) : 'offen'}</div>`
+        ).join('') : '<p style="margin:0;font-size:14.5px;opacity:0.65">Noch keine Ausleihe.</p>';
+      }
+    }
+
+    document.querySelectorAll('#pdTabs [data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => { historyTab = btn.dataset.tab; renderTabs(); });
     });
-    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
 
-    formBox.addEventListener('submit', async (e) => {
+    await loadAll();
+    renderHeader();
+    renderTabs();
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-pruefung — Prüfung durchführen (?id=, optional &kunde=)
+  // Gemeinsam für eigenes Material und Kundenmaterial.
+  // --------------------------------------------------------------------
+  async function renderPsaPruefung(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const kundeId = params.get('kunde');
+    const gateEl = document.getElementById('pGate');
+    const areaEl = document.getElementById('pArea');
+
+    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).eq('user_id', userId).maybeSingle() : { data: null };
+    if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    document.getElementById('pItemName').textContent = itemName(it);
+    const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId) : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
+    document.getElementById('pBackLink').href = backHref;
+
+    document.getElementById('pForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const kategorie = fKategorie.value;
-      if (!kategorie) return;
+      const ergebnis = document.querySelector('#pForm input[name="ergebnis"]:checked').value;
+      const notiz = document.getElementById('pNotiz').value.trim();
+      await client.from('psa_pruefprotokoll').insert({ material_id: it.id, geprueft_von: userId, ergebnis, notiz: notiz || null });
+      location.href = backHref;
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-verleih — Verleih verwalten (nur eigenes Material)
+  // --------------------------------------------------------------------
+  async function renderPsaVerleih(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    const { data: items } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).eq('ausleihbar', true).eq('aktiv', true);
+    const ids = (items || []).map(i => i.id);
+    let leihe = [];
+    if (ids.length) {
+      const { data } = await client.from('psa_ausleihe').select('*').in('material_id', ids).order('ausgegeben_am', { ascending: false });
+      leihe = data || [];
+    }
+    const byMaterial = {};
+    leihe.forEach(l => { (byMaterial[l.material_id] = byMaterial[l.material_id] || []).push(l); });
+
+    const ausgeliehen = [];
+    const verfuegbar = [];
+    (items || []).forEach(it => {
+      const laufend = (byMaterial[it.id] || []).find(l => !l.zurueckgegeben_am);
+      if (laufend) ausgeliehen.push({ it, laufend }); else verfuegbar.push(it);
+    });
+
+    document.getElementById('vAusgeliehenEmpty').hidden = ausgeliehen.length > 0;
+    document.getElementById('vAusgeliehenList').innerHTML = ausgeliehen.map(({ it, laufend }) => `
+      <div class="card elev-sm" style="flex-direction:row;align-items:center;gap:16px">
+        <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" style="flex:1;min-width:0;text-decoration:none;color:inherit">
+          <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
+          <div style="font-size:12.5px;opacity:0.65">an ${escapeHtml(laufend.ausgeliehen_an)} · seit ${psaFmtDate(laufend.ausgegeben_am)}</div>
+        </a>
+        <button type="button" class="btn btn-secondary" data-return="${laufend.id}" style="font-size:13px;padding:9px 16px">Zurückgeben</button>
+      </div>`).join('');
+
+    document.getElementById('vVerfuegbarEmpty').hidden = verfuegbar.length > 0;
+    document.getElementById('vVerfuegbarList').innerHTML = verfuegbar.map(it => `
+      <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" class="card elev-sm hover-border" style="flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+        <div style="flex:1;font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
+        <span class="tag tag-accent-2">im Lager</span>
+      </a>`).join('');
+
+    document.querySelectorAll('[data-return]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await client.from('psa_ausleihe').update({ zurueckgegeben_am: new Date().toISOString().slice(0, 10) }).eq('id', btn.dataset.return);
+        renderPsaVerleih(ctx);
+      });
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-inaktiv — Inaktives Material (nur eigenes Material)
+  // --------------------------------------------------------------------
+  async function renderPsaInaktiv(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const { data } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).eq('aktiv', false).order('created_at', { ascending: false });
+    const items = data || [];
+
+    document.getElementById('iEmpty').hidden = items.length > 0;
+    document.getElementById('iList').innerHTML = items.map(it => `
+      <div class="card elev-sm" style="flex-direction:row;align-items:center;gap:16px">
+        <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" style="flex:1;min-width:0;text-decoration:none;color:inherit">
+          <div style="font-weight:600;font-size:14.5px">${escapeHtml(itemName(it))}</div>
+          <div style="font-size:12.5px;opacity:0.65">${escapeHtml(itemMetaLine(it))}</div>
+        </a>
+        <button type="button" class="btn btn-secondary" data-reactivate="${it.id}" style="font-size:13px;padding:9px 16px">Wieder aktivieren</button>
+      </div>`).join('');
+
+    document.querySelectorAll('[data-reactivate]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await client.from('psa_material').update({ aktiv: true }).eq('id', btn.dataset.reactivate);
+        renderPsaInaktiv(ctx);
+      });
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-neu-eigen — Neue PSA hinzufügen (eigenes Material)
+  // --------------------------------------------------------------------
+  async function renderPsaNeuEigen(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const kategorieSel = document.getElementById('neKategorie');
+    kategorieSel.innerHTML = PSA_KATEGORIEN.map(k => `<option>${escapeHtml(k)}</option>`).join('');
+
+    document.getElementById('neForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('neFormError');
+      errBox.hidden = true;
       const payload = {
         user_id: userId,
-        ist_psa: fIstPsa.checked,
-        kategorie,
-        ausleihbar: document.getElementById('fAusleihbar').checked,
-        materialart: document.getElementById('fMaterialart').value || null,
-        hersteller: document.getElementById('fHersteller').value.trim() || null,
-        modellbezeichnung: document.getElementById('fModell').value.trim() || null,
-        seriennummer: document.getElementById('fSeriennummer').value.trim() || null,
-        chargennummer: document.getElementById('fChargennummer').value.trim() || null,
-        herstellungsdatum: document.getElementById('fHerstellungsdatum').value || null,
-        kaufdatum: document.getElementById('fKaufdatum').value || null,
-        erste_nutzung: document.getElementById('fErsteNutzung').value || null,
-        max_lebensdauer_jahre: document.getElementById('fLebensdauer').value ? Number(document.getElementById('fLebensdauer').value) : null,
-        pruefrhythmus_monate: document.getElementById('fPruefrhythmus').value ? Number(document.getElementById('fPruefrhythmus').value) : null
+        ist_psa: true,
+        kategorie: kategorieSel.value,
+        ausleihbar: document.getElementById('neAusleihbar').checked,
+        materialart: document.getElementById('neMaterialart').value || null,
+        hersteller: document.getElementById('neHersteller').value.trim() || null,
+        modellbezeichnung: document.getElementById('neModell').value.trim() || null,
+        seriennummer: document.getElementById('neSeriennummer').value.trim() || null,
+        chargennummer: document.getElementById('neChargennummer').value.trim() || null,
+        herstellungsdatum: document.getElementById('neHerstellungsdatum').value || null,
+        kaufdatum: document.getElementById('neKaufdatum').value || null,
+        erste_nutzung: document.getElementById('neErsteNutzung').value || null,
+        max_lebensdauer_jahre: document.getElementById('neLebensdauer').value ? Number(document.getElementById('neLebensdauer').value) : null,
+        pruefrhythmus_monate: Number(document.getElementById('nePruefrhythmus').value)
       };
       try {
         const { error } = await client.from('psa_material').insert(payload);
         if (error) throw error;
-        formBox.hidden = true;
-        await loadAll();
-        renderList();
+        location.href = 'konto-psa';
       } catch (err) {
         errBox.hidden = false;
         errBox.textContent = 'Konnte nicht gespeichert werden — bitte Pflichtfelder prüfen.';
       }
     });
+  }
 
-    await loadAll();
-    renderList();
-    await renderSachBoxFor(client, userId);
+  // --------------------------------------------------------------------
+  // Seite: konto-psa-neu-inventar — Neues Inventarmaterial hinzufügen
+  // --------------------------------------------------------------------
+  async function renderPsaNeuInventar(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    document.getElementById('niKategorie').innerHTML = INVENTAR_KATEGORIEN.map(k => `<option>${escapeHtml(k)}</option>`).join('');
+
+    document.getElementById('niForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        user_id: userId,
+        ist_psa: false,
+        kategorie: document.getElementById('niKategorie').value,
+        ausleihbar: document.getElementById('niAusleihbar').checked,
+        hersteller: document.getElementById('niHersteller').value.trim() || null,
+        modellbezeichnung: document.getElementById('niModell').value.trim() || null,
+        pruefrhythmus_monate: document.getElementById('niPruefrhythmus').value ? Number(document.getElementById('niPruefrhythmus').value) : null
+      };
+      await client.from('psa_material').insert(payload);
+      location.href = 'konto-psa';
+    });
   }
 
   // --------------------------------------------------------------------
@@ -3486,34 +3595,6 @@
         </a>`).join('');
     }
 
-    const newBtn = document.getElementById('kundeNewBtn');
-    const formBox = document.getElementById('kundeFormBox');
-    const cancelBtn = document.getElementById('kundeFormCancel');
-    const errBox = document.getElementById('kundeFormError');
-    newBtn.addEventListener('click', () => { formBox.reset(); errBox.hidden = true; formBox.hidden = false; formBox.scrollIntoView({ behavior: 'smooth' }); });
-    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
-    formBox.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('kfName').value.trim();
-      if (!name) return;
-      try {
-        const { error } = await client.from('kunden').insert({
-          erstellt_von: userId,
-          name,
-          kundennummer: document.getElementById('kfKundennummer').value.trim() || null,
-          email: document.getElementById('kfEmail').value.trim() || null,
-          telefon: document.getElementById('kfTelefon').value.trim() || null
-        });
-        if (error) throw error;
-        formBox.hidden = true;
-        await loadAll();
-        render();
-      } catch (err) {
-        errBox.hidden = false;
-        errBox.textContent = 'Kunde konnte nicht angelegt werden.';
-      }
-    });
-
     await loadAll();
     render();
   }
@@ -3570,21 +3651,13 @@
       const pruef = pruefByMaterial[m.id] || [];
       return `
         <div style="border-top:1px solid var(--color-divider);margin-top:12px;padding-top:14px">
-          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
             ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
           </div>
-          <form data-m-pruef="${m.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
-            <div class="field" style="min-width:160px"><label>Ergebnis</label>
-              <select class="input" data-f="ergebnis" required>
-                <option value="gut">Gut – weiter verwenden</option>
-                <option value="mangel">Mangel festgestellt</option>
-                <option value="aussondern">Aussondern</option>
-              </select>
-            </div>
-            <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
-            <button type="submit" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfung eintragen</button>
-          </form>
-          <button type="button" class="btn btn-secondary" data-m-pdf="${m.id}" style="font-size:13px;padding:9px 16px">Prüfbescheinigung herunterladen</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a href="konto-psa-pruefung?id=${encodeURIComponent(m.id)}&kunde=${encodeURIComponent(kunde.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Neue Prüfung durchführen</a>
+            <a href="konto-zertifikat?kunde=${encodeURIComponent(kunde.id)}&material=${encodeURIComponent(m.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfbescheinigung ansehen</a>
+          </div>
         </div>`;
     }
 
@@ -3607,53 +3680,83 @@
           ${open ? renderDetail(m) : ''}
         </div>`;
       }).join('');
-      wireEvents();
-    }
-
-    function wireEvents() {
       document.querySelectorAll('[data-toggle-open]').forEach(el => {
         el.addEventListener('click', () => { const id = el.dataset.toggleOpen; openId = openId === id ? null : id; render(); });
       });
-      document.querySelectorAll('[data-m-pruef]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          await client.from('psa_pruefprotokoll').insert({
-            material_id: form.dataset.mPruef,
-            geprueft_von: userId,
-            ergebnis: form.querySelector('[data-f="ergebnis"]').value,
-            notiz: form.querySelector('[data-f="notiz"]').value.trim() || null
-          });
-          await loadAll();
-          render();
-        });
-      });
-      document.querySelectorAll('[data-m-pdf]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const material = items.find(m => m.id === btn.dataset.mPdf);
-          const pruef = pruefByMaterial[btn.dataset.mPdf] || [];
-          const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow.organisation };
-          generatePruefbescheinigungPdf(kunde, material, pruef, aussteller);
-        });
-      });
     }
 
-    const kmKategorie = document.getElementById('kmKategorie');
-    kmKategorie.innerHTML = PSA_KATEGORIEN.map(kt => `<option>${escapeHtml(kt)}</option>`).join('');
-    const newBtn = document.getElementById('kmNewBtn');
-    const formBox = document.getElementById('kmFormBox');
-    const cancelBtn = document.getElementById('kmFormCancel');
-    newBtn.addEventListener('click', () => { formBox.reset(); formBox.hidden = false; formBox.scrollIntoView({ behavior: 'smooth' }); });
-    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
-    formBox.addEventListener('submit', async (e) => {
+    document.getElementById('kmNewBtn').href = 'konto-kunde-neu-material?kunde=' + encodeURIComponent(kunde.id);
+
+    await loadAll();
+    render();
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kunden-neu — Neuen Kunden anlegen
+  // --------------------------------------------------------------------
+  async function renderKundenNeu(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const gateEl = document.getElementById('knGate');
+    const areaEl = document.getElementById('knArea');
+
+    const { isSach } = await fetchSachRow(client, userId);
+    if (!isSach) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    document.getElementById('knForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('knFormError');
+      errBox.hidden = true;
+      const name = document.getElementById('knName').value.trim();
+      if (!name) return;
+      try {
+        const { data, error } = await client.from('kunden').insert({
+          erstellt_von: userId,
+          name,
+          kundennummer: document.getElementById('knKundennummer').value.trim() || null,
+          email: document.getElementById('knEmail').value.trim() || null,
+          telefon: document.getElementById('knTelefon').value.trim() || null
+        }).select();
+        if (error) throw error;
+        const neu = (data && data[0]) || null;
+        location.href = neu ? 'konto-kunde?id=' + encodeURIComponent(neu.id) : 'konto-kunden';
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Kunde konnte nicht angelegt werden.';
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kunde-neu-material — Neues PSA für eine Kund*in (?kunde=)
+  // --------------------------------------------------------------------
+  async function renderKundeNeuMaterial(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const kundeId = new URLSearchParams(location.search).get('kunde');
+    const gateEl = document.getElementById('kmGate');
+    const areaEl = document.getElementById('kmArea');
+
+    const { data: kunde } = kundeId ? await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : { data: null };
+    if (!kunde) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    document.getElementById('kmBackLink').href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+    document.getElementById('kmKundeName').textContent = kunde.name;
+    document.getElementById('kmInitials').textContent = kunde.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+    const kategorieSel = document.getElementById('kmKategorie');
+    kategorieSel.innerHTML = PSA_KATEGORIEN.map(k => `<option>${escapeHtml(k)}</option>`).join('');
+
+    document.getElementById('kmForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = {
         user_id: userId,
         kunde_id: kunde.id,
         eigentuemer_typ: 'kunde',
         ist_psa: true,
-        kategorie: kmKategorie.value,
+        kategorie: kategorieSel.value,
         materialart: document.getElementById('kmMaterialart').value || null,
         hersteller: document.getElementById('kmHersteller').value.trim() || null,
         modellbezeichnung: document.getElementById('kmModell').value.trim() || null,
@@ -3664,14 +3767,54 @@
         pruefrhythmus_monate: Number(document.getElementById('kmPruefrhythmus').value)
       };
       await client.from('psa_material').insert(payload);
-      formBox.hidden = true;
-      await loadAll();
-      render();
+      location.href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
     });
-
-    await loadAll();
-    render();
   }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-zertifikat — Prüfbescheinigung-Vorschau (?kunde=&material=)
+  // --------------------------------------------------------------------
+  async function renderZertifikat(ctx) {
+    const { client, session, profile } = ctx;
+    const userId = session.user.id;
+    const params = new URLSearchParams(location.search);
+    const kundeId = params.get('kunde');
+    const materialId = params.get('material');
+    const gateEl = document.getElementById('zGate');
+    const areaEl = document.getElementById('zArea');
+
+    const { sachRow } = await fetchSachRow(client, userId);
+
+    const [{ data: kunde }, { data: material }] = await Promise.all([
+      kundeId ? client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle() : Promise.resolve({ data: null }),
+      materialId ? client.from('psa_material').select('*').eq('id', materialId).eq('user_id', userId).maybeSingle() : Promise.resolve({ data: null })
+    ]);
+    if (!kunde || !material) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    document.getElementById('zBackLink').href = 'konto-kunde?id=' + encodeURIComponent(kunde.id);
+
+    const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').eq('material_id', material.id).order('pruefdatum', { ascending: false });
+    const pruefListe = pruef || [];
+
+    document.getElementById('zKunde').textContent = kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '');
+    document.getElementById('zMaterialName').textContent = itemName(material);
+    document.getElementById('zMaterialMeta').textContent = itemMetaLine(material);
+    document.getElementById('zPruefListe').innerHTML = pruefListe.length ? pruefListe.map(p => `
+      <div style="font-size:13.5px">${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
+
+    const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null };
+    document.getElementById('zAussteller').textContent = aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + ')' : '');
+    document.getElementById('zDatum').textContent = new Date().toLocaleDateString('de-DE');
+
+    document.getElementById('zDownloadBtn').addEventListener('click', () => {
+      generatePruefbescheinigungPdf(kunde, material, pruefListe, aussteller);
+    });
+  }
+
+  // Seiten ohne eigene Datenlogik (nur Links) — brauchen trotzdem guardAccountPage()
+  // für Sidebar/Logout, deshalb hier als no-op in der Seiten-Zuordnung registriert.
+  function noop() {}
 
   // --------------------------------------------------------------------
   // Einstieg
@@ -3686,8 +3829,18 @@
       'konto-weg': renderWeg,
       'konto-training': renderTraining,
       'konto-psa': renderPsa,
+      'konto-psa-detail': renderPsaDetail,
+      'konto-psa-pruefung': renderPsaPruefung,
+      'konto-psa-verleih': renderPsaVerleih,
+      'konto-psa-inaktiv': renderPsaInaktiv,
+      'konto-psa-neu': noop,
+      'konto-psa-neu-eigen': renderPsaNeuEigen,
+      'konto-psa-neu-inventar': renderPsaNeuInventar,
       'konto-kunden': renderKundenListe,
-      'konto-kunde': renderKundeDetail
+      'konto-kunden-neu': renderKundenNeu,
+      'konto-kunde': renderKundeDetail,
+      'konto-kunde-neu-material': renderKundeNeuMaterial,
+      'konto-zertifikat': renderZertifikat
     };
 
     if (accountPages[page]) {
