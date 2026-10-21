@@ -3089,6 +3089,15 @@
     aussondern: { bg: 'var(--color-warn-bg)', fg: 'var(--color-warn)' }
   };
 
+  // Auf der Prüfbescheinigung zählt nur bestanden/nicht bestanden — "Beobachten"
+  // ist eine rein interne Einstufung (z.B. für den Status-Pill in der App) und
+  // gilt für die Bescheinigung selbst als bestanden.
+  function zertifikatErgebnis(ergebnis) {
+    return ergebnis === 'aussondern'
+      ? { label: 'Nicht bestanden', bg: '#f0ddd6', fg: '#a85d49' }
+      : { label: 'Bestanden', bg: '#dcebe0', fg: '#2f6b45' };
+  }
+
   function pruefCheckIcon(ergebnis) {
     const c = PSA_ERGEBNIS_DOT[ergebnis] || PSA_ERGEBNIS_DOT.gut;
     const path = ergebnis === 'aussondern'
@@ -3914,77 +3923,139 @@
     const marginX = 18;
     const pageWidth = 210;
     const pageHeight = 297;
+    const contentW = pageWidth - marginX * 2;
     const brand = [17, 74, 122];
+    const muted = [76, 107, 134];
+    const text = [13, 58, 96];
+    const divider = [217, 226, 234];
+    const surface = [222, 228, 236];
+    const okBg = [220, 235, 224], okFg = [47, 107, 69];
+    const warnBg = [240, 221, 214], warnFg = [168, 93, 73];
     const istBetamove = !aussteller.organisation || aussteller.organisation.trim().toLowerCase() === 'betamove';
     const logoDataUrl = istBetamove ? await loadKundenLogoDataUrl() : null;
 
     function ensureSpace(y, needed) {
-      if (y + needed > pageHeight - 30) { doc.addPage(); return 24; }
+      if (y + needed > pageHeight - 30) { doc.addPage(); return 26; }
       return y;
     }
 
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(0, 0, pageWidth, 30, 'F');
-    const textX = marginX + (logoDataUrl ? 27 : 0);
-    if (logoDataUrl) { try { doc.addImage(logoDataUrl, 'PNG', marginX, 4, 22, 22); } catch (e) {} }
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.text(istBetamove ? 'BETAMOVE' : (aussteller.organisation || ''), textX, 13);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-    doc.text('Prüfbescheinigung PSA', textX, 19);
+    // Kopfbereich: Logo/Kürzel-Kreis + Markenname links, Titel + Datum rechts,
+    // darunter ein dünner akzentfarbener Trenner — wie in der Web-Vorschau.
+    let y = 26;
+    const circleD = 13;
+    if (logoDataUrl) {
+      try { doc.addImage(logoDataUrl, 'PNG', marginX, y - circleD / 2, circleD, circleD); } catch (e) {}
+    } else {
+      const initials = (aussteller.organisation || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'U';
+      doc.setFillColor(brand[0], brand[1], brand[2]);
+      doc.circle(marginX + circleD / 2, y, circleD / 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(255, 255, 255);
+      doc.text(initials, marginX + circleD / 2, y + 1.3, { align: 'center' });
+    }
+    const brandTextX = marginX + circleD + 4;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(text[0], text[1], text[2]);
+    doc.text(istBetamove ? 'BETAMOVE' : aussteller.organisation, brandTextX, y - 2);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text(istBetamove ? 'Kletterschule' : (aussteller.unternehmenAdresse || ''), brandTextX, y + 3);
 
-    let y = 42;
-    doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-    doc.text('Prüfbescheinigung', marginX, y); y += 10;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20);
+    doc.text('Prüfbescheinigung', pageWidth - marginX, y - 2, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text('ausgestellt am ' + new Date().toLocaleDateString('de-DE'), pageWidth - marginX, y + 3, { align: 'right' });
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text('Ausgestellt für', marginX, y); y += 7;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(40);
-    doc.text(kunde.name + (kunde.ansprechpartner ? ' · Ansprechpartner: ' + kunde.ansprechpartner : '') + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '') + (kunde.email ? ' · ' + kunde.email : ''), marginX, y); y += 12;
+    y += 10;
+    doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.6);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 10;
 
-    // Tabellenkopf
-    const cols = [[marginX, 'Artikel-Nr.'], [marginX + 32, 'Seriennummer'], [marginX + 70, 'Bezeichnung'], [marginX + 125, 'Prüfdatum'], [marginX + 155, 'Ergebnis']];
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(40);
+    const introLines = doc.splitTextToSize('Hiermit wird bestätigt, dass die unten aufgeführte persönliche Schutzausrüstung (PSA) gegen Absturz am genannten Prüfdatum durch eine autorisierte, sachkundige Person gemäß DGUV Regel 112-198, Abschn. 10.3.2, geprüft wurde.', contentW);
+    doc.text(introLines, marginX, y);
+    y += introLines.length * 4.3 + 8;
+
+    // "Ausgestellt für" — abgesetzte Box, Name fett, Rest darunter klein/grau.
+    const kundeZeile2 = [kunde.ansprechpartner ? 'Ansprechpartner*in: ' + kunde.ansprechpartner : null, kunde.kundennummer ? 'Kundennummer: ' + kunde.kundennummer : null, kunde.email].filter(Boolean).join('   ·   ');
+    const boxLines2 = kundeZeile2 ? doc.splitTextToSize(kundeZeile2, contentW - 16) : [];
+    const boxH = 12 + 6 + (boxLines2.length ? boxLines2.length * 4.3 : 0);
+    doc.setFillColor(surface[0], surface[1], surface[2]);
+    doc.roundedRect(marginX, y, contentW, boxH, 2.5, 2.5, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text('AUSGESTELLT FÜR', marginX + 8, y + 7);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(20);
+    doc.text(kunde.name, marginX + 8, y + 14);
+    if (boxLines2.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+      doc.text(boxLines2, marginX + 8, y + 20);
+    }
+    y += boxH + 10;
+
+    // Tabelle
+    const cols = [[marginX, 'ARTIKEL-NR.'], [marginX + 30, 'SERIENNUMMER'], [marginX + 68, 'BEZEICHNUNG'], [marginX + 122, 'PRÜFDATUM'], [marginX + 150, 'ERGEBNIS']];
     function drawTableHeader() {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(100);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(muted[0], muted[1], muted[2]);
       cols.forEach(([x, label]) => doc.text(label, x, y));
       y += 3;
-      doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.4);
+      doc.setDrawColor(divider[0], divider[1], divider[2]); doc.setLineWidth(0.5);
       doc.line(marginX, y, pageWidth - marginX, y);
-      y += 6;
+      y += 7;
     }
     drawTableHeader();
 
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     if (!rows.length) {
       doc.setTextColor(120); doc.text('Keine geprüften Gegenstände.', marginX, y); y += 6;
     } else {
       rows.forEach(r => {
-        y = ensureSpace(y, 8);
+        const beforeY = y;
+        y = ensureSpace(y, 9);
+        if (y !== beforeY) drawTableHeader();
         doc.setTextColor(40);
         doc.text(r.materialnummer || '–', cols[0][0], y);
         doc.text(r.seriennummer || '–', cols[1][0], y);
-        doc.text(doc.splitTextToSize(r.bezeichnung, 52)[0], cols[2][0], y);
+        doc.text(doc.splitTextToSize(r.bezeichnung, 50)[0], cols[2][0], y);
         doc.text(psaFmtDate(r.datum), cols[3][0], y);
-        doc.text(PSA_ERGEBNIS_LABEL[r.ergebnis] || r.ergebnis, cols[4][0], y);
-        y += 7;
-        doc.setDrawColor(230); doc.setLineWidth(0.2);
-        doc.line(marginX, y - 3.5, pageWidth - marginX, y - 3.5);
+
+        const erg = zertifikatErgebnis(r.ergebnis);
+        const pillColors = erg.label === 'Bestanden' ? { bg: okBg, fg: okFg } : { bg: warnBg, fg: warnFg };
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
+        const pillW = doc.getTextWidth(erg.label) + 6;
+        doc.setFillColor(pillColors.bg[0], pillColors.bg[1], pillColors.bg[2]);
+        doc.roundedRect(cols[4][0], y - 3.6, pillW, 5.2, 2.6, 2.6, 'F');
+        doc.setTextColor(pillColors.fg[0], pillColors.fg[1], pillColors.fg[2]);
+        doc.text(erg.label, cols[4][0] + 3, y);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+
+        y += 8;
+        doc.setDrawColor(divider[0], divider[1], divider[2]); doc.setLineWidth(0.3);
+        doc.line(marginX, y - 4, pageWidth - marginX, y - 4);
       });
     }
     y += 8;
 
-    y = ensureSpace(y, 24);
-    doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.5);
+    y = ensureSpace(y, 26);
+    doc.setDrawColor(divider[0], divider[1], divider[2]); doc.setLineWidth(0.4);
     doc.line(marginX, y, pageWidth - marginX, y); y += 8;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40);
-    doc.text('Geprüft von: ' + aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + (aussteller.unternehmenAdresse ? ', ' + aussteller.unternehmenAdresse : '') + ')' : ''), marginX, y); y += 6;
-    doc.text('Ausgestellt am: ' + new Date().toLocaleDateString('de-DE'), marginX, y); y += 10;
 
-    doc.setFontSize(8.5); doc.setTextColor(120);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text('GEPRÜFT VON', marginX, y); y += 5;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20);
+    doc.text(aussteller.name, marginX, y); y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text('Sachkundige Person' + (aussteller.organisation && !istBetamove ? ' — ' + aussteller.organisation + (aussteller.unternehmenAdresse ? ', ' + aussteller.unternehmenAdresse : '') : ''), marginX, y); y += 5;
+    doc.text('Digital bestätigt am ' + new Date().toLocaleDateString('de-DE') + ', ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr', marginX, y);
+
+    const sigX = pageWidth - marginX - 50;
+    doc.setDrawColor(20); doc.setLineWidth(0.3);
+    doc.line(sigX, y - 3, sigX + 50, y - 3);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(muted[0], muted[1], muted[2]);
+    doc.text('Unterschrift', sigX + 25, y + 2, { align: 'center' });
+    y += 14;
+
+    doc.setFontSize(7.5); doc.setTextColor(muted[0], muted[1], muted[2]);
     const disclaimer = istBetamove
-      ? 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung. BETAMOVE · betamove.de'
-      : 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung. Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung.';
-    doc.text(doc.splitTextToSize(disclaimer, pageWidth - marginX * 2), marginX, pageHeight - 15);
+      ? 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung durch die anwendende Person selbst. BETAMOVE, Alte Straße 22, 04229 Leipzig · info@betamove.de'
+      : 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung durch die anwendende Person selbst. Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung. ' + aussteller.organisation + (aussteller.unternehmenAdresse ? ', ' + aussteller.unternehmenAdresse : '');
+    doc.text(doc.splitTextToSize(disclaimer, contentW), marginX, Math.max(y, pageHeight - 18));
 
     doc.save('Pruefbescheinigung_' + kunde.name.replace(/\s+/g, '-') + '.pdf');
   }
@@ -4434,14 +4505,14 @@
     }
     document.getElementById('zDatumZeile').textContent = (gesamt ? 'Gesamtübersicht · ' : '') + 'ausgestellt am ' + new Date().toLocaleDateString('de-DE');
     document.getElementById('zTabelle').innerHTML = rows.map(r => {
-      const dot = PSA_ERGEBNIS_DOT[r.ergebnis] || PSA_ERGEBNIS_DOT.gut;
+      const erg = zertifikatErgebnis(r.ergebnis);
       return `
       <tr>
         <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.materialnummer || '–')}</td>
         <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.seriennummer || '–')}</td>
         <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.bezeichnung)}</td>
         <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${psaFmtDate(r.datum)}</td>
-        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)"><span class="tag" style="background:${dot.bg};color:${dot.fg};font-size:11.5px">${escapeHtml(PSA_ERGEBNIS_LABEL[r.ergebnis] || r.ergebnis)}</span></td>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)"><span class="tag" style="background:${erg.bg};color:${erg.fg};font-size:11.5px;font-weight:600">${erg.label}</span></td>
       </tr>`;
     }).join('');
     document.getElementById('zAussteller').textContent = aussteller.name;
