@@ -62,10 +62,27 @@
           <h1 style="margin:0 0 26px;font-size:28px">Neues PSA hinzufügen</h1>
 
           <form id="kmForm" class="card elev-sm" style="max-width:720px;gap:16px">
+            <div class="field">
+              <label>Eigentümer*in des Gegenstands</label>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;align-items:center;gap:10px;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 16px;cursor:pointer">
+                  <input type="radio" name="kmEigentuemer" id="kmEigentuemerKunde" value="kunde" checked style="width:18px;height:18px;accent-color:var(--color-accent)">
+                  <span style="font-size:14px;font-weight:600">Der Kunde / Die Kundin selbst</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 16px;cursor:pointer">
+                  <input type="radio" name="kmEigentuemer" id="kmEigentuemerAndere" value="andere" style="width:18px;height:18px;accent-color:var(--color-accent)">
+                  <span style="font-size:14px;font-weight:600">Andere Person (z.B. Teilnehmer*in) — ich führe nur die Prüfung durch</span>
+                </label>
+              </div>
+            </div>
+            <div class="field" id="kmEigentuemerNameField" hidden>
+              <label for="kmEigentuemerName">Name der Person</label>
+              <input id="kmEigentuemerName" class="input" maxlength="200" placeholder="Vor- und Nachname">
+            </div>
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
               <div class="field"><label for="kmKategorie">Kategorie</label><select id="kmKategorie" class="input"></select></div>
               <div class="field"><label for="kmMaterialart">Materialart</label>
-                <select id="kmMaterialart" class="input"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option></select>
+                <select id="kmMaterialart" class="input"><option value="">—</option><option value="textil">Textil</option><option value="metall">Metall</option><option value="textil_metall">Textil + Metall</option><option value="plastik_styropor">Plastik/Styropor</option></select>
               </div>
               <div class="field"><label for="kmHersteller">Hersteller</label><input id="kmHersteller" class="input"></div>
               <div class="field"><label for="kmModell">Modellbezeichnung</label><input id="kmModell" class="input"></div>

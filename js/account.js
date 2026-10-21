@@ -2980,11 +2980,17 @@
   // --------------------------------------------------------------------
   const PSA_KATEGORIEN = ['Gurt', 'Helm', 'Seil (dynamisch)', 'Seil (halbstatisch)', 'Verbindungselement / Karabiner', 'Sicherungsgerät', 'Bandschlinge / Express', 'Sonstiges'];
   const INVENTAR_KATEGORIEN = ['Chalkbag', 'Kletterschuhe', 'Theraband / Trainingsband', 'Bekleidung', 'Tasche / Rucksack', 'Sonstiges'];
-  const PSA_ERGEBNIS_LABEL = { gut: 'Gut – weiter verwenden', mangel: 'Zustand beobachten', aussondern: 'Nicht mehr verwenden – aussondern' };
+  const PSA_ERGEBNIS_LABEL = { gut: 'Bestanden', mangel: 'Beobachten', aussondern: 'Nicht bestanden' };
   const PSA_CHECKLISTE = {
     textil: ['Nähte', 'Gurtband unbeschädigt', 'Einbindeschlaufe', 'Schnallen / Verstellelemente', 'Verschmutzung / Chemikalienkontakt'],
-    metall: ['Korrosion', 'Risse / Verformung', 'Funktion der Verschlussmechanik', 'Verschleiß an Kontaktstellen', 'Kennzeichnung lesbar']
+    metall: ['Korrosion', 'Risse / Verformung', 'Funktion der Verschlussmechanik', 'Verschleiß an Kontaktstellen', 'Kennzeichnung lesbar'],
+    helm: ['Außenschale (Risse / Verformung)', 'Innenpolster / Styropor (Eindrücke, Risse)', 'Kinnriemen / Verschluss', 'Belüftungsöffnungen intakt', 'Herstellungsdatum / Alter im Rahmen']
   };
+  const PSA_MATERIALART_LABEL = { textil: 'Textil', metall: 'Metall', textil_metall: 'Textil + Metall', plastik_styropor: 'Plastik/Styropor' };
+
+  function materialartLabel(code) {
+    return code ? (PSA_MATERIALART_LABEL[code] || code) : null;
+  }
 
   function psaFmtDate(d) {
     if (!d) return '–';
@@ -2992,8 +2998,14 @@
     return isNaN(dt) ? '–' : dt.toLocaleDateString('de-DE');
   }
 
-  function psaStatus(material, letzePruefung) {
-    if (!material.ist_psa || !material.pruefrhythmus_monate || !letzePruefung) return null;
+  // letztesErgebnis hat Vorrang vor dem Prüfrhythmus: ein nicht bestandener
+  // oder zu beobachtender Gegenstand ist nie "in Ordnung", egal wie lange
+  // die nächste fällige Prüfung noch hin ist.
+  function psaStatus(material, letzePruefung, letztesErgebnis) {
+    if (!material.ist_psa || !letzePruefung) return null;
+    if (letztesErgebnis === 'aussondern') return { label: 'Nicht bestanden', bg: 'var(--color-warn-bg)', fg: 'var(--color-warn)', next: null };
+    if (letztesErgebnis === 'mangel') return { label: 'Beobachten', bg: '#f7ecd2', fg: '#8a6a1f', next: null };
+    if (!material.pruefrhythmus_monate) return null;
     const next = new Date(letzePruefung + 'T00:00:00');
     next.setMonth(next.getMonth() + material.pruefrhythmus_monate);
     const days = Math.round((next - new Date()) / 86400000);
@@ -3046,6 +3058,9 @@
   }
 
   function ownerBadgeHtml(material, kundeName) {
+    if (material.eigentuemer_name) {
+      return `<span class="tag tag-accent-2">Kundenmaterial</span><span style="font-size:12px;opacity:0.65">— gehört ${escapeHtml(material.eigentuemer_name)}, nicht dir${kundeName ? ' oder ' + escapeHtml(kundeName) : ''}.</span>`;
+    }
     if (material.kunde_id || kundeName) {
       return `<span class="tag tag-accent-2">Kundenmaterial</span><span style="font-size:12px;opacity:0.65">— gehört ${escapeHtml(kundeName || 'der Kund*in')}, nicht dir.</span>`;
     }
@@ -3056,8 +3071,9 @@
     const parts = [];
     if (it.materialnummer) parts.push(it.materialnummer);
     parts.push(it.kategorie);
-    if (it.materialart) parts.push(it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall');
+    if (it.materialart) parts.push(materialartLabel(it.materialart));
     if (it.hersteller) parts.push(it.hersteller);
+    if (it.eigentuemer_name) parts.push('Eigentümer: ' + it.eigentuemer_name);
     return parts.join(' · ');
   }
 
@@ -3097,7 +3113,7 @@
 
     function itemStatus(it) {
       const pruef = pruefByMaterial[it.id] || [];
-      return psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+      return psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
     }
 
     function matchesStatusFilter(it) {
@@ -3143,10 +3159,10 @@
 
     function renderStats() {
       const aktive = items.filter(i => i.aktiv && i.ist_psa);
-      const statuses = aktive.map(it => psaStatus(it, (pruefByMaterial[it.id] || [])[0] ? pruefByMaterial[it.id][0].pruefdatum : null));
+      const statuses = aktive.map(itemStatus);
       const ok = statuses.filter(s => s && s.label === 'in Ordnung').length;
-      const soon = statuses.filter(s => s && s.label === 'bald fällig').length;
-      const late = statuses.filter(s => s && s.label === 'ÜBERFÄLLIG').length;
+      const soon = statuses.filter(s => s && (s.label === 'bald fällig' || s.label === 'Beobachten')).length;
+      const late = statuses.filter(s => s && (s.label === 'ÜBERFÄLLIG' || s.label === 'Nicht bestanden')).length;
       document.getElementById('psaStats').innerHTML = [
         [String(items.filter(i => i.aktiv).length), 'Gegenstände gesamt', 'var(--color-surface)', 'var(--color-text)'],
         [String(ok), 'in Ordnung', '#dcebe0', '#2f6b45'],
@@ -3168,8 +3184,7 @@
       if (!listEl) return;
       emptyEl.hidden = list.length > 0;
       listEl.innerHTML = list.map(it => {
-        const pruef = pruefByMaterial[it.id] || [];
-        const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+        const status = itemStatus(it);
         return `
         <a href="konto-psa-detail?id=${encodeURIComponent(it.id)}" class="card elev-sm hover-border" style="flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
           ${itemIcon()}
@@ -3248,7 +3263,7 @@
       document.getElementById('pdTitel').textContent = itemName(it);
       document.getElementById('pdArtikelnummer').textContent = it.materialnummer ? 'Artikel-Nr. ' + it.materialnummer : '';
       document.getElementById('pdOwnerBadge').innerHTML = ownerBadgeHtml(it);
-      const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+      const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
       const pill = document.getElementById('pdStatusPill');
       if (status) { pill.hidden = false; pill.textContent = status.label; pill.style.background = status.bg; pill.style.color = status.fg; }
       else { pill.hidden = true; }
@@ -3259,7 +3274,8 @@
       else { lebensdauerBox.hidden = true; }
 
       const stammdaten = [
-        ['Kategorie', it.kategorie], ['Materialart', it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : it.materialart === 'textil_metall' ? 'Textil + Metall' : null],
+        ['Kategorie', it.kategorie], ['Materialart', materialartLabel(it.materialart)],
+        ['Eigentümer*in', it.eigentuemer_name],
         ['Hersteller', it.hersteller], ['Seriennummer', it.seriennummer], ['Chargennummer', it.chargennummer],
         ['Herstellungsdatum', it.herstellungsdatum ? psaFmtDate(it.herstellungsdatum) : null],
         ['Kaufdatum', it.kaufdatum ? psaFmtDate(it.kaufdatum) : null],
@@ -3350,7 +3366,7 @@
     if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
-    document.getElementById('pItemName').textContent = itemName(it) + (it.materialnummer ? ' · Artikel-Nr. ' + it.materialnummer : '') + (it.materialart ? ' · Material: ' + (it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall') : '');
+    document.getElementById('pItemName').textContent = itemName(it) + (it.materialnummer ? ' · Artikel-Nr. ' + it.materialnummer : '') + (it.materialart ? ' · Material: ' + materialartLabel(it.materialart) : '');
     const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId)
       : verbundenId ? 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId)
       : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
@@ -3363,13 +3379,14 @@
     }
 
     // Checkliste — reine Ausfüllhilfe, wird nicht gespeichert.
-    const checklistPoints = it.materialart === 'metall' ? PSA_CHECKLISTE.metall
+    const checklistPoints = it.kategorie === 'Helm' ? PSA_CHECKLISTE.helm
+      : it.materialart === 'metall' ? PSA_CHECKLISTE.metall
       : it.materialart === 'textil_metall' ? PSA_CHECKLISTE.textil.concat(PSA_CHECKLISTE.metall)
       : PSA_CHECKLISTE.textil;
     const checklistState = {};
     checklistPoints.forEach((_, i) => { checklistState[i] = 'ok'; });
 
-    document.getElementById('pChecklisteTitel').textContent = 'Checkliste — ' + (it.materialart === 'metall' ? 'Metallprodukt' : it.materialart === 'textil_metall' ? 'Textil + Metall' : 'Textilprodukt');
+    document.getElementById('pChecklisteTitel').textContent = 'Checkliste — ' + (it.kategorie === 'Helm' ? 'Helm' : it.materialart === 'metall' ? 'Metallprodukt' : it.materialart === 'textil_metall' ? 'Textil + Metall' : 'Textilprodukt');
 
     function renderCheckliste() {
       document.getElementById('pChecklisteList').innerHTML = checklistPoints.map((label, i) => {
@@ -4094,7 +4111,7 @@
       document.getElementById('kmEmpty').hidden = items.length > 0;
       listEl.innerHTML = items.map(m => {
         const pruef = pruefByMaterial[m.id] || [];
-        const status = psaStatus(m, pruef[0] ? pruef[0].pruefdatum : null);
+        const status = psaStatus(m, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
         const open = openId === m.id;
         return `
         <div class="card elev-sm" style="gap:0">
@@ -4201,11 +4218,22 @@
     const kategorieSel = document.getElementById('kmKategorie');
     kategorieSel.innerHTML = PSA_KATEGORIEN.map(k => `<option>${escapeHtml(k)}</option>`).join('');
 
+    const eigentuemerField = document.getElementById('kmEigentuemerKunde').closest('.field');
+    const eigentuemerNameField = document.getElementById('kmEigentuemerNameField');
+    const eigentuemerAndereRadio = document.getElementById('kmEigentuemerAndere');
+    if (kunde.verbunden) {
+      eigentuemerField.hidden = true;
+    } else {
+      document.querySelectorAll('input[name="kmEigentuemer"]').forEach(r => {
+        r.addEventListener('change', () => { eigentuemerNameField.hidden = !eigentuemerAndereRadio.checked; });
+      });
+    }
+
     document.getElementById('kmForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = kunde.verbunden
         ? { user_id: kunde.userId, kunde_id: null, eigentuemer_typ: 'eigen' }
-        : { user_id: userId, kunde_id: kunde.id, eigentuemer_typ: 'kunde' };
+        : { user_id: userId, kunde_id: kunde.id, eigentuemer_typ: 'kunde', eigentuemer_name: eigentuemerAndereRadio.checked ? (document.getElementById('kmEigentuemerName').value.trim() || null) : null };
       Object.assign(payload, {
         ist_psa: true,
         kategorie: kategorieSel.value,
@@ -4269,7 +4297,7 @@
       }
       rows = matList.filter(m => pruefByMaterial[m.id]).map(m => {
         const p = pruefByMaterial[m.id];
-        return { materialnummer: m.materialnummer, seriennummer: m.seriennummer || m.chargennummer, bezeichnung: itemName(m), datum: p.pruefdatum, ergebnis: p.ergebnis };
+        return { materialnummer: m.materialnummer, seriennummer: m.seriennummer || m.chargennummer, bezeichnung: itemName(m) + (m.eigentuemer_name ? ' — Eigentümer: ' + m.eigentuemer_name : ''), datum: p.pruefdatum, ergebnis: p.ergebnis };
       });
       if (!rows.length) {
         gateEl.hidden = false; areaEl.hidden = true;
@@ -4286,7 +4314,7 @@
         if (gateText) gateText.textContent = 'Für diesen Gegenstand liegt noch keine Prüfung vor.';
         return;
       }
-      rows = [{ materialnummer: material.materialnummer, seriennummer: material.seriennummer || material.chargennummer, bezeichnung: itemName(material), datum: letzte.pruefdatum, ergebnis: letzte.ergebnis }];
+      rows = [{ materialnummer: material.materialnummer, seriennummer: material.seriennummer || material.chargennummer, bezeichnung: itemName(material) + (material.eigentuemer_name ? ' — Eigentümer: ' + material.eigentuemer_name : ''), datum: letzte.pruefdatum, ergebnis: letzte.ergebnis }];
     }
 
     gateEl.hidden = true; areaEl.hidden = false;
