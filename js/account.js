@@ -2953,6 +2953,294 @@
   }
 
   // --------------------------------------------------------------------
+  // Seite: konto-psa — PSA-Prüftool Schritt 1 (eigenes Material)
+  // Datenmodell: siehe supabase/schema-psa-material.sql
+  //   psa_material       — ein Gegenstand (PSA oder Inventar), je Nutzer*in
+  //   psa_pruefprotokoll — Prüfhistorie zu einem Gegenstand
+  //   psa_ausleihe       — Verleih-Historie zu einem ausleihbaren Gegenstand
+  // --------------------------------------------------------------------
+  const PSA_KATEGORIEN = ['Gurt', 'Helm', 'Seil (dynamisch)', 'Seil (halbstatisch)', 'Verbindungselement / Karabiner', 'Sicherungsgerät', 'Bandschlinge / Express', 'Sonstiges'];
+  const INVENTAR_KATEGORIEN = ['Chalkbag', 'Kletterschuhe', 'Theraband / Trainingsband', 'Bekleidung', 'Tasche / Rucksack', 'Sonstiges'];
+  const PSA_ERGEBNIS_LABEL = { gut: 'Gut – weiter verwenden', mangel: 'Mangel festgestellt', aussondern: 'Aussondern' };
+
+  function psaFmtDate(d) {
+    if (!d) return '–';
+    const dt = new Date(d + 'T00:00:00');
+    return isNaN(dt) ? '–' : dt.toLocaleDateString('de-DE');
+  }
+
+  function psaStatus(material, letzePruefung) {
+    if (!material.ist_psa || !material.pruefrhythmus_monate || !letzePruefung) return null;
+    const next = new Date(letzePruefung + 'T00:00:00');
+    next.setMonth(next.getMonth() + material.pruefrhythmus_monate);
+    const days = Math.round((next - new Date()) / 86400000);
+    if (days < 0) return { label: 'ÜBERFÄLLIG', bg: 'var(--color-warn-bg)', fg: 'var(--color-warn)', next };
+    if (days <= 30) return { label: 'bald fällig', bg: '#f7ecd2', fg: '#8a6a1f', next };
+    return { label: 'in Ordnung', bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)', next };
+  }
+
+  async function renderPsa(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    let items = [];
+    let pruefByMaterial = {};
+    let ausleiheByMaterial = {};
+    let scope = 'psa';
+    let openId = null;
+
+    async function loadAll() {
+      const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      items = mat || [];
+      const ids = items.map(i => i.id);
+      pruefByMaterial = {};
+      ausleiheByMaterial = {};
+      if (ids.length) {
+        const [{ data: pruef }, { data: leihe }] = await Promise.all([
+          client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false }),
+          client.from('psa_ausleihe').select('*').in('material_id', ids).order('ausgegeben_am', { ascending: false })
+        ]);
+        (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
+        (leihe || []).forEach(l => { (ausleiheByMaterial[l.material_id] = ausleiheByMaterial[l.material_id] || []).push(l); });
+      }
+    }
+
+    function visibleItems() {
+      if (scope === 'inaktiv') return items.filter(i => !i.aktiv);
+      const aktive = items.filter(i => i.aktiv);
+      if (scope === 'psa') return aktive.filter(i => i.ist_psa);
+      if (scope === 'inventar') return aktive.filter(i => !i.ist_psa);
+      return aktive;
+    }
+
+    function itemMetaLine(it) {
+      const parts = [it.kategorie];
+      if (it.materialart) parts.push(it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall');
+      if (it.hersteller) parts.push(it.hersteller);
+      return parts.join(' · ');
+    }
+
+    function itemName(it) {
+      return [it.hersteller, it.modellbezeichnung].filter(Boolean).join(' — ') || it.kategorie;
+    }
+
+    function renderDetail(it) {
+      const pruef = pruefByMaterial[it.id] || [];
+      const letzte = pruef[0] ? pruef[0].pruefdatum : null;
+      const leihe = ausleiheByMaterial[it.id] || [];
+      const laufend = leihe.find(l => !l.zurueckgegeben_am);
+
+      const stammdaten = [
+        ['Seriennummer', it.seriennummer], ['Chargennummer', it.chargennummer],
+        ['Herstellungsdatum', it.herstellungsdatum ? psaFmtDate(it.herstellungsdatum) : null],
+        ['Kaufdatum', it.kaufdatum ? psaFmtDate(it.kaufdatum) : null],
+        ['Erste Nutzung', it.erste_nutzung ? psaFmtDate(it.erste_nutzung) : null],
+        ['Max. Lebensdauer', it.max_lebensdauer_jahre ? it.max_lebensdauer_jahre + ' Jahre' : null],
+        ['Prüfrhythmus', it.pruefrhythmus_monate ? 'alle ' + it.pruefrhythmus_monate + ' Monate' : 'kein Rhythmus']
+      ].filter(([, v]) => v);
+
+      return `
+        <div style="border-top:1px solid var(--color-divider);margin-top:14px;padding-top:16px;display:flex;flex-direction:column;gap:18px">
+          <dl style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 20px;margin:0">
+            ${stammdaten.map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('')}
+          </dl>
+
+          ${it.ist_psa ? `
+          <div>
+            <h4 style="margin:0 0 10px;font-size:15px">Prüfhistorie</h4>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+              ${pruef.length ? pruef.map(p => `
+                <div style="background:var(--color-surface);border-radius:var(--radius-sm);padding:10px 14px;font-size:13.5px">
+                  <strong>${psaFmtDate(p.pruefdatum)}</strong> · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}
+                </div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
+            </div>
+            <form data-pruef-form="${it.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+              <div class="field" style="min-width:160px"><label>Ergebnis</label>
+                <select class="input" data-f="ergebnis" required>
+                  <option value="gut">Gut – weiter verwenden</option>
+                  <option value="mangel">Mangel festgestellt</option>
+                  <option value="aussondern">Aussondern</option>
+                </select>
+              </div>
+              <div class="field" style="flex:1;min-width:200px"><label>Notiz (optional)</label><input class="input" data-f="notiz" maxlength="1000"></div>
+              <button type="submit" class="btn btn-secondary" style="font-size:14px;padding:11px 18px">Prüfung eintragen</button>
+            </form>
+          </div>` : ''}
+
+          ${it.ausleihbar ? `
+          <div>
+            <h4 style="margin:0 0 10px;font-size:15px">Verleih</h4>
+            ${laufend
+              ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f7ecd2;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:10px">
+                   <span style="font-size:13.5px">Ausgeliehen an <strong>${escapeHtml(laufend.ausgeliehen_an)}</strong> seit ${psaFmtDate(laufend.ausgegeben_am)}</span>
+                   <button type="button" class="btn btn-secondary" data-ausleihe-return="${laufend.id}" style="font-size:13px;padding:8px 14px">Zurückgeben</button>
+                 </div>`
+              : `<form data-ausleihe-form="${it.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+                   <div class="field" style="flex:1;min-width:200px"><label>An wen?</label><input class="input" data-f="an" required maxlength="160" placeholder="Name"></div>
+                   <button type="submit" class="btn btn-secondary" style="font-size:14px;padding:11px 18px">Ausleihen</button>
+                 </form>`}
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${leihe.filter(l => l !== laufend).map(l => `
+                <div style="font-size:12.5px;opacity:0.75">${escapeHtml(l.ausgeliehen_an)} · ${psaFmtDate(l.ausgegeben_am)} → ${l.zurueckgegeben_am ? psaFmtDate(l.zurueckgegeben_am) : 'offen'}</div>`).join('')}
+            </div>
+          </div>` : ''}
+
+          <div>
+            <button type="button" class="btn btn-secondary" data-toggle-aktiv="${it.id}" style="font-size:13px;padding:9px 16px">${it.aktiv ? 'Als inaktiv markieren (aussondern)' : 'Wieder aktivieren'}</button>
+          </div>
+        </div>`;
+    }
+
+    function renderList() {
+      const list = visibleItems();
+      const listEl = document.getElementById('psaList');
+      const emptyEl = document.getElementById('psaEmpty');
+      if (!listEl) return;
+      emptyEl.hidden = list.length > 0;
+      listEl.innerHTML = list.map(it => {
+        const pruef = pruefByMaterial[it.id] || [];
+        const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+        const open = openId === it.id;
+        return `
+        <div class="card elev-sm" style="gap:0">
+          <button type="button" data-toggle-open="${it.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(it))}</div>
+              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(it))}</div>
+            </div>
+            ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : (it.ist_psa ? '<span class="tag tag-neutral">keine Prüfung</span>' : '')}
+            ${it.ausleihbar ? '<span class="tag tag-accent-2">ausleihbar</span>' : ''}
+          </button>
+          ${open ? renderDetail(it) : ''}
+        </div>`;
+      }).join('');
+      wireListEvents();
+    }
+
+    function wireListEvents() {
+      document.querySelectorAll('[data-toggle-open]').forEach(el => {
+        el.addEventListener('click', () => { const id = el.dataset.toggleOpen; openId = openId === id ? null : id; renderList(); });
+      });
+      document.querySelectorAll('[data-toggle-aktiv]').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = el.dataset.toggleAktiv;
+          const it = items.find(i => i.id === id);
+          if (!it) return;
+          await client.from('psa_material').update({ aktiv: !it.aktiv }).eq('id', id);
+          await loadAll();
+          renderList();
+        });
+      });
+      document.querySelectorAll('[data-pruef-form]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const materialId = form.dataset.pruefForm;
+          const ergebnis = form.querySelector('[data-f="ergebnis"]').value;
+          const notiz = form.querySelector('[data-f="notiz"]').value.trim();
+          await client.from('psa_pruefprotokoll').insert({ material_id: materialId, geprueft_von: userId, ergebnis, notiz: notiz || null });
+          await loadAll();
+          renderList();
+        });
+      });
+      document.querySelectorAll('[data-ausleihe-form]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const materialId = form.dataset.ausleiheForm;
+          const an = form.querySelector('[data-f="an"]').value.trim();
+          if (!an) return;
+          await client.from('psa_ausleihe').insert({ material_id: materialId, ausgeliehen_an: an });
+          await loadAll();
+          renderList();
+        });
+      });
+      document.querySelectorAll('[data-ausleihe-return]').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await client.from('psa_ausleihe').update({ zurueckgegeben_am: new Date().toISOString().slice(0, 10) }).eq('id', el.dataset.ausleiheReturn);
+          await loadAll();
+          renderList();
+        });
+      });
+    }
+
+    // Scope-Filter
+    document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.scope === scope);
+      btn.addEventListener('click', () => {
+        scope = btn.dataset.scope;
+        document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(b => b.classList.toggle('active', b === btn));
+        renderList();
+      });
+    });
+
+    // Neu-Formular
+    const formBox = document.getElementById('psaFormBox');
+    const newBtn = document.getElementById('psaNewBtn');
+    const cancelBtn = document.getElementById('psaFormCancel');
+    const errBox = document.getElementById('psaFormError');
+    const fIstPsa = document.getElementById('fIstPsa');
+    const fKategorie = document.getElementById('fKategorie');
+    const psaOnlyGroups = ['fMaterialartGroup', 'fSeriennummerGroup', 'fChargennummerGroup', 'fHerstellungsdatumGroup', 'fKaufdatumGroup', 'fErsteNutzungGroup', 'fLebensdauerGroup'];
+
+    function syncFormForType() {
+      const isPsa = fIstPsa.checked;
+      const kats = isPsa ? PSA_KATEGORIEN : INVENTAR_KATEGORIEN;
+      fKategorie.innerHTML = kats.map(k => `<option>${escapeHtml(k)}</option>`).join('');
+      psaOnlyGroups.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = !isPsa; });
+    }
+    fIstPsa.addEventListener('change', syncFormForType);
+    syncFormForType();
+
+    newBtn.addEventListener('click', () => {
+      formBox.reset();
+      fIstPsa.checked = true;
+      syncFormForType();
+      errBox.hidden = true;
+      formBox.hidden = false;
+      formBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    cancelBtn.addEventListener('click', () => { formBox.hidden = true; });
+
+    formBox.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const kategorie = fKategorie.value;
+      if (!kategorie) return;
+      const payload = {
+        user_id: userId,
+        ist_psa: fIstPsa.checked,
+        kategorie,
+        ausleihbar: document.getElementById('fAusleihbar').checked,
+        materialart: document.getElementById('fMaterialart').value || null,
+        hersteller: document.getElementById('fHersteller').value.trim() || null,
+        modellbezeichnung: document.getElementById('fModell').value.trim() || null,
+        seriennummer: document.getElementById('fSeriennummer').value.trim() || null,
+        chargennummer: document.getElementById('fChargennummer').value.trim() || null,
+        herstellungsdatum: document.getElementById('fHerstellungsdatum').value || null,
+        kaufdatum: document.getElementById('fKaufdatum').value || null,
+        erste_nutzung: document.getElementById('fErsteNutzung').value || null,
+        max_lebensdauer_jahre: document.getElementById('fLebensdauer').value ? Number(document.getElementById('fLebensdauer').value) : null,
+        pruefrhythmus_monate: document.getElementById('fPruefrhythmus').value ? Number(document.getElementById('fPruefrhythmus').value) : null
+      };
+      try {
+        const { error } = await client.from('psa_material').insert(payload);
+        if (error) throw error;
+        formBox.hidden = true;
+        await loadAll();
+        renderList();
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Konnte nicht gespeichert werden — bitte Pflichtfelder prüfen.';
+      }
+    });
+
+    await loadAll();
+    renderList();
+  }
+
+  // --------------------------------------------------------------------
   // Einstieg
   // --------------------------------------------------------------------
   document.addEventListener('DOMContentLoaded', async () => {
@@ -2963,7 +3251,8 @@
       'konto-lernen': renderLernen,
       'konto-qualifikationen': renderQualifikationen,
       'konto-weg': renderWeg,
-      'konto-training': renderTraining
+      'konto-training': renderTraining,
+      'konto-psa': renderPsa
     };
 
     if (accountPages[page]) {
