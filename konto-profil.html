@@ -115,6 +115,26 @@
           </div>
         </div>
 
+        <div id="unternehmenBox" hidden style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:30px 32px;margin-top:24px">
+          <div style="font-family:var(--font-heading);font-size:20px;margin-bottom:10px">Unternehmensdaten für die Prüfbescheinigung</div>
+          <p style="margin:0 0 16px;font-size:15px;opacity:0.8;max-width:56ch">Prüfst du nicht für BETAMOVE, sondern für ein anderes Unternehmen? Dann erscheinen Firmenname und -anschrift auf der ausgestellten Prüfbescheinigung statt BETAMOVE.</p>
+          <div class="field" style="max-width:300px;margin-bottom:16px">
+            <label>Tätig für</label>
+            <div style="display:inline-flex;gap:4px;background:var(--color-surface);border-radius:999px;padding:4px">
+              <button type="button" id="uOrgBetamove" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">BETAMOVE</button>
+              <button type="button" id="uOrgExtern" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Extern</button>
+            </div>
+          </div>
+          <div id="uOrgFields" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;max-width:560px">
+            <div class="field"><label for="uOrgName">Firmenname</label><input id="uOrgName" class="input" maxlength="200" placeholder="z.B. Boulderwelt Dresden GmbH"></div>
+            <div class="field" style="grid-column:1/-1"><label for="uOrgAdresse">Firmenanschrift</label><input id="uOrgAdresse" class="input" maxlength="300" placeholder="Straße Nr., PLZ Ort"></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:18px">
+            <button type="button" id="uOrgSaveBtn" class="btn btn-primary" style="font-size:15px;padding:11px 20px">Speichern</button>
+            <span id="uOrgSaved" hidden style="font-size:15px;font-weight:600;color:var(--color-accent-2-700)">✓ Gespeichert</span>
+          </div>
+        </div>
+
         <div style="background:#ffffff;border:1px solid var(--color-divider);border-radius:calc(var(--radius-lg) * 1.15);padding:30px 32px;margin-top:24px">
           <div style="font-family:var(--font-heading);font-size:20px;margin-bottom:10px">PSA-Artikelnummern</div>
           <p style="margin:0 0 16px;font-size:15px;opacity:0.8;max-width:56ch">Wie sollen die automatisch vergebenen Artikelnummern (z.B. P-G-0001) deines PSA-Materials gezählt werden?</p>

@@ -644,6 +644,49 @@
       });
     }
 
+    const unternehmenBox = document.getElementById('unternehmenBox');
+    if (unternehmenBox) {
+      const { sachRow, isSach } = await fetchSachRow(client, session.user.id);
+      if (isSach) {
+        unternehmenBox.hidden = false;
+        const btnBetamove = document.getElementById('uOrgBetamove');
+        const btnExtern = document.getElementById('uOrgExtern');
+        const orgFieldsBox = document.getElementById('uOrgFields');
+        const orgNameInput = document.getElementById('uOrgName');
+        const orgAdresseInput = document.getElementById('uOrgAdresse');
+        let isExtern = !!(sachRow.organisation && sachRow.organisation.trim().toLowerCase() !== 'betamove');
+        orgNameInput.value = isExtern ? (sachRow.organisation || '') : '';
+        orgAdresseInput.value = sachRow.unternehmen_adresse || '';
+        function renderOrgToggle() {
+          btnBetamove.classList.toggle('active', !isExtern);
+          btnExtern.classList.toggle('active', isExtern);
+          orgFieldsBox.hidden = !isExtern;
+        }
+        renderOrgToggle();
+        btnBetamove.addEventListener('click', () => { isExtern = false; renderOrgToggle(); });
+        btnExtern.addEventListener('click', () => { isExtern = true; renderOrgToggle(); });
+        const orgSaveBtn = document.getElementById('uOrgSaveBtn');
+        const orgSaved = document.getElementById('uOrgSaved');
+        orgSaveBtn.addEventListener('click', async () => {
+          orgSaved.hidden = true;
+          if (isExtern && !orgNameInput.value.trim()) { alert('Bitte den Firmennamen angeben.'); return; }
+          orgSaveBtn.disabled = true;
+          try {
+            const { error } = await client.rpc('psa_sachkundige_update_unternehmensdaten', {
+              p_organisation: isExtern ? orgNameInput.value.trim() : 'BETAMOVE',
+              p_adresse: isExtern ? (orgAdresseInput.value.trim() || null) : null
+            });
+            if (error) throw error;
+            orgSaved.hidden = false;
+          } catch (e) {
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          } finally {
+            orgSaveBtn.disabled = false;
+          }
+        });
+      }
+    }
+
     const psaNummerierungRadios = document.querySelectorAll('input[name="psaNummerierung"]');
     if (psaNummerierungRadios.length) {
       const current = profile.psa_nummerierung_modus || 'pro_kategorie';
@@ -3897,7 +3940,7 @@
     doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.5);
     doc.line(marginX, y, pageWidth - marginX, y); y += 8;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40);
-    doc.text('Geprüft von: ' + aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + ')' : ''), marginX, y); y += 6;
+    doc.text('Geprüft von: ' + aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + (aussteller.unternehmenAdresse ? ', ' + aussteller.unternehmenAdresse : '') + ')' : ''), marginX, y); y += 6;
     doc.text('Ausgestellt am: ' + new Date().toLocaleDateString('de-DE'), marginX, y); y += 10;
 
     doc.setFontSize(8.5); doc.setTextColor(120);
@@ -4327,8 +4370,25 @@
       ['Name', kunde.name, true], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email]
     ].filter(([, v]) => v).map(([label, v, bold]) => `<div>${bold ? '<strong>' + escapeHtml(v) + '</strong>' : escapeHtml(label) + ': ' + escapeHtml(v)}</div>`).join('');
 
-    const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null };
-    document.getElementById('zAusstellerOrg').textContent = aussteller.organisation && aussteller.organisation !== 'BETAMOVE' ? aussteller.organisation : 'Kletterschule';
+    const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null, unternehmenAdresse: sachRow ? sachRow.unternehmen_adresse : null };
+    const zIstBetamove = !aussteller.organisation || aussteller.organisation.trim().toLowerCase() === 'betamove';
+    const zBrandCircle = document.getElementById('zBrandCircle');
+    const zBrandName = document.getElementById('zBrandName');
+    if (zIstBetamove) {
+      if (zBrandCircle) zBrandCircle.textContent = 'BM';
+      if (zBrandName) zBrandName.textContent = 'BETAMOVE';
+      document.getElementById('zAusstellerOrg').textContent = 'Kletterschule';
+    } else {
+      if (zBrandCircle) zBrandCircle.textContent = aussteller.organisation.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      if (zBrandName) zBrandName.textContent = aussteller.organisation;
+      document.getElementById('zAusstellerOrg').textContent = aussteller.unternehmenAdresse || '';
+    }
+    const zDisclaimerEl = document.getElementById('zDisclaimer');
+    if (zDisclaimerEl) {
+      zDisclaimerEl.textContent = zIstBetamove
+        ? 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung durch die anwendende Person selbst. BETAMOVE, Alte Straße 22, 04229 Leipzig · info@betamove.de'
+        : 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung durch die anwendende Person selbst. Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung. ' + aussteller.organisation + (aussteller.unternehmenAdresse ? ', ' + aussteller.unternehmenAdresse : '');
+    }
     document.getElementById('zDatumZeile').textContent = (gesamt ? 'Gesamtübersicht · ' : '') + 'ausgestellt am ' + new Date().toLocaleDateString('de-DE');
     document.getElementById('zTabelle').innerHTML = rows.map(r => {
       const dot = PSA_ERGEBNIS_DOT[r.ergebnis] || PSA_ERGEBNIS_DOT.gut;
