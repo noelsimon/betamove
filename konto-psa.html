@@ -57,6 +57,7 @@
             <p style="max-width:66ch;margin:0;font-size:17px;opacity:0.82">Deine persönliche Schutzausrüstung (PSA) und dein sonstiges Material — erfassen, prüfen, verleihen.</p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a href="konto-zertifikat?gesamt=1" class="btn btn-secondary" style="font-size:15px;padding:12px 22px;white-space:nowrap">Gesamt-Prüfbescheinigung</a>
             <a href="konto-psa-verbindungen" class="btn btn-secondary" style="font-size:15px;padding:12px 22px;white-space:nowrap">Verbindungen</a>
             <a href="konto-psa-verleih" class="btn btn-secondary" style="font-size:15px;padding:12px 22px;white-space:nowrap">Verleih verwalten</a>
             <a href="konto-psa-neu" class="btn btn-primary" style="font-size:15px;padding:12px 22px;white-space:nowrap">+ Neu hinzufügen</a>
@@ -70,11 +71,28 @@
         <div id="psaStats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:22px 0"></div>
 
         <!-- Filter: PSA / Inventar / Alle -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px" id="psaScopeFilter">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 14px" id="psaScopeFilter">
           <button type="button" data-scope="psa" class="konto-nav-link" style="padding:9px 18px;font-size:14px">PSA-Material</button>
           <button type="button" data-scope="inventar" class="konto-nav-link" style="padding:9px 18px;font-size:14px">Inventar</button>
           <button type="button" data-scope="alle" class="konto-nav-link" style="padding:9px 18px;font-size:14px">Alle</button>
           <a href="konto-psa-inaktiv" id="psaInaktivLink" style="margin-left:auto;font-size:13px;font-weight:600;opacity:0.75">Inaktives Material anzeigen →</a>
+        </div>
+
+        <!-- Suche -->
+        <div style="position:relative;margin-bottom:14px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:0.5"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input id="psaSearch" class="input" placeholder="Suche nach Artikel-Nr., Seriennummer oder Bezeichnung …" style="width:100%;box-sizing:border-box;padding-left:40px">
+        </div>
+
+        <!-- Kategorie-Filter -->
+        <div id="psaKategorieFilter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+
+        <!-- Status-Filter -->
+        <div id="psaStatusFilter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+          <button type="button" data-status="alle" class="konto-nav-link active" style="padding:9px 16px;font-size:13.5px">Alle</button>
+          <button type="button" data-status="geprueft" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Geprüft</button>
+          <button type="button" data-status="offen" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Offen</button>
+          <button type="button" data-status="ueberfaellig" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Überfällig</button>
         </div>
 
         <div id="psaList" style="display:flex;flex-direction:column;gap:14px"></div>

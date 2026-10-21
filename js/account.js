@@ -643,6 +643,25 @@
         }
       });
     }
+
+    const psaNummerierungRadios = document.querySelectorAll('input[name="psaNummerierung"]');
+    if (psaNummerierungRadios.length) {
+      const current = profile.psa_nummerierung_modus || 'pro_kategorie';
+      psaNummerierungRadios.forEach(r => { r.checked = r.value === current; });
+      psaNummerierungRadios.forEach(r => {
+        r.addEventListener('change', async () => {
+          const savedEl = document.getElementById('psaNummerierungSaved');
+          if (savedEl) savedEl.hidden = true;
+          try {
+            const { error } = await client.from('profiles').update({ psa_nummerierung_modus: r.value }).eq('id', session.user.id);
+            if (error) throw error;
+            if (savedEl) savedEl.hidden = false;
+          } catch (e) {
+            alert('Konnte nicht gespeichert werden. Bitte erneut versuchen.');
+          }
+        });
+      });
+    }
   }
 
   // --------------------------------------------------------------------
@@ -2961,7 +2980,11 @@
   // --------------------------------------------------------------------
   const PSA_KATEGORIEN = ['Gurt', 'Helm', 'Seil (dynamisch)', 'Seil (halbstatisch)', 'Verbindungselement / Karabiner', 'Sicherungsgerät', 'Bandschlinge / Express', 'Sonstiges'];
   const INVENTAR_KATEGORIEN = ['Chalkbag', 'Kletterschuhe', 'Theraband / Trainingsband', 'Bekleidung', 'Tasche / Rucksack', 'Sonstiges'];
-  const PSA_ERGEBNIS_LABEL = { gut: 'Gut – weiter verwenden', mangel: 'Mangel festgestellt', aussondern: 'Aussondern' };
+  const PSA_ERGEBNIS_LABEL = { gut: 'Gut – weiter verwenden', mangel: 'Zustand beobachten', aussondern: 'Nicht mehr verwenden – aussondern' };
+  const PSA_CHECKLISTE = {
+    textil: ['Nähte', 'Gurtband unbeschädigt', 'Einbindeschlaufe', 'Schnallen / Verstellelemente', 'Verschmutzung / Chemikalienkontakt'],
+    metall: ['Korrosion', 'Risse / Verformung', 'Funktion der Verschlussmechanik', 'Verschleiß an Kontaktstellen', 'Kennzeichnung lesbar']
+  };
 
   function psaFmtDate(d) {
     if (!d) return '–';
@@ -3003,11 +3026,47 @@
     return `<span style="width:${s}px;height:${s}px;flex:none;border-radius:50%;background:var(--color-surface);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(s * 0.34)}px;color:var(--color-accent-700)">${escapeHtml(initials)}</span>`;
   }
 
+  function lifespanBarHtml(material) {
+    if (!material.herstellungsdatum || !material.max_lebensdauer_jahre) return '';
+    const start = new Date(material.herstellungsdatum + 'T00:00:00');
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + material.max_lebensdauer_jahre);
+    const totalMs = end - start;
+    const usedMs = Date.now() - start;
+    const pct = Math.max(0, Math.min(100, Math.round((usedMs / totalMs) * 100)));
+    return `
+      <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.65">
+        <span>Herstellungsdatum: ${psaFmtDate(material.herstellungsdatum)}</span>
+        <span>spätestes Aussonderungsdatum: ${psaFmtDate(end.toISOString().slice(0, 10))}</span>
+      </div>
+      <div style="height:10px;border-radius:999px;background:var(--color-surface);overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:var(--color-accent-2)"></div>
+      </div>
+      <div style="font-size:12.5px;opacity:0.65">${pct} % der maximalen Lebensdauer verbraucht — automatisch berechnet aus dem Herstellungsdatum.</div>`;
+  }
+
+  function ownerBadgeHtml(material, kundeName) {
+    if (material.kunde_id || kundeName) {
+      return `<span class="tag tag-accent-2">Kundenmaterial</span><span style="font-size:12px;opacity:0.65">— gehört ${escapeHtml(kundeName || 'der Kund*in')}, nicht dir.</span>`;
+    }
+    return `<span class="tag tag-neutral">Eigenes Material</span><span style="font-size:12px;opacity:0.65">— gehört dir bzw. BETAMOVE, z.B. Kurs- oder Verleihmaterial.</span>`;
+  }
+
   function itemMetaLine(it) {
-    const parts = [it.kategorie];
+    const parts = [];
+    if (it.materialnummer) parts.push(it.materialnummer);
+    parts.push(it.kategorie);
     if (it.materialart) parts.push(it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall');
     if (it.hersteller) parts.push(it.hersteller);
     return parts.join(' · ');
+  }
+
+  function dueDateColumnHtml(status) {
+    if (!status || !status.next) return '';
+    return `<div style="text-align:right;flex:none">
+      <div style="font-size:12px;opacity:0.65">Nächste Prüfung</div>
+      <div style="font-size:13.5px;font-weight:600">${psaFmtDate(status.next.toISOString().slice(0, 10))}</div>
+    </div>`;
   }
 
   function itemName(it) {
@@ -3021,6 +3080,9 @@
     let items = [];
     let pruefByMaterial = {};
     let scope = 'psa';
+    let kategorie = 'Alle';
+    let statusFilter = 'alle';
+    let search = '';
 
     async function loadAll() {
       const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).order('created_at', { ascending: false });
@@ -3033,11 +3095,50 @@
       }
     }
 
+    function itemStatus(it) {
+      const pruef = pruefByMaterial[it.id] || [];
+      return psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
+    }
+
+    function matchesStatusFilter(it) {
+      if (statusFilter === 'alle') return true;
+      const status = itemStatus(it);
+      if (statusFilter === 'offen') return !status;
+      if (statusFilter === 'ueberfaellig') return !!status && status.label === 'ÜBERFÄLLIG';
+      if (statusFilter === 'geprueft') return !!status && status.label !== 'ÜBERFÄLLIG';
+      return true;
+    }
+
+    function matchesSearch(it) {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return [it.materialnummer, it.seriennummer, it.chargennummer, it.hersteller, it.modellbezeichnung, it.kategorie]
+        .filter(Boolean).some(v => String(v).toLowerCase().includes(q));
+    }
+
     function visibleItems() {
-      const aktive = items.filter(i => i.aktiv);
-      if (scope === 'psa') return aktive.filter(i => i.ist_psa);
-      if (scope === 'inventar') return aktive.filter(i => !i.ist_psa);
-      return aktive;
+      let list = items.filter(i => i.aktiv);
+      if (scope === 'psa') list = list.filter(i => i.ist_psa);
+      else if (scope === 'inventar') list = list.filter(i => !i.ist_psa);
+      if (kategorie !== 'Alle') list = list.filter(i => i.kategorie === kategorie);
+      if (scope !== 'inventar') list = list.filter(matchesStatusFilter);
+      list = list.filter(matchesSearch);
+      return list;
+    }
+
+    function renderKategorieChips() {
+      const el = document.getElementById('psaKategorieFilter');
+      if (!el) return;
+      const liste = scope === 'inventar' ? INVENTAR_KATEGORIEN : scope === 'psa' ? PSA_KATEGORIEN : PSA_KATEGORIEN.concat(INVENTAR_KATEGORIEN).filter((k, i, arr) => arr.indexOf(k) === i);
+      const chips = ['Alle'].concat(liste);
+      el.innerHTML = chips.map(k => `<button type="button" data-kategorie="${escapeHtml(k)}" class="konto-nav-link${k === kategorie ? ' active' : ''}" style="padding:9px 16px;font-size:13.5px">${escapeHtml(k)}</button>`).join('');
+      el.querySelectorAll('[data-kategorie]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          kategorie = btn.dataset.kategorie;
+          el.querySelectorAll('[data-kategorie]').forEach(b => b.classList.toggle('active', b === btn));
+          renderList();
+        });
+      });
     }
 
     function renderStats() {
@@ -3076,6 +3177,7 @@
             <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(it))}</div>
             <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(it))}</div>
           </div>
+          ${dueDateColumnHtml(status)}
           ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : (it.ist_psa ? '<span class="tag tag-neutral">keine Prüfung</span>' : '')}
           ${it.ausleihbar ? '<span class="tag tag-accent-2">ausleihbar</span>' : ''}
         </a>`;
@@ -3086,13 +3188,31 @@
       btn.classList.toggle('active', btn.dataset.scope === scope);
       btn.addEventListener('click', () => {
         scope = btn.dataset.scope;
+        kategorie = 'Alle';
         document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(b => b.classList.toggle('active', b === btn));
+        const statusFilterEl = document.getElementById('psaStatusFilter');
+        if (statusFilterEl) statusFilterEl.hidden = scope === 'inventar';
+        renderKategorieChips();
+        renderList();
+      });
+    });
+
+    const searchInput = document.getElementById('psaSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => { search = searchInput.value.trim(); renderList(); });
+    }
+    document.querySelectorAll('#psaStatusFilter [data-status]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.status === statusFilter);
+      btn.addEventListener('click', () => {
+        statusFilter = btn.dataset.status;
+        document.querySelectorAll('#psaStatusFilter [data-status]').forEach(b => b.classList.toggle('active', b === btn));
         renderList();
       });
     });
 
     await loadAll();
     renderStats();
+    renderKategorieChips();
     renderList();
     await renderSachBoxFor(client, userId);
   }
@@ -3126,10 +3246,17 @@
 
     function renderHeader() {
       document.getElementById('pdTitel').textContent = itemName(it);
+      document.getElementById('pdArtikelnummer').textContent = it.materialnummer ? 'Artikel-Nr. ' + it.materialnummer : '';
+      document.getElementById('pdOwnerBadge').innerHTML = ownerBadgeHtml(it);
       const status = psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null);
       const pill = document.getElementById('pdStatusPill');
       if (status) { pill.hidden = false; pill.textContent = status.label; pill.style.background = status.bg; pill.style.color = status.fg; }
       else { pill.hidden = true; }
+
+      const lebensdauerBox = document.getElementById('pdLebensdauerBox');
+      const lebensdauerHtml = lifespanBarHtml(it);
+      if (lebensdauerHtml) { lebensdauerBox.hidden = false; lebensdauerBox.innerHTML = lebensdauerHtml; }
+      else { lebensdauerBox.hidden = true; }
 
       const stammdaten = [
         ['Kategorie', it.kategorie], ['Materialart', it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : it.materialart === 'textil_metall' ? 'Textil + Metall' : null],
@@ -3210,7 +3337,7 @@
   // Gemeinsam für eigenes Material und Kundenmaterial.
   // --------------------------------------------------------------------
   async function renderPsaPruefung(ctx) {
-    const { client, session } = ctx;
+    const { client, session, profile } = ctx;
     const userId = session.user.id;
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
@@ -3223,18 +3350,111 @@
     if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
-    document.getElementById('pItemName').textContent = itemName(it);
+    document.getElementById('pItemName').textContent = itemName(it) + (it.materialnummer ? ' · Artikel-Nr. ' + it.materialnummer : '') + (it.materialart ? ' · Material: ' + (it.materialart === 'textil' ? 'Textil' : it.materialart === 'metall' ? 'Metall' : 'Textil + Metall') : '');
     const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId)
       : verbundenId ? 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId)
       : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
     document.getElementById('pBackLink').href = backHref;
 
+    let sachRow = null;
+    if (kundeId || verbundenId) {
+      const res = await fetchSachRow(client, userId);
+      sachRow = res.sachRow;
+    }
+
+    // Checkliste — reine Ausfüllhilfe, wird nicht gespeichert.
+    const checklistPoints = it.materialart === 'metall' ? PSA_CHECKLISTE.metall
+      : it.materialart === 'textil_metall' ? PSA_CHECKLISTE.textil.concat(PSA_CHECKLISTE.metall)
+      : PSA_CHECKLISTE.textil;
+    const checklistState = {};
+    checklistPoints.forEach((_, i) => { checklistState[i] = 'ok'; });
+
+    document.getElementById('pChecklisteTitel').textContent = 'Checkliste — ' + (it.materialart === 'metall' ? 'Metallprodukt' : it.materialart === 'textil_metall' ? 'Textil + Metall' : 'Textilprodukt');
+
+    function renderCheckliste() {
+      document.getElementById('pChecklisteList').innerHTML = checklistPoints.map((label, i) => {
+        const val = checklistState[i];
+        const okActive = val === 'ok';
+        const badActive = val === 'mangel';
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;border-top:1px solid var(--color-divider)">
+          <div style="font-size:14px">${escapeHtml(label)}</div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button type="button" data-check="${i}" data-val="ok" style="border:2px solid ${okActive ? '#2f6b45' : 'var(--color-divider)'};background:${okActive ? '#dcebe0' : '#ffffff'};color:${okActive ? '#2f6b45' : 'var(--color-text)'};border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700">OK</button>
+            <button type="button" data-check="${i}" data-val="mangel" style="border:2px solid ${badActive ? 'var(--color-warn)' : 'var(--color-divider)'};background:${badActive ? 'var(--color-warn-bg)' : '#ffffff'};color:${badActive ? 'var(--color-warn)' : 'var(--color-text)'};border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700">Mangel</button>
+          </div>
+        </div>`;
+      }).join('');
+      document.querySelectorAll('[data-check]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checklistState[btn.dataset.check] = btn.dataset.val;
+          renderCheckliste();
+        });
+      });
+    }
+
+    // Gesamtergebnis
+    let ergebnis = 'gut';
+    const ERGEBNIS_DEFS = [
+      ['gut', PSA_ERGEBNIS_LABEL.gut, '#2f6b45', '#dcebe0'],
+      ['mangel', PSA_ERGEBNIS_LABEL.mangel, '#8a6a1f', '#f7ecd2'],
+      ['aussondern', PSA_ERGEBNIS_LABEL.aussondern, 'var(--color-warn)', 'var(--color-warn-bg)']
+    ];
+    function renderErgebnisButtons() {
+      document.getElementById('pErgebnisButtons').innerHTML = ERGEBNIS_DEFS.map(([key, label, color, bg]) => {
+        const active = ergebnis === key;
+        return `<button type="button" data-ergebnis="${key}" style="border:2px solid ${active ? color : 'var(--color-divider)'};background:${active ? bg : '#ffffff'};color:${active ? color : 'var(--color-text)'};border-radius:var(--radius-md);padding:14px 10px;font-size:13px;font-weight:700;text-align:center">${label}</button>`;
+      }).join('');
+      document.querySelectorAll('[data-ergebnis]').forEach(btn => {
+        btn.addEventListener('click', () => { ergebnis = btn.dataset.ergebnis; renderErgebnisButtons(); });
+      });
+    }
+
+    function renderBestaetigungBox() {
+      const vorname = (profile && profile.vorname) || '';
+      const nachname = (profile && profile.nachname) || '';
+      const initials = ((vorname[0] || '') + (nachname[0] || '')).toUpperCase() || '–';
+      const qualLine = sachRow
+        ? `<div style="font-size:12px;opacity:0.65">Autorisierte Sachkundige Person${sachRow.organisation && sachRow.organisation !== 'BETAMOVE' ? ' (' + escapeHtml(sachRow.organisation) + ')' : ''}${sachRow.freigeschaltet_bis ? ' · gültig bis ' + psaFmtDate(sachRow.freigeschaltet_bis) : ''}</div>`
+        : '';
+      document.getElementById('pBestaetigungBox').innerHTML = `
+        <h2 style="margin:0 0 4px;font-size:15.5px">Bestätigung</h2>
+        <p style="margin:0 0 14px;font-size:12.5px;opacity:0.65;max-width:56ch">Der Prüfer-Name kommt automatisch aus deinem Login. Zeitstempel wird serverseitig gesetzt und ist danach nicht mehr änderbar.</p>
+        <div style="display:flex;align-items:center;gap:12px;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:14px">
+          <div style="width:36px;height:36px;flex:none;border-radius:50%;background:var(--color-accent);color:#ffffff;display:grid;place-items:center;font-weight:700;font-size:13px">${escapeHtml(initials)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">Angemeldet als ${escapeHtml((vorname + ' ' + nachname).trim())}</div>
+            ${qualLine}
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:13px 24px">Prüfung bestätigen &amp; signieren</button>
+      `;
+    }
+
+    renderCheckliste();
+    renderErgebnisButtons();
+    renderBestaetigungBox();
+
     document.getElementById('pForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const ergebnis = document.querySelector('#pForm input[name="ergebnis"]:checked').value;
       const notiz = document.getElementById('pNotiz').value.trim();
-      await client.from('psa_pruefprotokoll').insert({ material_id: it.id, geprueft_von: userId, ergebnis, notiz: notiz || null });
-      location.href = backHref;
+      const { error } = await client.from('psa_pruefprotokoll').insert({ material_id: it.id, geprueft_von: userId, ergebnis, notiz: notiz || null });
+      if (error) return;
+
+      const zertHref = kundeId ? 'konto-zertifikat?kunde=' + encodeURIComponent(kundeId) + '&material=' + encodeURIComponent(it.id)
+        : verbundenId ? 'konto-zertifikat?verbunden=' + encodeURIComponent(verbundenId) + '&material=' + encodeURIComponent(it.id)
+        : 'konto-zertifikat?material=' + encodeURIComponent(it.id);
+
+      document.getElementById('pForm').hidden = true;
+      const confirmedBox = document.getElementById('pConfirmedBox');
+      confirmedBox.hidden = false;
+      confirmedBox.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f6b45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M20 6 9 17l-5-5"></path></svg>
+        <div>
+          <div style="font-weight:700;color:#2f6b45;font-size:14.5px">Prüfung gespeichert und signiert</div>
+          <div style="font-size:13px;color:#2f6b45;margin-top:4px">Bestätigt von ${escapeHtml(((profile && profile.vorname) || '') + ' ' + ((profile && profile.nachname) || ''))} · ${new Date().toLocaleDateString('de-DE')}, ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr (automatisch gesetzt, nicht nachträglich veränderbar)</div>
+          <a href="${zertHref}" style="display:inline-block;margin-top:12px;font-size:13.5px;font-weight:700;color:#2f6b45;text-decoration:underline">Prüfbescheinigung ansehen →</a>
+        </div>`;
     });
   }
 
@@ -3471,96 +3691,101 @@
   // Sachkundige-Status/Antrag — wird auf konto-psa im #sachBox angezeigt.
   // Eigene, von admin_emails getrennte Rolle (siehe schema-psa-sachkundige.sql).
   // --------------------------------------------------------------------
+  function renderSachApplyForm(box, client, userId, isReapply) {
+    box.innerHTML = `
+      ${isReapply ? '<p style="margin:0;font-size:14.5px">Dein Antrag auf Sachkundige-Freischaltung wurde nicht angenommen. Du kannst dich erneut bewerben.</p>' : '<h3 style="margin:0;font-size:17px">Sachkundige Person werden</h3><p style="margin:0;font-size:14px;opacity:0.75">Damit darfst du zusätzlich Kund*innen anlegen und deren PSA prüfen (siehe "Kundenmaterial").</p>'}
+      <button type="button" id="sachApplyBtn" class="btn btn-secondary" style="font-size:14px;padding:10px 18px;align-self:flex-start">${isReapply ? 'Erneut beantragen' : 'Antrag stellen'}</button>
+      <form id="sachFormBox" hidden style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div class="field"><label for="sfPhone">Handynummer</label><input id="sfPhone" class="input" required></div>
+          <div class="field"><label for="sfBirth">Geburtsdatum</label><input id="sfBirth" type="date" class="input" required></div>
+          <div class="field" style="grid-column:1/-1"><label for="sfAddress">Adresse</label><input id="sfAddress" class="input" required></div>
+          <div class="field">
+            <label>Tätig für</label>
+            <div style="display:inline-flex;gap:4px;background:var(--color-surface);border-radius:999px;padding:4px">
+              <button type="button" id="sfOrgBetamove" class="konto-nav-link active" style="padding:9px 16px;font-size:13.5px">BETAMOVE</button>
+              <button type="button" id="sfOrgExtern" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Extern</button>
+            </div>
+          </div>
+          <div class="field" id="sfOrgNameGroup" hidden><label for="sfOrgName">Name der Organisation</label><input id="sfOrgName" class="input" placeholder="z.B. Boulderwelt Dresden GmbH"></div>
+          <div class="field" style="grid-column:1/-1"><label for="sfQual">Qualifikationsnachweis (Beschreibung)</label><input id="sfQual" class="input" placeholder="z.B. DGUV 312-906, Zert.-Nr. …" required></div>
+          <div class="field" style="grid-column:1/-1"><label for="sfZertifikat">Zertifikat hochladen (PDF oder Bild)</label><input id="sfZertifikat" type="file" accept=".pdf,.jpg,.jpeg,.png" class="input" required></div>
+        </div>
+        <div><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Antrag absenden</button></div>
+        <div id="sachFormError" class="form-error" hidden></div>
+      </form>`;
+    document.getElementById('sachApplyBtn').addEventListener('click', () => {
+      document.getElementById('sachFormBox').hidden = false;
+      document.getElementById('sachApplyBtn').hidden = true;
+    });
+    let sfOrgIsExtern = false;
+    document.getElementById('sfOrgBetamove').addEventListener('click', () => {
+      sfOrgIsExtern = false;
+      document.getElementById('sfOrgBetamove').classList.add('active');
+      document.getElementById('sfOrgExtern').classList.remove('active');
+      document.getElementById('sfOrgNameGroup').hidden = true;
+    });
+    document.getElementById('sfOrgExtern').addEventListener('click', () => {
+      sfOrgIsExtern = true;
+      document.getElementById('sfOrgExtern').classList.add('active');
+      document.getElementById('sfOrgBetamove').classList.remove('active');
+      document.getElementById('sfOrgNameGroup').hidden = false;
+    });
+    document.getElementById('sachFormBox').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('sachFormError');
+      errBox.hidden = true;
+      const orgName = document.getElementById('sfOrgName').value.trim();
+      if (sfOrgIsExtern && !orgName) {
+        errBox.hidden = false;
+        errBox.textContent = 'Bitte den Namen der Organisation angeben.';
+        return;
+      }
+      const file = document.getElementById('sfZertifikat').files[0];
+      if (!file) {
+        errBox.hidden = false;
+        errBox.textContent = 'Bitte ein Zertifikat hochladen.';
+        return;
+      }
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = userId + '/' + Date.now() + '-' + safeName;
+        const { error: upErr } = await client.storage.from('psa-zertifikate').upload(path, file);
+        if (upErr) throw upErr;
+        const payload = {
+          handynummer: document.getElementById('sfPhone').value.trim(),
+          geburtsdatum: document.getElementById('sfBirth').value,
+          adresse: document.getElementById('sfAddress').value.trim(),
+          organisation: sfOrgIsExtern ? orgName : 'BETAMOVE',
+          qualifikationsnachweis: document.getElementById('sfQual').value.trim(),
+          zertifikat_pfad: path
+        };
+        const { error } = isReapply
+          ? await client.from('psa_sachkundige').update(Object.assign({ status: 'offen' }, payload)).eq('user_id', userId)
+          : await client.from('psa_sachkundige').insert(Object.assign({ user_id: userId }, payload));
+        if (error) throw error;
+        await renderSachBoxFor(client, userId);
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Antrag konnte nicht gesendet werden — bitte Pflichtfelder prüfen.';
+      }
+    });
+  }
+
   async function renderSachBoxFor(client, userId) {
     const box = document.getElementById('sachBox');
     if (!box) return;
     const { data: row } = await client.from('psa_sachkundige').select('*').eq('user_id', userId).maybeSingle();
 
     if (!row) {
-      box.innerHTML = `
-        <h3 style="margin:0;font-size:17px">Sachkundige Person werden</h3>
-        <p style="margin:0;font-size:14px;opacity:0.75">Damit darfst du zusätzlich Kund*innen anlegen und deren PSA prüfen (siehe "Kundenmaterial").</p>
-        <button type="button" id="sachApplyBtn" class="btn btn-secondary" style="font-size:14px;padding:10px 18px;align-self:flex-start">Antrag stellen</button>
-        <form id="sachFormBox" hidden style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-            <div class="field"><label for="sfPhone">Handynummer</label><input id="sfPhone" class="input" required></div>
-            <div class="field"><label for="sfBirth">Geburtsdatum</label><input id="sfBirth" type="date" class="input" required></div>
-            <div class="field" style="grid-column:1/-1"><label for="sfAddress">Adresse</label><input id="sfAddress" class="input" required></div>
-            <div class="field">
-              <label>Tätig für</label>
-              <div style="display:inline-flex;gap:4px;background:var(--color-surface);border-radius:999px;padding:4px">
-                <button type="button" id="sfOrgBetamove" class="konto-nav-link active" style="padding:9px 16px;font-size:13.5px">BETAMOVE</button>
-                <button type="button" id="sfOrgExtern" class="konto-nav-link" style="padding:9px 16px;font-size:13.5px">Extern</button>
-              </div>
-            </div>
-            <div class="field" id="sfOrgNameGroup" hidden><label for="sfOrgName">Name der Organisation</label><input id="sfOrgName" class="input" placeholder="z.B. Boulderwelt Dresden GmbH"></div>
-            <div class="field" style="grid-column:1/-1"><label for="sfQual">Qualifikationsnachweis (Beschreibung)</label><input id="sfQual" class="input" placeholder="z.B. DGUV 312-906, Zert.-Nr. …" required></div>
-            <div class="field" style="grid-column:1/-1"><label for="sfZertifikat">Zertifikat hochladen (PDF oder Bild)</label><input id="sfZertifikat" type="file" accept=".pdf,.jpg,.jpeg,.png" class="input" required></div>
-          </div>
-          <div><button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Antrag absenden</button></div>
-          <div id="sachFormError" class="form-error" hidden></div>
-        </form>`;
-      document.getElementById('sachApplyBtn').addEventListener('click', () => {
-        document.getElementById('sachFormBox').hidden = false;
-        document.getElementById('sachApplyBtn').hidden = true;
-      });
-      let sfOrgIsExtern = false;
-      document.getElementById('sfOrgBetamove').addEventListener('click', () => {
-        sfOrgIsExtern = false;
-        document.getElementById('sfOrgBetamove').classList.add('active');
-        document.getElementById('sfOrgExtern').classList.remove('active');
-        document.getElementById('sfOrgNameGroup').hidden = true;
-      });
-      document.getElementById('sfOrgExtern').addEventListener('click', () => {
-        sfOrgIsExtern = true;
-        document.getElementById('sfOrgExtern').classList.add('active');
-        document.getElementById('sfOrgBetamove').classList.remove('active');
-        document.getElementById('sfOrgNameGroup').hidden = false;
-      });
-      document.getElementById('sachFormBox').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errBox = document.getElementById('sachFormError');
-        errBox.hidden = true;
-        const orgName = document.getElementById('sfOrgName').value.trim();
-        if (sfOrgIsExtern && !orgName) {
-          errBox.hidden = false;
-          errBox.textContent = 'Bitte den Namen der Organisation angeben.';
-          return;
-        }
-        const file = document.getElementById('sfZertifikat').files[0];
-        if (!file) {
-          errBox.hidden = false;
-          errBox.textContent = 'Bitte ein Zertifikat hochladen.';
-          return;
-        }
-        try {
-          const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-          const path = userId + '/' + Date.now() + '-' + safeName;
-          const { error: upErr } = await client.storage.from('psa-zertifikate').upload(path, file);
-          if (upErr) throw upErr;
-          const { error } = await client.from('psa_sachkundige').insert({
-            user_id: userId,
-            handynummer: document.getElementById('sfPhone').value.trim(),
-            geburtsdatum: document.getElementById('sfBirth').value,
-            adresse: document.getElementById('sfAddress').value.trim(),
-            organisation: sfOrgIsExtern ? orgName : 'BETAMOVE',
-            qualifikationsnachweis: document.getElementById('sfQual').value.trim(),
-            zertifikat_pfad: path
-          });
-          if (error) throw error;
-          await renderSachBoxFor(client, userId);
-        } catch (err) {
-          errBox.hidden = false;
-          errBox.textContent = 'Antrag konnte nicht gesendet werden — bitte Pflichtfelder prüfen.';
-        }
-      });
+      renderSachApplyForm(box, client, userId, false);
       return;
     }
 
     if (row.status === 'offen') {
       box.innerHTML = '<p style="margin:0;font-size:14.5px"><strong>Antrag auf Sachkundige-Freischaltung eingereicht</strong> — wird von der Kursleitung geprüft.</p>';
     } else if (row.status === 'abgelehnt') {
-      box.innerHTML = '<p style="margin:0;font-size:14.5px">Dein Antrag auf Sachkundige-Freischaltung wurde nicht angenommen. Bei Fragen wende dich an <a href="kontakt">die Kursleitung</a>.</p>';
+      renderSachApplyForm(box, client, userId, true);
     } else {
       box.innerHTML = '<p style="margin:0;font-size:14.5px"><strong>Freigeschaltete Sachkundige Person</strong>' + (row.freigeschaltet_bis ? ' — gültig bis ' + psaFmtDate(row.freigeschaltet_bis) : '') + '.</p><a href="konto-kunden" class="btn btn-secondary" style="font-size:14px;padding:10px 18px;align-self:flex-start;margin-top:8px">Zum Kundenmaterial</a>';
     }
@@ -3585,15 +3810,21 @@
     return kundenLogoDataUrlPromise;
   }
 
-  async function generatePruefbescheinigungPdf(kunde, material, pruefListe, aussteller) {
+  async function generatePruefbescheinigungPdf(kunde, rows, aussteller) {
     if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.'); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const marginX = 18;
     const pageWidth = 210;
+    const pageHeight = 297;
     const brand = [17, 74, 122];
     const istBetamove = !aussteller.organisation || aussteller.organisation.trim().toLowerCase() === 'betamove';
     const logoDataUrl = istBetamove ? await loadKundenLogoDataUrl() : null;
+
+    function ensureSpace(y, needed) {
+      if (y + needed > pageHeight - 30) { doc.addPage(); return 24; }
+      return y;
+    }
 
     doc.setFillColor(brand[0], brand[1], brand[2]);
     doc.rect(0, 0, pageWidth, 30, 'F');
@@ -3607,39 +3838,45 @@
 
     let y = 42;
     doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-    doc.text(itemName(material), marginX, y); y += 10;
+    doc.text('Prüfbescheinigung', marginX, y); y += 10;
 
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text('Kund*in', marginX, y); y += 7;
+    doc.text('Ausgestellt für', marginX, y); y += 7;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(40);
-    doc.text(kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : ''), marginX, y); y += 10;
+    doc.text(kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '') + (kunde.email ? ' · ' + kunde.email : ''), marginX, y); y += 12;
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text('Material', marginX, y); y += 7;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(40);
-    const stammLines = [
-      'Kategorie: ' + material.kategorie + (material.materialart ? ' · ' + material.materialart : ''),
-      material.seriennummer ? 'Seriennummer: ' + material.seriennummer : (material.chargennummer ? 'Chargennummer: ' + material.chargennummer : null),
-      material.herstellungsdatum ? 'Herstellungsdatum: ' + psaFmtDate(material.herstellungsdatum) : null,
-      material.pruefrhythmus_monate ? 'Prüfrhythmus: alle ' + material.pruefrhythmus_monate + ' Monate' : null
-    ].filter(Boolean);
-    stammLines.forEach(line => { doc.text(line, marginX, y); y += 6; });
-    y += 4;
+    // Tabellenkopf
+    const cols = [[marginX, 'Artikel-Nr.'], [marginX + 32, 'Seriennummer'], [marginX + 70, 'Bezeichnung'], [marginX + 125, 'Prüfdatum'], [marginX + 155, 'Ergebnis']];
+    function drawTableHeader() {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(100);
+      cols.forEach(([x, label]) => doc.text(label, x, y));
+      y += 3;
+      doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.4);
+      doc.line(marginX, y, pageWidth - marginX, y);
+      y += 6;
+    }
+    drawTableHeader();
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text('Prüfhistorie', marginX, y); y += 8;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-    if (!pruefListe.length) {
-      doc.setTextColor(120); doc.text('Noch keine Prüfung eingetragen.', marginX, y); y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    if (!rows.length) {
+      doc.setTextColor(120); doc.text('Keine geprüften Gegenstände.', marginX, y); y += 6;
     } else {
-      pruefListe.forEach(p => {
+      rows.forEach(r => {
+        y = ensureSpace(y, 8);
         doc.setTextColor(40);
-        doc.text(psaFmtDate(p.pruefdatum) + ' · ' + (PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis), marginX, y); y += 6;
-        if (p.notiz) { doc.setTextColor(100); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(p.notiz, pageWidth - marginX * 2 - 4), marginX + 4, y); y += 6; doc.setFontSize(10); }
+        doc.text(r.materialnummer || '–', cols[0][0], y);
+        doc.text(r.seriennummer || '–', cols[1][0], y);
+        doc.text(doc.splitTextToSize(r.bezeichnung, 52)[0], cols[2][0], y);
+        doc.text(psaFmtDate(r.datum), cols[3][0], y);
+        doc.text(PSA_ERGEBNIS_LABEL[r.ergebnis] || r.ergebnis, cols[4][0], y);
+        y += 7;
+        doc.setDrawColor(230); doc.setLineWidth(0.2);
+        doc.line(marginX, y - 3.5, pageWidth - marginX, y - 3.5);
       });
     }
     y += 8;
 
+    y = ensureSpace(y, 24);
     doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.5);
     doc.line(marginX, y, pageWidth - marginX, y); y += 8;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40);
@@ -3648,11 +3885,11 @@
 
     doc.setFontSize(8.5); doc.setTextColor(120);
     const disclaimer = istBetamove
-      ? 'BETAMOVE · betamove.de'
-      : 'Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung.';
-    doc.text(doc.splitTextToSize(disclaimer, pageWidth - marginX * 2), marginX, 282);
+      ? 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung. BETAMOVE · betamove.de'
+      : 'Diese Bescheinigung dokumentiert den Prüfzustand zum genannten Datum und ersetzt nicht die vor jeder Nutzung erforderliche Sichtprüfung. Erstellt mit der BETAMOVE PSA-Prüfsoftware (betamove.de). BETAMOVE selbst stellt diese Bescheinigung nicht aus und übernimmt keine Haftung für Inhalt oder Richtigkeit dieser Prüfung.';
+    doc.text(doc.splitTextToSize(disclaimer, pageWidth - marginX * 2), marginX, pageHeight - 15);
 
-    doc.save('Pruefbescheinigung_' + kunde.name.replace(/\s+/g, '-') + '_' + material.kategorie.replace(/\s+/g, '-') + '.pdf');
+    doc.save('Pruefbescheinigung_' + kunde.name.replace(/\s+/g, '-') + '.pdf');
   }
 
   // Gemeinsamer Sachkundig-Check für konto-kunden und konto-kunde.
@@ -3838,8 +4075,10 @@
 
     function renderDetail(m) {
       const pruef = pruefByMaterial[m.id] || [];
+      const lebensdauer = lifespanBarHtml(m);
       return `
         <div style="border-top:1px solid var(--color-divider);margin-top:12px;padding-top:14px">
+          ${lebensdauer ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${lebensdauer}</div>` : ''}
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
             ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
           </div>
@@ -3865,6 +4104,7 @@
               <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
               <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
             </div>
+            ${dueDateColumnHtml(status)}
             ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : '<span class="tag tag-neutral">keine Prüfung</span>'}
           </button>
           ${open ? renderDetail(m) : ''}
@@ -3882,6 +4122,7 @@
     } else {
       newBtn.href = kunde.verbunden ? 'konto-kunde-neu-material?verbunden=' + encodeURIComponent(kunde.userId) : 'konto-kunde-neu-material?kunde=' + encodeURIComponent(kunde.id);
     }
+    document.getElementById('kmGesamtZertBtn').href = (kunde.verbunden ? 'konto-zertifikat?verbunden=' + encodeURIComponent(kunde.userId) : 'konto-zertifikat?kunde=' + encodeURIComponent(kunde.id)) + '&gesamt=1';
 
     await loadAll();
     render();
@@ -3992,40 +4233,91 @@
     const kundeId = params.get('kunde');
     const verbundenId = params.get('verbunden');
     const materialId = params.get('material');
+    const gesamt = params.get('gesamt') === '1';
     const gateEl = document.getElementById('zGate');
     const areaEl = document.getElementById('zArea');
+    const gateText = gateEl ? gateEl.querySelector('p') : null;
 
     const { sachRow } = await fetchSachRow(client, userId);
 
     let kunde = null;
+    let scopeUserId = userId;
+    let scopeKundeId = null;
     if (kundeId) {
       const { data } = await client.from('kunden').select('*').eq('id', kundeId).eq('erstellt_von', userId).maybeSingle();
-      if (data) kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer };
+      if (data) { kunde = { id: data.id, name: data.name, kundennummer: data.kundennummer, email: data.email }; scopeKundeId = data.id; }
     } else if (verbundenId) {
       const { data: profilRow } = await client.from('profiles').select('*').eq('id', verbundenId).maybeSingle();
-      if (profilRow) kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null };
+      if (profilRow) { kunde = { id: null, name: (profilRow.vorname + ' ' + profilRow.nachname).trim(), kundennummer: null, email: profilRow.email }; scopeUserId = verbundenId; }
+    } else {
+      kunde = { id: null, name: (profile.vorname + ' ' + profile.nachname).trim(), kundennummer: null, email: profile.email };
     }
-    const { data: material } = materialId ? await client.from('psa_material').select('*').eq('id', materialId).maybeSingle() : { data: null };
-    if (!kunde || !material) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    if (!kunde) { gateEl.hidden = false; areaEl.hidden = true; return; }
+
+    let rows = [];
+    if (gesamt) {
+      const query = scopeKundeId
+        ? client.from('psa_material').select('*').eq('kunde_id', scopeKundeId).eq('aktiv', true).eq('ist_psa', true)
+        : client.from('psa_material').select('*').eq('user_id', scopeUserId).is('kunde_id', null).eq('aktiv', true).eq('ist_psa', true);
+      const { data: materialien } = await query;
+      const matList = materialien || [];
+      const ids = matList.map(m => m.id);
+      const pruefByMaterial = {};
+      if (ids.length) {
+        const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false });
+        (pruef || []).forEach(p => { if (!pruefByMaterial[p.material_id]) pruefByMaterial[p.material_id] = p; });
+      }
+      rows = matList.filter(m => pruefByMaterial[m.id]).map(m => {
+        const p = pruefByMaterial[m.id];
+        return { materialnummer: m.materialnummer, seriennummer: m.seriennummer || m.chargennummer, bezeichnung: itemName(m), datum: p.pruefdatum, ergebnis: p.ergebnis };
+      });
+      if (!rows.length) {
+        gateEl.hidden = false; areaEl.hidden = true;
+        if (gateText) gateText.textContent = 'Kein geprüftes PSA-Material vorhanden.';
+        return;
+      }
+    } else {
+      const { data: material } = materialId ? await client.from('psa_material').select('*').eq('id', materialId).maybeSingle() : { data: null };
+      if (!material) { gateEl.hidden = false; areaEl.hidden = true; return; }
+      const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').eq('material_id', material.id).order('pruefdatum', { ascending: false }).limit(1);
+      const letzte = pruef && pruef[0];
+      if (!letzte) {
+        gateEl.hidden = false; areaEl.hidden = true;
+        if (gateText) gateText.textContent = 'Für diesen Gegenstand liegt noch keine Prüfung vor.';
+        return;
+      }
+      rows = [{ materialnummer: material.materialnummer, seriennummer: material.seriennummer || material.chargennummer, bezeichnung: itemName(material), datum: letzte.pruefdatum, ergebnis: letzte.ergebnis }];
+    }
+
     gateEl.hidden = true; areaEl.hidden = false;
 
-    document.getElementById('zBackLink').href = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId) : 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId);
+    document.getElementById('zBackLink').href = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId)
+      : verbundenId ? 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId)
+      : 'konto-psa';
 
-    const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').eq('material_id', material.id).order('pruefdatum', { ascending: false });
-    const pruefListe = pruef || [];
-
-    document.getElementById('zKunde').textContent = kunde.name + (kunde.kundennummer ? ' · ' + kunde.kundennummer : '');
-    document.getElementById('zMaterialName').textContent = itemName(material);
-    document.getElementById('zMaterialMeta').textContent = itemMetaLine(material);
-    document.getElementById('zPruefListe').innerHTML = pruefListe.length ? pruefListe.map(p => `
-      <div style="font-size:13.5px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13.5px;opacity:0.65">Noch keine Prüfung eingetragen.</p>';
+    document.getElementById('zKunde').innerHTML = [
+      ['Name', kunde.name, true], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email]
+    ].filter(([, v]) => v).map(([label, v, bold]) => `<div>${bold ? '<strong>' + escapeHtml(v) + '</strong>' : escapeHtml(label) + ': ' + escapeHtml(v)}</div>`).join('');
 
     const aussteller = { name: (profile.vorname + ' ' + profile.nachname).trim(), organisation: sachRow ? sachRow.organisation : null };
-    document.getElementById('zAussteller').textContent = aussteller.name + (aussteller.organisation ? ' (' + aussteller.organisation + ')' : '');
-    document.getElementById('zDatum').textContent = new Date().toLocaleDateString('de-DE');
+    document.getElementById('zAusstellerOrg').textContent = aussteller.organisation && aussteller.organisation !== 'BETAMOVE' ? aussteller.organisation : 'Kletterschule';
+    document.getElementById('zDatumZeile').textContent = (gesamt ? 'Gesamtübersicht · ' : '') + 'ausgestellt am ' + new Date().toLocaleDateString('de-DE');
+    document.getElementById('zTabelle').innerHTML = rows.map(r => {
+      const dot = PSA_ERGEBNIS_DOT[r.ergebnis] || PSA_ERGEBNIS_DOT.gut;
+      return `
+      <tr>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.materialnummer || '–')}</td>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.seriennummer || '–')}</td>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${escapeHtml(r.bezeichnung)}</td>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)">${psaFmtDate(r.datum)}</td>
+        <td style="padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--color-divider)"><span class="tag" style="background:${dot.bg};color:${dot.fg};font-size:11.5px">${escapeHtml(PSA_ERGEBNIS_LABEL[r.ergebnis] || r.ergebnis)}</span></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('zAussteller').textContent = aussteller.name;
+    document.getElementById('zAusstellerQual').textContent = sachRow ? ('Sachkundige Person' + (sachRow.organisation && sachRow.organisation !== 'BETAMOVE' ? ' — ' + sachRow.organisation : '')) : '';
 
     document.getElementById('zDownloadBtn').addEventListener('click', () => {
-      generatePruefbescheinigungPdf(kunde, material, pruefListe, aussteller);
+      generatePruefbescheinigungPdf(kunde, rows, aussteller);
     });
   }
 
