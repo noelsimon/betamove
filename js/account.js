@@ -3190,30 +3190,18 @@
     return [it.hersteller, it.modellbezeichnung].filter(Boolean).join(' — ') || it.kategorie;
   }
 
-  async function renderPsa(ctx) {
-    const { client, session } = ctx;
-    const userId = session.user.id;
-
-    let items = [];
-    let pruefByMaterial = {};
+  // Gemeinsame Filter-/Statistik-/Listen-Logik für eine PSA-Material-Liste —
+  // genutzt von "Mein Material" (renderPsa) und der Kundenmaterial-Liste
+  // (renderKundeDetail). `ids` benennt die DOM-Elemente der jeweiligen Seite;
+  // `inaktivLink` ist optional (nur "Mein Material" hat eine Inaktiv-Ansicht).
+  function wireMaterialFilterListe({ getItems, getPruefByMaterial, ids }) {
     let scope = 'psa';
     let kategorie = 'Alle';
     let statusFilter = 'alle';
     let search = '';
 
-    async function loadAll() {
-      const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).order('created_at', { ascending: false });
-      items = mat || [];
-      const ids = items.map(i => i.id);
-      pruefByMaterial = {};
-      if (ids.length) {
-        const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false });
-        (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
-      }
-    }
-
     function itemStatus(it) {
-      const pruef = pruefByMaterial[it.id] || [];
+      const pruef = getPruefByMaterial()[it.id] || [];
       return psaStatus(it, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
     }
 
@@ -3234,7 +3222,7 @@
     }
 
     function visibleItems() {
-      let list = items.filter(i => i.aktiv);
+      let list = getItems().filter(i => i.aktiv);
       if (scope === 'psa') list = list.filter(i => i.ist_psa);
       else if (scope === 'inventar') list = list.filter(i => !i.ist_psa);
       if (kategorie !== 'Alle') list = list.filter(i => i.kategorie === kategorie);
@@ -3244,7 +3232,7 @@
     }
 
     function renderKategorieChips() {
-      const el = document.getElementById('psaKategorieFilter');
+      const el = document.getElementById(ids.kategorieFilter);
       if (!el) return;
       const liste = scope === 'inventar' ? INVENTAR_KATEGORIEN : scope === 'psa' ? PSA_KATEGORIEN : PSA_KATEGORIEN.concat(INVENTAR_KATEGORIEN).filter((k, i, arr) => arr.indexOf(k) === i);
       const chips = ['Alle'].concat(liste);
@@ -3259,13 +3247,15 @@
     }
 
     function renderStats() {
-      const aktive = items.filter(i => i.aktiv && i.ist_psa);
+      const statsEl = document.getElementById(ids.stats);
+      if (!statsEl) return;
+      const aktive = getItems().filter(i => i.aktiv && i.ist_psa);
       const statuses = aktive.map(itemStatus);
       const ok = statuses.filter(s => s && s.label === 'in Ordnung').length;
       const soon = statuses.filter(s => s && (s.label === 'bald fällig' || s.label === 'Beobachten')).length;
       const late = statuses.filter(s => s && (s.label === 'ÜBERFÄLLIG' || s.label === 'Nicht bestanden')).length;
-      document.getElementById('psaStats').innerHTML = [
-        [String(items.filter(i => i.aktiv).length), 'Gegenstände gesamt', 'var(--color-surface)', 'var(--color-text)'],
+      statsEl.innerHTML = [
+        [String(getItems().filter(i => i.aktiv).length), 'Gegenstände gesamt', 'var(--color-surface)', 'var(--color-text)'],
         [String(ok), 'in Ordnung', '#dcebe0', '#2f6b45'],
         [String(soon), 'bald fällig (< 30 Tage)', '#f7ecd2', '#8a6a1f'],
         [String(late), 'überfällig', 'var(--color-warn-bg)', 'var(--color-warn)']
@@ -3274,16 +3264,16 @@
           <div style="font-size:26px;font-weight:700;color:${fg}">${n}</div>
           <div style="font-size:12.5px;color:${fg};margin-top:2px;opacity:0.85">${label}</div>
         </div>`).join('');
-      const inaktivLink = document.getElementById('psaInaktivLink');
-      if (inaktivLink) inaktivLink.textContent = 'Inaktives Material anzeigen (' + items.filter(i => !i.aktiv).length + ') →';
+      const inaktivLink = ids.inaktivLink ? document.getElementById(ids.inaktivLink) : null;
+      if (inaktivLink) inaktivLink.textContent = 'Inaktives Material anzeigen (' + getItems().filter(i => !i.aktiv).length + ') →';
     }
 
     function renderList() {
       const list = visibleItems();
-      const listEl = document.getElementById('psaList');
-      const emptyEl = document.getElementById('psaEmpty');
+      const listEl = document.getElementById(ids.list);
+      const emptyEl = document.getElementById(ids.empty);
       if (!listEl) return;
-      emptyEl.hidden = list.length > 0;
+      if (emptyEl) emptyEl.hidden = list.length > 0;
       listEl.innerHTML = list.map(it => {
         const status = itemStatus(it);
         return `
@@ -3300,36 +3290,65 @@
       }).join('');
     }
 
-    document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.scope === scope);
-      btn.addEventListener('click', () => {
-        scope = btn.dataset.scope;
-        kategorie = 'Alle';
-        document.querySelectorAll('#psaScopeFilter [data-scope]').forEach(b => b.classList.toggle('active', b === btn));
-        const statusFilterEl = document.getElementById('psaStatusFilter');
-        if (statusFilterEl) statusFilterEl.hidden = scope === 'inventar';
-        renderKategorieChips();
-        renderList();
+    const scopeFilterEl = document.getElementById(ids.scopeFilter);
+    if (scopeFilterEl) {
+      scopeFilterEl.querySelectorAll('[data-scope]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scope === scope);
+        btn.addEventListener('click', () => {
+          scope = btn.dataset.scope;
+          kategorie = 'Alle';
+          scopeFilterEl.querySelectorAll('[data-scope]').forEach(b => b.classList.toggle('active', b === btn));
+          const statusFilterEl = document.getElementById(ids.statusFilter);
+          if (statusFilterEl) statusFilterEl.hidden = scope === 'inventar';
+          renderKategorieChips();
+          renderList();
+        });
       });
-    });
+    }
 
-    const searchInput = document.getElementById('psaSearch');
+    const searchInput = document.getElementById(ids.search);
     if (searchInput) {
       searchInput.addEventListener('input', () => { search = searchInput.value.trim(); renderList(); });
     }
-    document.querySelectorAll('#psaStatusFilter [data-status]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.status === statusFilter);
-      btn.addEventListener('click', () => {
-        statusFilter = btn.dataset.status;
-        document.querySelectorAll('#psaStatusFilter [data-status]').forEach(b => b.classList.toggle('active', b === btn));
-        renderList();
+    const statusFilterRootEl = document.getElementById(ids.statusFilter);
+    if (statusFilterRootEl) {
+      statusFilterRootEl.querySelectorAll('[data-status]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === statusFilter);
+        btn.addEventListener('click', () => {
+          statusFilter = btn.dataset.status;
+          statusFilterRootEl.querySelectorAll('[data-status]').forEach(b => b.classList.toggle('active', b === btn));
+          renderList();
+        });
       });
-    });
+    }
+
+    return { renderAll() { renderStats(); renderKategorieChips(); renderList(); } };
+  }
+
+  async function renderPsa(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    let items = [];
+    let pruefByMaterial = {};
+
+    async function loadAll() {
+      const { data: mat } = await client.from('psa_material').select('*').eq('user_id', userId).is('kunde_id', null).order('created_at', { ascending: false });
+      items = mat || [];
+      const ids = items.map(i => i.id);
+      pruefByMaterial = {};
+      if (ids.length) {
+        const { data: pruef } = await client.from('psa_pruefprotokoll').select('*').in('material_id', ids).order('pruefdatum', { ascending: false });
+        (pruef || []).forEach(p => { (pruefByMaterial[p.material_id] = pruefByMaterial[p.material_id] || []).push(p); });
+      }
+    }
 
     await loadAll();
-    renderStats();
-    renderKategorieChips();
-    renderList();
+    wireMaterialFilterListe({
+      getItems: () => items,
+      getPruefByMaterial: () => pruefByMaterial,
+      ids: { stats: 'psaStats', scopeFilter: 'psaScopeFilter', kategorieFilter: 'psaKategorieFilter', search: 'psaSearch', statusFilter: 'psaStatusFilter', list: 'psaList', empty: 'psaEmpty', inaktivLink: 'psaInaktivLink' }
+    }).renderAll();
     await renderSachBoxFor(client, userId);
   }
 
@@ -4266,28 +4285,6 @@
       }
     }
 
-    // Jede Zeile führt auf die volle Gegenstand-Detailseite (konto-psa-detail)
-    // — dieselbe Ansicht wie für eigenes Material, inkl. Lebensdauer,
-    // Stammdaten und vollständiger Prüf-/Verleihhistorie.
-    function render() {
-      const listEl = document.getElementById('kmList');
-      document.getElementById('kmEmpty').hidden = items.length > 0;
-      listEl.innerHTML = items.map(m => {
-        const pruef = pruefByMaterial[m.id] || [];
-        const status = psaStatus(m, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
-        return `
-        <a href="konto-psa-detail?id=${encodeURIComponent(m.id)}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
-          ${itemIcon()}
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
-            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
-          </div>
-          ${dueDateColumnHtml(status)}
-          ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : '<span class="tag tag-neutral">keine Prüfung</span>'}
-        </a>`;
-      }).join('');
-    }
-
     const newBtn = document.getElementById('kmNewBtn');
     if (kunde.verbunden && !kunde.bearbeiten) {
       newBtn.hidden = true;
@@ -4298,7 +4295,13 @@
     document.getElementById('kmGesamtZertBtn').href = (kunde.verbunden ? 'konto-zertifikat?verbunden=' + encodeURIComponent(kunde.userId) : 'konto-zertifikat?kunde=' + encodeURIComponent(kunde.id)) + '&gesamt=1';
 
     await loadAll();
-    render();
+    // Dieselbe Stats-/Filter-/Listen-Ansicht wie bei "Mein Material"
+    // (konto-psa), inkl. Links auf die volle Gegenstand-Detailseite.
+    wireMaterialFilterListe({
+      getItems: () => items,
+      getPruefByMaterial: () => pruefByMaterial,
+      ids: { stats: 'kmStats', scopeFilter: 'kmScopeFilter', kategorieFilter: 'kmKategorieFilter', search: 'kmSearch', statusFilter: 'kmStatusFilter', list: 'kmList', empty: 'kmEmpty' }
+    }).renderAll();
   }
 
   // --------------------------------------------------------------------
