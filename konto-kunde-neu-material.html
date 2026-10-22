@@ -90,6 +90,18 @@
               <div class="field"><label for="kmChargennummer">Chargennummer</label><input id="kmChargennummer" class="input"></div>
               <div class="field"><label for="kmHerstellungsdatum">Herstellungsdatum</label><input id="kmHerstellungsdatum" type="date" class="input"></div>
               <div class="field"><label for="kmLebensdauer">Max. Lebensdauer (Jahre)</label><input id="kmLebensdauer" type="number" min="1" max="99" class="input"></div>
+              <div class="field"><label for="kmNutzungshaeufigkeit">Nutzungshäufigkeit</label>
+                <select id="kmNutzungshaeufigkeit" class="input">
+                  <option value="">— unbekannt —</option>
+                  <option value="1">1 Mal im Monat</option>
+                  <option value="2">2 Mal im Monat</option>
+                  <option value="4">4 Mal im Monat (wöchentlich)</option>
+                  <option value="8">8 Mal im Monat (2× wöchentlich)</option>
+                  <option value="12">12 Mal im Monat (3× wöchentlich)</option>
+                  <option value="20">20 Mal im Monat (fast täglich)</option>
+                  <option value="30">täglich</option>
+                </select>
+              </div>
               <div class="field" style="grid-column:1/-1"><label for="kmPruefrhythmus">Prüfrhythmus</label>
                 <select id="kmPruefrhythmus" class="input"><option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option></select>
               </div>
@@ -132,6 +144,6 @@
 <script src="js/courses-data.js"></script>
 <script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
-<script src="js/account.js?v=20261026"></script>
+<script src="js/account.js?v=20261027"></script>
 </body>
 </html>

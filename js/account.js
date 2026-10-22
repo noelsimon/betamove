@@ -3064,6 +3064,15 @@
     return code ? (PSA_MATERIALART_LABEL[code] || code) : null;
   }
 
+  function nutzungshaeufigkeitLabel(n) {
+    if (!n) return null;
+    if (n === 30) return 'täglich';
+    if (n === 4) return '4 Mal im Monat (wöchentlich)';
+    if (n === 8) return '8 Mal im Monat (2× wöchentlich)';
+    if (n === 12) return '12 Mal im Monat (3× wöchentlich)';
+    return n + ' Mal im Monat';
+  }
+
   function psaFmtDate(d) {
     if (!d) return '–';
     const dt = new Date(d + 'T00:00:00');
@@ -3325,7 +3334,11 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-psa-detail — Gegenstand-Detail für eigenes Material (?id=)
+  // Seite: konto-psa-detail — Gegenstand-Detail, für eigenes Material UND
+  // Kundenmaterial (?id=). Die Zugriffskontrolle läuft allein über RLS
+  // (psa_material_select_own / _select_verbunden), daher hier bewusst kein
+  // zusätzlicher user_id-Filter — sonst wäre Kundenmaterial über diese Seite
+  // für die Sachkundige Person nicht einsehbar.
   // --------------------------------------------------------------------
   async function renderPsaDetail(ctx) {
     const { client, session } = ctx;
@@ -3334,9 +3347,26 @@
     const gateEl = document.getElementById('pdGate');
     const areaEl = document.getElementById('pdArea');
 
-    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).eq('user_id', userId).maybeSingle() : { data: null };
+    const { data: it } = id ? await client.from('psa_material').select('*').eq('id', id).maybeSingle() : { data: null };
     if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
+
+    // Rückweg + Prüfbescheinigung-Link hängen davon ab, ob das eigenes
+    // Material, Kundenmaterial (kunde_id) oder verbundenes Konto-Material ist.
+    const backLink = document.getElementById('pdBackLink');
+    const backLabel = document.getElementById('pdBackLabel');
+    const zertLink = document.getElementById('pdZertifikatLink');
+    if (it.kunde_id) {
+      backLink.href = 'konto-kunde?id=' + encodeURIComponent(it.kunde_id);
+      backLabel.textContent = 'Zurück zur Kund*in';
+      zertLink.hidden = false;
+      zertLink.href = 'konto-zertifikat?kunde=' + encodeURIComponent(it.kunde_id) + '&material=' + encodeURIComponent(it.id);
+    } else if (it.user_id !== userId) {
+      backLink.href = 'konto-kunde?verbunden=' + encodeURIComponent(it.user_id);
+      backLabel.textContent = 'Zurück zur Kund*in';
+      zertLink.hidden = false;
+      zertLink.href = 'konto-zertifikat?verbunden=' + encodeURIComponent(it.user_id) + '&material=' + encodeURIComponent(it.id);
+    }
 
     let pruef = [];
     let leihe = [];
@@ -3373,6 +3403,7 @@
         ['Kaufdatum', it.kaufdatum ? psaFmtDate(it.kaufdatum) : null],
         ['Erste Nutzung', it.erste_nutzung ? psaFmtDate(it.erste_nutzung) : null],
         ['Max. Lebensdauer', it.max_lebensdauer_jahre ? it.max_lebensdauer_jahre + ' Jahre' : null],
+        ['Nutzungshäufigkeit', nutzungshaeufigkeitLabel(it.nutzungshaeufigkeit_pro_monat)],
         ['Prüfrhythmus', it.pruefrhythmus_monate ? 'alle ' + it.pruefrhythmus_monate + ' Monate' : 'kein Rhythmus']
       ].filter(([, v]) => v);
       document.getElementById('pdStammdaten').innerHTML = stammdaten.map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
@@ -3441,16 +3472,16 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-psa-pruefung — Prüfung durchführen (?id=, optional &kunde=)
-  // Gemeinsam für eigenes Material und Kundenmaterial.
+  // Seite: konto-psa-pruefung — Prüfung durchführen (?id=)
+  // Gemeinsam für eigenes Material und Kundenmaterial — der Kunden-Kontext
+  // wird aus dem Gegenstand selbst abgeleitet (kunde_id / abweichende
+  // user_id), nicht aus Query-Parametern.
   // --------------------------------------------------------------------
   async function renderPsaPruefung(ctx) {
     const { client, session, profile } = ctx;
     const userId = session.user.id;
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
-    const kundeId = params.get('kunde');
-    const verbundenId = params.get('verbunden');
     const gateEl = document.getElementById('pGate');
     const areaEl = document.getElementById('pArea');
 
@@ -3458,11 +3489,11 @@
     if (!it) { gateEl.hidden = false; areaEl.hidden = true; return; }
     gateEl.hidden = true; areaEl.hidden = false;
 
+    const kundeId = it.kunde_id || null;
+    const verbundenId = (!it.kunde_id && it.user_id !== userId) ? it.user_id : null;
+
     document.getElementById('pItemName').textContent = itemName(it) + (it.materialnummer ? ' · Artikel-Nr. ' + it.materialnummer : '') + (it.materialart ? ' · Material: ' + materialartLabel(it.materialart) : '');
-    const backHref = kundeId ? 'konto-kunde?id=' + encodeURIComponent(kundeId)
-      : verbundenId ? 'konto-kunde?verbunden=' + encodeURIComponent(verbundenId)
-      : 'konto-psa-detail?id=' + encodeURIComponent(it.id);
-    document.getElementById('pBackLink').href = backHref;
+    document.getElementById('pBackLink').href = 'konto-psa-detail?id=' + encodeURIComponent(it.id);
 
     let sachRow = null;
     if (kundeId || verbundenId) {
@@ -3759,6 +3790,7 @@
         kaufdatum: document.getElementById('neKaufdatum').value || null,
         erste_nutzung: document.getElementById('neErsteNutzung').value || null,
         max_lebensdauer_jahre: document.getElementById('neLebensdauer').value ? Number(document.getElementById('neLebensdauer').value) : null,
+        nutzungshaeufigkeit_pro_monat: document.getElementById('neNutzungshaeufigkeit').value ? Number(document.getElementById('neNutzungshaeufigkeit').value) : null,
         pruefrhythmus_monate: Number(document.getElementById('nePruefrhythmus').value)
       };
       try {
@@ -4217,12 +4249,8 @@
       ['Name', kunde.name], ['Ansprechpartner*in', kunde.ansprechpartner], ['Kundennummer', kunde.kundennummer], ['E-Mail', kunde.email], ['Telefon', kunde.telefon]
     ].filter(([, v]) => v).map(([k, v]) => `<div><dt style="font-size:12px;opacity:0.65;margin-bottom:2px">${k}</dt><dd style="margin:0;font-size:14.5px;font-weight:600">${escapeHtml(v)}</dd></div>`).join('');
 
-    const pruefParam = kunde.verbunden ? '&verbunden=' + encodeURIComponent(kunde.userId) : '&kunde=' + encodeURIComponent(kunde.id);
-    const zertKundeParam = kunde.verbunden ? 'verbunden=' + encodeURIComponent(kunde.userId) : 'kunde=' + encodeURIComponent(kunde.id);
-
     let items = [];
     let pruefByMaterial = {};
-    let openId = null;
 
     async function loadAll() {
       const query = kunde.verbunden
@@ -4238,46 +4266,26 @@
       }
     }
 
-    function renderDetail(m) {
-      const pruef = pruefByMaterial[m.id] || [];
-      const lebensdauer = lifespanBarHtml(m);
-      return `
-        <div style="border-top:1px solid var(--color-divider);margin-top:12px;padding-top:14px">
-          ${lebensdauer ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${lebensdauer}</div>` : ''}
-          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-            ${pruef.length ? pruef.map(p => `<div style="font-size:13px;background:var(--color-surface);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:10px">${pruefCheckIcon(p.ergebnis)}<span>${psaFmtDate(p.pruefdatum)} · ${escapeHtml(PSA_ERGEBNIS_LABEL[p.ergebnis] || p.ergebnis)}${p.notiz ? ' — ' + escapeHtml(p.notiz) : ''}</span></div>`).join('') : '<p style="margin:0;font-size:13px;opacity:0.65">Noch keine Prüfung eingetragen.</p>'}
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a href="konto-psa-pruefung?id=${encodeURIComponent(m.id)}${pruefParam}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Neue Prüfung durchführen</a>
-            <a href="konto-zertifikat?${zertKundeParam}&material=${encodeURIComponent(m.id)}" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px">Prüfbescheinigung ansehen</a>
-          </div>
-        </div>`;
-    }
-
+    // Jede Zeile führt auf die volle Gegenstand-Detailseite (konto-psa-detail)
+    // — dieselbe Ansicht wie für eigenes Material, inkl. Lebensdauer,
+    // Stammdaten und vollständiger Prüf-/Verleihhistorie.
     function render() {
       const listEl = document.getElementById('kmList');
       document.getElementById('kmEmpty').hidden = items.length > 0;
       listEl.innerHTML = items.map(m => {
         const pruef = pruefByMaterial[m.id] || [];
         const status = psaStatus(m, pruef[0] ? pruef[0].pruefdatum : null, pruef[0] ? pruef[0].ergebnis : null);
-        const open = openId === m.id;
         return `
-        <div class="card elev-sm" style="gap:0">
-          <button type="button" data-toggle-open="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;width:100%">
-            ${itemIcon()}
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
-              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
-            </div>
-            ${dueDateColumnHtml(status)}
-            ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : '<span class="tag tag-neutral">keine Prüfung</span>'}
-          </button>
-          ${open ? renderDetail(m) : ''}
-        </div>`;
+        <a href="konto-psa-detail?id=${encodeURIComponent(m.id)}" class="card elev-sm hover-border" style="gap:0;flex-direction:row;align-items:center;gap:16px;text-decoration:none;color:inherit">
+          ${itemIcon()}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:15.5px">${escapeHtml(itemName(m))}</div>
+            <div style="font-size:12.5px;opacity:0.65;margin-top:2px">${escapeHtml(itemMetaLine(m))}</div>
+          </div>
+          ${dueDateColumnHtml(status)}
+          ${status ? `<span class="tag" style="background:${status.bg};color:${status.fg}">${status.label}</span>` : '<span class="tag tag-neutral">keine Prüfung</span>'}
+        </a>`;
       }).join('');
-      document.querySelectorAll('[data-toggle-open]').forEach(el => {
-        el.addEventListener('click', () => { const id = el.dataset.toggleOpen; openId = openId === id ? null : id; render(); });
-      });
     }
 
     const newBtn = document.getElementById('kmNewBtn');
@@ -4392,6 +4400,7 @@
         chargennummer: document.getElementById('kmChargennummer').value.trim() || null,
         herstellungsdatum: document.getElementById('kmHerstellungsdatum').value || null,
         max_lebensdauer_jahre: document.getElementById('kmLebensdauer').value ? Number(document.getElementById('kmLebensdauer').value) : null,
+        nutzungshaeufigkeit_pro_monat: document.getElementById('kmNutzungshaeufigkeit').value ? Number(document.getElementById('kmNutzungshaeufigkeit').value) : null,
         pruefrhythmus_monate: Number(document.getElementById('kmPruefrhythmus').value)
       });
       await client.from('psa_material').insert(payload);

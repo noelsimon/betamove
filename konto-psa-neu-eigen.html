@@ -61,6 +61,18 @@
             <div class="field"><label for="neKaufdatum">Kaufdatum</label><input id="neKaufdatum" type="date" class="input"></div>
             <div class="field"><label for="neErsteNutzung">Datum erste Nutzung</label><input id="neErsteNutzung" type="date" class="input"></div>
             <div class="field"><label for="neLebensdauer">Max. Lebensdauer (Jahre)</label><input id="neLebensdauer" type="number" min="1" max="99" class="input" placeholder="z.B. 10"></div>
+            <div class="field"><label for="neNutzungshaeufigkeit">Nutzungshäufigkeit</label>
+              <select id="neNutzungshaeufigkeit" class="input">
+                <option value="">— unbekannt —</option>
+                <option value="1">1 Mal im Monat</option>
+                <option value="2">2 Mal im Monat</option>
+                <option value="4">4 Mal im Monat (wöchentlich)</option>
+                <option value="8">8 Mal im Monat (2× wöchentlich)</option>
+                <option value="12">12 Mal im Monat (3× wöchentlich)</option>
+                <option value="20">20 Mal im Monat (fast täglich)</option>
+                <option value="30">täglich</option>
+              </select>
+            </div>
             <div class="field" style="grid-column:1/-1"><label for="nePruefrhythmus">Prüfrhythmus</label>
               <select id="nePruefrhythmus" class="input">
                 <option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12" selected>Alle 12 Monate (Standard)</option>
@@ -109,6 +121,6 @@
 <script src="js/courses-data.js"></script>
 <script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
-<script src="js/account.js?v=20261026"></script>
+<script src="js/account.js?v=20261027"></script>
 </body>
 </html>
