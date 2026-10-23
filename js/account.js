@@ -4733,146 +4733,6 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-kletterpartner — Entdecken (Opt-in + Swipe/Match)
-  // --------------------------------------------------------------------
-  async function renderKletterpartner(ctx) {
-    const { client, session } = ctx;
-    const userId = session.user.id;
-
-    const { data: profilRow } = await client.from('kletterpartner_profile').select('*').eq('user_id', userId).maybeSingle();
-
-    if (!profilRow) {
-      document.getElementById('kpOptIn').hidden = false;
-      const state = { disziplinen: [], ort: 'halle' };
-      wireMultiChips(document.getElementById('kpOptInDisziplinen'), KP_DISZIPLINEN, state.disziplinen);
-      wireSingleChips(document.getElementById('kpOptInOrt'), [{ v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }, { v: 'beides', l: 'Beides' }], state, 'ort');
-      document.getElementById('kpOptInForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errBox = document.getElementById('kpOptInError');
-        errBox.hidden = true;
-        const level = document.getElementById('kpLevel').value;
-        if (!level) return;
-        const verfuegbarkeit = document.getElementById('kpVerfuegbarkeit').value.split(',').map(s => s.trim()).filter(Boolean);
-        try {
-          const { error } = await client.from('kletterpartner_profile').insert({
-            user_id: userId,
-            level,
-            disziplinen: state.disziplinen,
-            verfuegbarkeit,
-            ort_typ: state.ort,
-            bio: document.getElementById('kpBio').value.trim() || null
-          });
-          if (error) throw error;
-          location.reload();
-        } catch (err) {
-          errBox.hidden = false;
-          errBox.textContent = 'Profil konnte nicht gespeichert werden.';
-        }
-      });
-      return;
-    }
-
-    if (!profilRow.aktiv) {
-      document.getElementById('kpPausedBox').hidden = false;
-      document.getElementById('kpReaktivierenBtn').addEventListener('click', async () => {
-        await client.from('kletterpartner_profile').update({ aktiv: true }).eq('user_id', userId);
-        location.reload();
-      });
-      return;
-    }
-
-    document.getElementById('kpArea').hidden = false;
-    document.getElementById('kpPausierenBtn').addEventListener('click', async () => {
-      if (!confirm('Dein Profil wird für andere unsichtbar. Du kannst es jederzeit wieder aktivieren.')) return;
-      await client.from('kletterpartner_profile').update({ aktiv: false }).eq('user_id', userId);
-      location.reload();
-    });
-
-    let kandidaten = [];
-    let index = 0;
-    let ortFilter = 'alle';
-
-    const { data: liste } = await client.rpc('kletterpartner_entdecken_liste');
-    kandidaten = liste || [];
-
-    function kpOrtLabel(typ) {
-      return typ === 'halle' ? 'Kletterzentrum' : typ === 'draussen' ? 'Draußen / Fels' : 'Halle & Draußen';
-    }
-
-    function filtered() {
-      if (ortFilter === 'alle') return kandidaten;
-      return kandidaten.filter(k => k.ort_typ === ortFilter || k.ort_typ === 'beides');
-    }
-
-    function renderOrtFilter() {
-      const el = document.getElementById('kpOrtFilter');
-      const opts = [{ v: 'alle', l: 'Alle Orte' }, { v: 'halle', l: 'Nur Kletterzentrum' }];
-      el.innerHTML = opts.map(o => `<button type="button" class="konto-nav-link${ortFilter === o.v ? ' active' : ''}" data-val="${o.v}" style="padding:9px 16px;font-size:13px">${o.l}</button>`).join('');
-      el.querySelectorAll('[data-val]').forEach(btn => {
-        btn.addEventListener('click', () => { ortFilter = btn.dataset.val; index = 0; renderOrtFilter(); renderCard(); });
-      });
-    }
-
-    function renderCard() {
-      const list = filtered();
-      const cardEl = document.getElementById('kpCard');
-      const emptyEl = document.getElementById('kpEmptyDeck');
-      document.getElementById('kpMatchOverlay').hidden = true;
-      if (!list.length || index >= list.length) {
-        cardEl.innerHTML = '';
-        cardEl.hidden = true;
-        emptyEl.hidden = false;
-        return;
-      }
-      emptyEl.hidden = true;
-      cardEl.hidden = false;
-      const k = list[index];
-      const initials = (((k.vorname || '')[0] || '') + ((k.nachname || '')[0] || '')).toUpperCase() || '?';
-      cardEl.innerHTML = `
-        <div style="height:220px;background:var(--color-accent);position:relative;display:flex;align-items:center;justify-content:center">
-          <span style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px">${escapeHtml(k.level)}</span>
-          <span style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px">${escapeHtml(kpOrtLabel(k.ort_typ))}</span>
-          <div style="width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.14);border:3px solid rgba(255,255,255,0.45);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#ffffff">${escapeHtml(initials)}</div>
-          ${k.sicherungsschein_verifiziert ? `<span style="position:absolute;bottom:16px;left:16px;display:inline-flex;align-items:center;gap:6px;background:#dcebe0;color:#2f6b45;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px">Sicherungsschein ✓</span>` : ''}
-        </div>
-        <div style="padding:22px 24px 26px;display:flex;flex-direction:column;gap:14px">
-          <div style="font-size:20px;font-weight:600">${escapeHtml(k.vorname)}</div>
-          ${k.gemeinsamer_kurs ? `<div class="tag tag-accent-2" style="width:fit-content">Gemeinsamer Kurs: „${escapeHtml(k.gemeinsamer_kurs)}"</div>` : ''}
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${(k.disziplinen || []).map(d => `<span class="tag">${escapeHtml(d)}</span>`).join('')}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${(k.verfuegbarkeit || []).map(v => `<span class="tag tag-neutral">${escapeHtml(v)}</span>`).join('')}</div>
-          ${k.bio ? `<p style="margin:0;font-size:14px;opacity:0.8;line-height:1.5">${escapeHtml(k.bio)}</p>` : ''}
-        </div>`;
-    }
-
-    async function likeOrPass(richtung) {
-      const list = filtered();
-      if (!list.length || index >= list.length) return;
-      const k = list[index];
-      const { error } = await client.from('kletterpartner_likes').insert({ liker_id: userId, liked_id: k.user_id, richtung });
-      if (error) { index++; renderCard(); return; }
-      if (richtung === 'like') {
-        const { data: match } = await client.from('kletterpartner_matches').select('id').or(`user_a.eq.${k.user_id},user_b.eq.${k.user_id}`).maybeSingle();
-        if (match) {
-          const { data: convId } = await client.rpc('kletterpartner_unterhaltung_oeffnen', { p_other_user_id: k.user_id });
-          document.getElementById('kpMatchText').textContent = 'Du und ' + k.vorname + ' wollt beide klettern gehen.';
-          document.getElementById('kpMatchChatLink').href = 'konto-kletterpartner-chat?id=' + encodeURIComponent(convId);
-          document.getElementById('kpMatchOverlay').hidden = false;
-          return;
-        }
-      }
-      index++;
-      renderCard();
-    }
-
-    document.getElementById('kpLikeBtn').addEventListener('click', () => likeOrPass('like'));
-    document.getElementById('kpPassBtn').addEventListener('click', () => likeOrPass('pass'));
-    document.getElementById('kpMatchCloseBtn').addEventListener('click', () => { document.getElementById('kpMatchOverlay').hidden = true; index++; renderCard(); });
-
-    renderOrtFilter();
-    renderCard();
-  }
-
-  // --------------------------------------------------------------------
   // Seite: konto-kletterpartner-anzeigen — Anzeigenboard
   // --------------------------------------------------------------------
   async function renderKletterpartnerAnzeigen(ctx) {
@@ -4954,7 +4814,10 @@
             </div>
           </div>
           ${st.done ? '<div style="font-size:12.5px;font-weight:600;color:var(--color-warn)">Gemeldet — danke für den Hinweis</div>' : ''}
-          <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-secondary" style="font-size:13px;padding:9px 16px;align-self:flex-start;text-decoration:none">${a.typ === 'gruppe' ? 'Gruppe beitreten' : 'Antworten'}</a>
+          <div style="display:flex;gap:10px">
+            <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-primary" style="font-size:13px;padding:9px 16px;text-decoration:none">Anzeige ansehen</a>
+            <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-secondary" style="font-size:13px;padding:9px 16px;text-decoration:none">${a.typ === 'gruppe' ? 'Gruppe beitreten' : 'Antworten'}</a>
+          </div>
         </div>`;
       }).join('');
 
@@ -5184,11 +5047,7 @@
     document.getElementById('chAvatar').textContent = otherName.slice(0, 2).toUpperCase();
     document.getElementById('chName').textContent = otherName;
     const bewertenLink = document.getElementById('chBewertenLink');
-    if (conv.match_id) {
-      bewertenLink.href = 'konto-kletterpartner-feedback?match=' + encodeURIComponent(conv.match_id);
-    } else {
-      bewertenLink.hidden = true;
-    }
+    bewertenLink.href = 'konto-kletterpartner-feedback?andere=' + encodeURIComponent(otherId) + '&chat=' + encodeURIComponent(convId);
 
     async function loadMessages() {
       const { data } = await client.from('kletterpartner_nachrichten').select('*').eq('unterhaltung_id', convId).order('created_at', { ascending: true });
@@ -5227,24 +5086,28 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-kletterpartner-feedback — Treffen bewerten (?match=)
+  // Seite: konto-kletterpartner-feedback — Treffen bewerten (?andere=&chat=)
   // --------------------------------------------------------------------
   async function renderKletterpartnerFeedback(ctx) {
     const { client, session } = ctx;
     const userId = session.user.id;
     const params = new URLSearchParams(location.search);
-    const matchId = params.get('match');
+    const andereId = params.get('andere');
+    const chatId = params.get('chat');
     const gateEl = document.getElementById('fbGate');
     const areaEl = document.getElementById('fbArea');
     const doneEl = document.getElementById('fbDone');
+    const backLink = document.getElementById('fbBackLink');
 
-    if (!matchId) { gateEl.hidden = false; areaEl.hidden = true; return; }
-    const { data: match } = await client.from('kletterpartner_matches').select('*').eq('id', matchId).maybeSingle();
-    if (!match) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const zurueckHref = chatId ? 'konto-kletterpartner-chat?id=' + encodeURIComponent(chatId) : 'konto-kletterpartner-nachrichten';
+    if (backLink) backLink.href = zurueckHref;
+    const doneBackLink = doneEl ? doneEl.querySelector('a') : null;
+    if (doneBackLink) doneBackLink.href = zurueckHref;
 
-    const bewerteterId = match.user_a === userId ? match.user_b : match.user_a;
-    const { data: prof } = await client.from('profiles').select('vorname').eq('id', bewerteterId).maybeSingle();
-    const name = prof ? prof.vorname : 'dieser Person';
+    if (!andereId) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const { data: prof } = await client.from('profiles').select('vorname').eq('id', andereId).maybeSingle();
+    if (!prof) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const name = prof.vorname || 'dieser Person';
     document.getElementById('fbTitel').textContent = 'Wie war dein Treffen mit ' + name + '?';
 
     const state = { merkmale: [] };
@@ -5254,8 +5117,7 @@
       try {
         const { error } = await client.from('kletterpartner_bewertungen').insert({
           bewerter_id: userId,
-          bewerteter_id: bewerteterId,
-          match_id: matchId,
+          bewerteter_id: andereId,
           merkmale: state.merkmale,
           kommentar: document.getElementById('fbKommentar').value.trim() || null
         });
@@ -5264,6 +5126,51 @@
         doneEl.hidden = false;
       } catch (err) { /* Button bleibt klickbar für erneuten Versuch */ }
     });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-nachrichten — Unterhaltungen-Übersicht
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerNachrichten(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const listEl = document.getElementById('nmList');
+    const emptyEl = document.getElementById('nmEmpty');
+
+    const { data: convs } = await client.from('kletterpartner_unterhaltungen')
+      .select('*')
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    const liste = convs || [];
+
+    if (!liste.length) { listEl.innerHTML = ''; emptyEl.hidden = false; return; }
+    emptyEl.hidden = true;
+
+    const andereIds = liste.map(c => c.user_a === userId ? c.user_b : c.user_a);
+    const { data: profs } = await client.from('profiles').select('id, vorname').in('id', andereIds);
+    const profMap = {};
+    (profs || []).forEach(p => { profMap[p.id] = p.vorname; });
+
+    const karten = await Promise.all(liste.map(async (c) => {
+      const otherId = c.user_a === userId ? c.user_b : c.user_a;
+      const name = profMap[otherId] || 'Jemand';
+      const { data: msgs } = await client.from('kletterpartner_nachrichten')
+        .select('*').eq('unterhaltung_id', c.id).order('created_at', { ascending: false }).limit(20);
+      const alle = msgs || [];
+      const letzte = alle[0];
+      const ungelesen = alle.filter(m => m.sender_id !== userId && !m.gelesen).length;
+      return { id: c.id, name, letzterText: letzte ? letzte.text : 'Noch keine Nachrichten', ungelesen };
+    }));
+
+    listEl.innerHTML = karten.map(k => `
+      <a href="konto-kletterpartner-chat?id=${encodeURIComponent(k.id)}" class="card elev-sm" style="display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--color-accent);color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none">${escapeHtml(k.name.slice(0, 2).toUpperCase())}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:600">${escapeHtml(k.name)}</div>
+          <div style="font-size:13px;opacity:0.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(k.letzterText)}</div>
+        </div>
+        ${k.ungelesen ? `<div style="background:var(--color-accent);color:#ffffff;border-radius:999px;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;padding:0 6px">${k.ungelesen}</div>` : ''}
+      </a>`).join('');
   }
 
   // Seiten ohne eigene Datenlogik (nur Links) — brauchen trotzdem guardAccountPage()
@@ -5296,10 +5203,10 @@
       'konto-kunde': renderKundeDetail,
       'konto-kunde-neu-material': renderKundeNeuMaterial,
       'konto-zertifikat': renderZertifikat,
-      'konto-kletterpartner': renderKletterpartner,
       'konto-kletterpartner-anzeigen': renderKletterpartnerAnzeigen,
       'konto-kletterpartner-anzeige-neu': renderKletterpartnerAnzeigeNeu,
       'konto-kletterpartner-anzeige-detail': renderKletterpartnerAnzeigeDetail,
+      'konto-kletterpartner-nachrichten': renderKletterpartnerNachrichten,
       'konto-kletterpartner-chat': renderKletterpartnerChat,
       'konto-kletterpartner-feedback': renderKletterpartnerFeedback,
       'konto-kletterpartner-support': noop
