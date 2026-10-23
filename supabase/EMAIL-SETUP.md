@@ -3,12 +3,13 @@
 Diese Anleitung richtet sich an dich als Betreiberin, nicht an Programmierer*innen — du brauchst
 dafür keine Kommandozeile, alles geht über zwei Web-Dashboards (Resend und Supabase). Am Ende
 bekommst du bei jeder neuen Kursanmeldung eine E-Mail, die anmeldende Person automatisch eine
-Bestätigungsmail, und wenn du eine Teilnahme bestätigst, bekommt die betroffene Person ebenfalls
-eine Mail.
+Bestätigungsmail, wenn du eine Teilnahme bestätigst, bekommt die betroffene Person ebenfalls eine
+Mail, und wer bei seinen Trainerscheinen Erinnerungen aktiviert hat, bekommt rechtzeitig vor der
+fälligen Fortbildung eine Mail.
 
 Der Code dafür ist bereits fertig (`supabase/functions/notify-kursanmeldung/`,
-`supabase/functions/notify-kontaktanfrage/` und `supabase/functions/notify-teilnahme-bestaetigt/`)
-— hier geht es nur noch ums Scharfschalten.
+`supabase/functions/notify-kontaktanfrage/`, `supabase/functions/notify-teilnahme-bestaetigt/` und
+`supabase/functions/notify-trainerschein-erinnerung/`) — hier geht es nur noch ums Scharfschalten.
 
 ## 1. Kostenloses Resend-Konto erstellen
 
@@ -63,6 +64,11 @@ Supabase-Kommandozeile arbeitest, findest du die Kurzfassung ganz unten.)
    `supabase/functions/notify-kontaktanfrage/index.ts`.
 5. Und für die dritte Function: Name `notify-teilnahme-bestaetigt`, Inhalt aus
    `supabase/functions/notify-teilnahme-bestaetigt/index.ts`.
+6. Und für die vierte Function: Name `notify-trainerschein-erinnerung`, Inhalt aus
+   `supabase/functions/notify-trainerschein-erinnerung/index.ts`. Diese Function unterscheidet
+   sich von den anderen drei: sie wird nicht bei einer einzelnen Anmeldung ausgelöst, sondern
+   einmal täglich von einem Cron-Job (siehe Schritt 5b unten) und prüft dann selbst, bei wem eine
+   Trainerschein-Erinnerung fällig ist.
 
 ### 4b. API-Key und Webhook-Passwort als Secrets hinterlegen
 
@@ -104,6 +110,15 @@ erledigt sind. Das Skript legt per SQL exakt denselben Mechanismus an wie ein Da
 (Insert auf `kursanmeldungen`/`kontaktanfragen` → Edge Function aufrufen), nur ohne den kaputten
 UI-Teil.
 
+## 5b. Trainerschein-Erinnerungen: täglichen Cron-Job einrichten
+
+Die vierte Function (`notify-trainerschein-erinnerung`) braucht keinen Database Webhook, sondern
+einen täglichen Zeit-Trigger — der steckt bereits in `supabase/schema-trainerscheine.sql`
+(Abschnitt 3) und wird automatisch mit angelegt, wenn du diese Datei im SQL Editor ausführst
+(**nachdem** Schritt 4/6 oben erledigt ist, also die Function deployt ist). Kein separater Schritt
+nötig — nur sicherstellen, dass `webhook_secret` bereits im Vault liegt (Schritt 4b, dasselbe
+Passwort wie bei den anderen drei Functions).
+
 ## 6. Testen
 
 1. Öffne die Live-Website und fülle die Kursanmeldung (`anmeldung.html`) mit einer echten
@@ -116,6 +131,12 @@ UI-Teil.
    Die Testanmeldung selbst bleibt davon unberührt — sie wurde trotzdem korrekt gespeichert (die
    Function schlägt bei einem Mailfehler nie fehl, sie loggt ihn nur).
 4. Wiederhole den Test bei Bedarf für das Kontaktformular (`kontakt.html`).
+5. Für die Trainerschein-Erinnerungen: aktiviere bei einem eigenen Trainerschein (Konto →
+   Trainerscheine) eine der drei Erinnerungs-Checkboxen mit einem Datum, das bereits in die
+   Schwelle fällt (z. B. Absolvierungsdatum so weit in der Vergangenheit, dass "1 Monat vorher"
+   schon erreicht ist), und löse den Cron-Job einmalig vorzeitig aus: im SQL Editor
+   `select public.fn_trigger_trainerschein_erinnerungen();` ausführen. Kommt keine Mail an:
+   Edge Functions → notify-trainerschein-erinnerung → Logs prüfen.
 
 ## Kurzfassung für die Kommandozeile (optional, nur falls du lieber so arbeitest)
 
@@ -129,6 +150,7 @@ supabase secrets set WEBHOOK_SECRET=<dasselbe-Zufallspasswort-wie-im-Vault>
 supabase functions deploy notify-kursanmeldung
 supabase functions deploy notify-kontaktanfrage
 supabase functions deploy notify-teilnahme-bestaetigt
+supabase functions deploy notify-trainerschein-erinnerung
 ```
 
 Den Database Webhook (Schritt 5) musst du trotzdem im Dashboard einrichten — dafür gibt es keinen

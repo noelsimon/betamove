@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trainerscheine — BETAMOVE Konto</title>
+<meta name="description" content="Deine Trainerscheine (DAV-Lizenzen) mit Fortbildungsfristen und Erinnerungen im Blick.">
+<meta property="og:title" content="Trainerscheine — BETAMOVE Konto">
+<meta property="og:description" content="Deine Trainerscheine (DAV-Lizenzen) mit Fortbildungsfristen und Erinnerungen im Blick.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://betamove.de/konto-trainerscheine">
+<meta property="og:image" content="https://betamove.de/assets-min/og-default.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div data-r="nav">
+    <a href="/" class="brand"><img src="assets-min/logo.png" alt="BETAMOVE"></a>
+    <nav data-r="navlinks" id="navLinks">
+      <a href="/">Home</a>
+      <a href="kurse">Kurse</a>
+      <a href="ausbildung">Ausbildung</a>
+      <a href="team">Team</a>
+      <a href="ueber-uns">Über uns</a>
+      <a href="wissen">Wissen</a>
+      <a href="kontakt">Kontakt</a>
+    </nav>
+    <div data-r="navactions">
+      <a href="anmeldung" class="btn btn-primary" style="font-size:15px;padding:10px 20px">Kurs buchen</a>
+      <a href="login" class="nav-login">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Anmelden</span>
+      </a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="navLinks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<main data-r="pad" style="max-width:1160px;margin:0 auto;padding:48px 28px 96px">
+<div class="preview-banner">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+  <span>Lädt dein Konto …</span>
+</div>
+
+      <div>
+        <a href="konto" style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;margin-bottom:14px;text-decoration:none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+          Zurück zu Mein Konto
+        </a>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:8px">
+          <div>
+            <h2 style="margin:0 0 8px;font-size:30px">Trainerscheine</h2>
+            <p style="max-width:66ch;margin:0;font-size:17px;opacity:0.82">Deine Trainerlizenzen (z. B. DAV Trainer*in C/B/A, Kletterbetreuer*in) mit Fortbildungsfrist, Historie und optionaler E-Mail-Erinnerung.</p>
+          </div>
+          <button type="button" id="tsNewBtn" class="btn btn-primary" style="font-size:15px;padding:12px 22px;white-space:nowrap">+ Neuer Trainerschein</button>
+        </div>
+
+        <!-- Hinweis zum Rhythmus -->
+        <p style="font-size:13px;opacity:0.65;max-width:72ch;margin:14px 0 22px">Der Fortbildungsrhythmus wird vom DAV je Lizenz, Jahrgang und Landesverband unterschiedlich angegeben — bitte selbst bei deiner Sektion/deinem Landesverband prüfen und hier eintragen.</p>
+
+        <!-- Neu-Formular -->
+        <form id="tsForm" class="card elev-sm" hidden style="gap:16px;margin-bottom:28px">
+          <div class="field">
+            <label for="tsBezeichnung">Bezeichnung</label>
+            <input id="tsBezeichnung" class="input" list="tsVorschlaege" placeholder="z. B. Trainer*in C Sportklettern Breitensport" required maxlength="160">
+            <datalist id="tsVorschlaege">
+              <option value="Kletterbetreuer*in (Basislehrgang Sportklettern)">
+              <option value="Trainer*in C Sportklettern Breitensport Indoor">
+              <option value="Trainer*in C Bouldern Breitensport Indoor">
+              <option value="Trainer*in C Sportklettern Leistungssport">
+              <option value="Trainer*in B Sportklettern Breitensport">
+              <option value="Trainer*in B Sportklettern Leistungssport">
+              <option value="Trainer*in A Sportklettern Leistungssport">
+              <option value="Fachübungsleiter*in Klettern">
+            </datalist>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+            <div class="field">
+              <label for="tsAbsolvierungsdatum">Absolvierungsdatum</label>
+              <input id="tsAbsolvierungsdatum" type="date" class="input" required>
+            </div>
+            <div class="field">
+              <label for="tsRhythmus">Fortbildungsrhythmus (Jahre)</label>
+              <input id="tsRhythmus" type="number" class="input" min="1" max="10" step="1" required>
+            </div>
+          </div>
+          <p id="tsFormError" class="form-error" hidden></p>
+          <div style="display:flex;gap:10px">
+            <button type="submit" class="btn btn-primary" style="font-size:14.5px;padding:11px 20px">Speichern</button>
+            <button type="button" id="tsCancelBtn" class="btn btn-secondary" style="font-size:14.5px;padding:11px 20px">Abbrechen</button>
+          </div>
+        </form>
+
+        <div id="tsList" style="display:flex;flex-direction:column;gap:16px"></div>
+        <p id="tsEmpty" style="margin:18px 0 0;font-size:15.5px;opacity:0.7" hidden>Noch keinen Trainerschein erfasst.</p>
+      </div>
+  </main>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <img src="assets-min/logo.png" alt="BETAMOVE" style="height:74px;width:auto">
+      <p style="margin:10px 0 0;font-size:15px;opacity:0.7">Klettertraining mit System – für Einsteiger*innen und Fortgeschrittene.</p>
+    </div>
+    <nav>
+      <a href="kurse">Kurse</a>
+      <a href="ausbildung">Ausbildungsprogramm</a>
+      <a href="anmeldung">Anmeldung</a>
+      <a href="team">Team</a>
+      <a href="ueber-uns">Über uns</a>
+    </nav>
+    <nav>
+      <a href="wissen">Wissen</a>
+      <a href="konto">Mein Konto</a>
+      <a href="kontakt">Kontakt</a>
+      <a href="agb">AGB</a>
+    </nav>
+    <nav>
+      <a href="impressum">Impressum</a>
+      <a href="datenschutz">Datenschutz</a>
+      <a href="widerruf">Vertrag widerrufen</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">© <span id="year">2026</span> BETAMOVE · Alle Rechte vorbehalten</div>
+</footer>
+<script src="js/vendor/supabase-js-2.45.4/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js?v=20261020"></script>
+<script src="js/courses-data.js"></script>
+<script src="js/qualifikationen-data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js?v=20261029"></script>
+</body>
+</html>

@@ -4531,6 +4531,179 @@
     });
   }
 
+  // --------------------------------------------------------------------
+  // Seite: konto-trainerscheine — eigene Trainerscheine (DAV-Lizenzen)
+  // --------------------------------------------------------------------
+  // Der Fristenzyklus beginnt bei der letzten Fortbildung (sonst beim
+  // Absolvierungsdatum) und läuft über rhythmus_jahre — derselbe Rechenweg
+  // wie bei der PSA-Lebensdauer (lifespanBarHtml), nur in Jahren statt fest
+  // vorgegeben, da der DAV den Rhythmus je Lizenz/Jahrgang unterschiedlich
+  // angibt und ihn deshalb jede Person selbst einträgt.
+  function trainerscheinFaelligkeit(schein, fortbildungen) {
+    const letzte = (fortbildungen || [])[0];
+    const startIso = (letzte && letzte.datum > schein.absolvierungsdatum) ? letzte.datum : schein.absolvierungsdatum;
+    const start = new Date(startIso + 'T00:00:00');
+    const faellig = new Date(start);
+    faellig.setMonth(faellig.getMonth() + schein.rhythmus_jahre * 12);
+    const days = Math.round((faellig - new Date()) / 86400000);
+    return { start, faellig, days };
+  }
+
+  function trainerscheinBarHtml(schein, fortbildungen) {
+    const { start, faellig, days } = trainerscheinFaelligkeit(schein, fortbildungen);
+    const pct = Math.max(0, Math.min(100, Math.round(((Date.now() - start) / (faellig - start)) * 100)));
+    const ueberfaellig = days < 0;
+    const baldFaellig = !ueberfaellig && days <= 60;
+    const barColor = ueberfaellig ? 'var(--color-warn)' : baldFaellig ? '#c9942f' : 'var(--color-accent-2)';
+    const tageColor = ueberfaellig ? 'var(--color-warn)' : baldFaellig ? '#8a6a1f' : 'var(--color-text)';
+    const tageText = ueberfaellig ? 'ÜBERFÄLLIG seit ' + Math.abs(days) + ' Tagen' : 'noch ' + days + ' Tage bis zur nächsten Fortbildung';
+    return `
+      <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.65">
+        <span>seit ${psaFmtDate(start.toISOString().slice(0, 10))}</span>
+        <span>nächste Fortbildung fällig: ${psaFmtDate(faellig.toISOString().slice(0, 10))}</span>
+      </div>
+      <div style="height:10px;border-radius:999px;background:var(--color-surface);overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${barColor}"></div>
+      </div>
+      <div style="font-size:13.5px;font-weight:600;color:${tageColor}">${tageText}</div>`;
+  }
+
+  async function renderTrainerscheine(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    let scheine = [];
+    let fortbBySchein = {};
+
+    async function loadAll() {
+      const { data } = await client.from('trainerscheine').select('*').eq('user_id', userId).eq('aktiv', true).order('created_at', { ascending: false });
+      scheine = data || [];
+      fortbBySchein = {};
+      const ids = scheine.map(s => s.id);
+      if (ids.length) {
+        const { data: fortb } = await client.from('trainerschein_fortbildungen').select('*').in('trainerschein_id', ids).order('datum', { ascending: false });
+        (fortb || []).forEach(f => { (fortbBySchein[f.trainerschein_id] = fortbBySchein[f.trainerschein_id] || []).push(f); });
+      }
+    }
+
+    function render() {
+      const listEl = document.getElementById('tsList');
+      document.getElementById('tsEmpty').hidden = scheine.length > 0;
+      listEl.innerHTML = scheine.map(s => {
+        const fortb = fortbBySchein[s.id] || [];
+        const historyHtml = fortb.length
+          ? fortb.map(f => `
+              <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:8px 0;border-top:1px solid var(--color-divider)">
+                <span>${escapeHtml(f.spezifikation || 'Fortbildung')}</span>
+                <span style="opacity:0.65;white-space:nowrap">${psaFmtDate(f.datum)}</span>
+              </div>`).join('')
+          : '<p style="font-size:13px;opacity:0.6;margin:4px 0 0">Noch keine Fortbildung eingetragen seit dem Absolvieren.</p>';
+        return `
+        <div class="card elev-sm" style="gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div>
+              <div style="font-weight:700;font-size:16.5px">${escapeHtml(s.bezeichnung)}</div>
+              <div style="font-size:12.5px;opacity:0.65;margin-top:2px">alle ${s.rhythmus_jahre} Jahr${s.rhythmus_jahre === 1 ? '' : 'e'} eine Fortbildung</div>
+            </div>
+            <button type="button" class="ts-delete" data-id="${s.id}" style="font-size:12.5px;opacity:0.6;background:none;border:none;cursor:pointer;color:inherit;text-decoration:underline">Löschen</button>
+          </div>
+          ${trainerscheinBarHtml(s, fortb)}
+          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="ts-erinnerung" data-id="${s.id}" data-feld="erinnerung_6_monate" ${s.erinnerung_6_monate ? 'checked' : ''}> Erinnerung 6 Monate vorher</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="ts-erinnerung" data-id="${s.id}" data-feld="erinnerung_3_monate" ${s.erinnerung_3_monate ? 'checked' : ''}> 3 Monate vorher</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="ts-erinnerung" data-id="${s.id}" data-feld="erinnerung_1_monat" ${s.erinnerung_1_monat ? 'checked' : ''}> 1 Monat vorher</label>
+          </div>
+          <details>
+            <summary style="font-size:13px;font-weight:600;cursor:pointer">Fortbildungs-Historie${fortb.length ? ' (' + fortb.length + ')' : ''}</summary>
+            ${historyHtml}
+          </details>
+          <form class="ts-fortbildung-form" data-id="${s.id}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="flex:none">
+              <label style="font-size:12px">Datum</label>
+              <input type="date" class="input ts-fortb-datum" style="padding:9px 12px" value="${new Date().toISOString().slice(0, 10)}" required>
+            </div>
+            <div class="field" style="flex:1;min-width:180px">
+              <label style="font-size:12px">Was wurde gemacht? (optional)</label>
+              <input type="text" class="input ts-fortb-spez" style="padding:9px 12px" maxlength="500" placeholder="z. B. Pflichtfortbildung Kletterbetreuer*innen">
+            </div>
+            <button type="submit" class="btn btn-secondary" style="font-size:13.5px;padding:10px 16px;white-space:nowrap">Fortbildung eintragen</button>
+          </form>
+        </div>`;
+      }).join('');
+
+      listEl.querySelectorAll('.ts-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const schein = scheine.find(s => s.id === btn.dataset.id);
+          if (!schein || !confirm('„' + schein.bezeichnung + '" wirklich löschen?')) return;
+          await client.from('trainerscheine').delete().eq('id', schein.id);
+          await loadAll();
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('.ts-erinnerung').forEach(cb => {
+        cb.addEventListener('change', async () => {
+          await client.from('trainerscheine').update({ [cb.dataset.feld]: cb.checked }).eq('id', cb.dataset.id);
+          const s = scheine.find(x => x.id === cb.dataset.id);
+          if (s) s[cb.dataset.feld] = cb.checked;
+        });
+      });
+
+      listEl.querySelectorAll('.ts-fortbildung-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const id = form.dataset.id;
+          const datum = form.querySelector('.ts-fortb-datum').value;
+          const spezifikation = form.querySelector('.ts-fortb-spez').value.trim() || null;
+          await client.from('trainerschein_fortbildungen').insert({ trainerschein_id: id, datum, spezifikation });
+          // Neue Fortbildung startet den Fristenzyklus neu -> alte "bereits
+          // erinnert"-Markierungen zurücksetzen, sonst kommt im neuen Zyklus
+          // keine Erinnerung mehr.
+          await client.from('trainerscheine').update({ erinnerung_6_monate_am: null, erinnerung_3_monate_am: null, erinnerung_1_monat_am: null }).eq('id', id);
+          await loadAll();
+          render();
+        });
+      });
+    }
+
+    document.getElementById('tsNewBtn').addEventListener('click', () => {
+      document.getElementById('tsForm').hidden = false;
+      document.getElementById('tsNewBtn').hidden = true;
+    });
+    document.getElementById('tsCancelBtn').addEventListener('click', () => {
+      document.getElementById('tsForm').hidden = true;
+      document.getElementById('tsForm').reset();
+      document.getElementById('tsNewBtn').hidden = false;
+    });
+    document.getElementById('tsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('tsFormError');
+      errBox.hidden = true;
+      const payload = {
+        user_id: userId,
+        bezeichnung: document.getElementById('tsBezeichnung').value.trim(),
+        absolvierungsdatum: document.getElementById('tsAbsolvierungsdatum').value,
+        rhythmus_jahre: Number(document.getElementById('tsRhythmus').value)
+      };
+      if (!payload.bezeichnung || !payload.absolvierungsdatum || !payload.rhythmus_jahre) return;
+      try {
+        const { error } = await client.from('trainerscheine').insert(payload);
+        if (error) throw error;
+        document.getElementById('tsForm').hidden = true;
+        document.getElementById('tsForm').reset();
+        document.getElementById('tsNewBtn').hidden = false;
+        await loadAll();
+        render();
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Trainerschein konnte nicht gespeichert werden.';
+      }
+    });
+
+    await loadAll();
+    render();
+  }
+
   // Seiten ohne eigene Datenlogik (nur Links) — brauchen trotzdem guardAccountPage()
   // für Sidebar/Logout, deshalb hier als no-op in der Seiten-Zuordnung registriert.
   function noop() {}
@@ -4545,6 +4718,7 @@
       'konto-profil': renderProfil,
       'konto-lernen': renderLernen,
       'konto-qualifikationen': renderQualifikationen,
+      'konto-trainerscheine': renderTrainerscheine,
       'konto-weg': renderWeg,
       'konto-training': renderTraining,
       'konto-psa': renderPsa,
