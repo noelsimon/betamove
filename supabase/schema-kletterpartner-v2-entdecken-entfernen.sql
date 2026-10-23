@@ -21,13 +21,9 @@ drop function if exists public.kletterpartner_entdecken_liste();
 alter table public.kletterpartner_unterhaltungen drop column if exists match_id;
 alter table public.kletterpartner_bewertungen drop column if exists match_id;
 
--- 4) Tabellen von Likes/Matches/Opt-in-Profil entfernen
-drop table if exists public.kletterpartner_likes;
-drop table if exists public.kletterpartner_matches;
-drop table if exists public.kletterpartner_profile;
-
--- 5) profiles-Policy neu fassen: Klausel fürs (jetzt gelöschte)
---    kletterpartner_profile entfernen, Rest unverändert lassen
+-- 4) profiles-Policy neu fassen: Klausel fürs (gleich gelöschte)
+--    kletterpartner_profile entfernen, Rest unverändert lassen — muss vor
+--    dem Tabellen-Drop passieren, sonst hängt die alte Policy noch dran
 drop policy if exists "profiles_select_kletterpartner" on public.profiles;
 create policy "profiles_select_kletterpartner"
   on public.profiles for select
@@ -41,3 +37,8 @@ create policy "profiles_select_kletterpartner"
         and (u.user_a = auth.uid() or u.user_b = auth.uid())
     )
   );
+
+-- 5) Tabellen von Likes/Matches/Opt-in-Profil entfernen
+drop table if exists public.kletterpartner_likes;
+drop table if exists public.kletterpartner_matches;
+drop table if exists public.kletterpartner_profile;
