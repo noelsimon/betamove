@@ -149,7 +149,7 @@ textarea.input { resize: vertical; font-family: inherit; }
 .nav-login:hover { background: var(--color-accent-100); }
 .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 6px; color: var(--color-accent); flex: none; }
 
-/* Sidebar-Navigation im Konto-Bereich (konto, konto-weg, konto-qualifikationen, konto-lernen, konto-profil) */
+/* Sidebar-Navigation im Konto-Bereich (konto, konto-qualifikationen, konto-lernen, konto-profil) */
 .konto-nav-link { text-decoration: none; font-size: 15.5px; font-weight: 500; padding: 13px 18px; border-radius: 999px; background: #ffffff; color: var(--color-text); border: 2px solid var(--color-divider); display: flex; align-items: center; gap: 10px; }
 .konto-nav-link.active { background: var(--color-accent); color: #ffffff; border-color: var(--color-accent); }
 

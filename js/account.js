@@ -2939,41 +2939,6 @@
   }
 
   // --------------------------------------------------------------------
-  // Seite: konto-weg — dieselben Qualifikationen als Wegkarte
-  // --------------------------------------------------------------------
-  async function renderWeg(ctx) {
-    const { progress } = ctx;
-    const totalReq = qualifications().reduce((n, q) => n + q.requirements.length, 0);
-    const doneReq = qualifications().reduce((n, q) => n + q.requirements.filter(r => progress[r.id] && progress[r.id].passed).length, 0);
-    const bar = document.getElementById('wegBar');
-    if (bar) bar.style.width = (totalReq ? Math.round((doneReq / totalReq) * 100) : 0) + '%';
-    const label = document.getElementById('wegLabel');
-    if (label) label.textContent = doneReq + ' von ' + totalReq + ' Schritten';
-
-    const root = document.getElementById('wegPath');
-    if (!root) return;
-    root.innerHTML = qualifications().map(q => {
-      const nodes = q.requirements.map(r => {
-        const done = !!(progress[r.id] && progress[r.id].passed);
-        const isKurs = r.kind === 'kurs';
-        const tag = isKurs ? 'div' : 'a';
-        const openAttr = isKurs ? '' : ` href="${r.url}"`;
-        return `<${tag}${openAttr} style="font:inherit;text-align:left;text-decoration:none;color:inherit;display:flex;gap:12px;align-items:flex-start;background:${done ? 'var(--color-accent-100)' : '#ffffff'};border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};border-radius:var(--radius-md);padding:16px 18px;width:100%">
-          <span style="width:24px;height:24px;flex:none;border-radius:7px;border:2px solid ${done ? 'var(--color-accent)' : 'var(--color-divider)'};background:${done ? 'var(--color-accent)' : 'var(--color-neutral-300)'};color:#ffffff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px">${done ? '✓' : ''}</span>
-          <span style="min-width:0"><span style="display:block;font-size:16px;font-weight:600;line-height:1.3">${escapeHtml(r.label.replace(/^(Artikel|Quiz|Online-Prüfung|Kurs) „?/, '').replace(/[“"]? (bestehen|durcharbeiten|lesen|absolvieren)$/, ''))}</span>${isKurs ? `<span style="display:block;font-size:13px;opacity:0.65;margin-top:2px">${done ? 'Bestätigt von der Kursleitung' : 'Bestätigung steht noch aus'}</span>` : ''}</span>
-        </${tag}>`;
-      }).join('');
-      return `<div style="display:flex;flex-direction:column;gap:12px">
-        <div style="background:var(--color-accent-700);color:#ffffff;border-radius:var(--radius-md);padding:14px 18px">
-          <div style="font-family:var(--font-heading);font-size:17px;line-height:1.25">${escapeHtml(q.name)}</div>
-          <div style="font-size:13px;opacity:0.85;margin-top:2px">${escapeHtml(q.level)}</div>
-        </div>
-        ${nodes}
-      </div>`;
-    }).join('');
-  }
-
-  // --------------------------------------------------------------------
   // Kommentare unter Wissensartikeln ("Fragen & Kommentare")
   // --------------------------------------------------------------------
   function formatCommentDate(iso) {
@@ -4719,7 +4684,6 @@
       'konto-lernen': renderLernen,
       'konto-qualifikationen': renderQualifikationen,
       'konto-trainerscheine': renderTrainerscheine,
-      'konto-weg': renderWeg,
       'konto-training': renderTraining,
       'konto-psa': renderPsa,
       'konto-psa-detail': renderPsaDetail,

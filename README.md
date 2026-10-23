@@ -42,7 +42,6 @@ Konto-Bereich (Design-Vorschau, siehe Hinweis unten):
 ```
 login.html                        Anmelden / Konto erstellen (Formulare senden noch nirgends hin)
 konto.html                        Dashboard-Übersicht
-konto-weg.html                    Ausbildungsweg als Karte
 konto-qualifikationen.html        Qualifikationen im Detail
 konto-lernen.html                 Lernstand
 konto-profil.html                 Profildaten

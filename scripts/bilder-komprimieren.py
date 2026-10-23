@@ -26,8 +26,8 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets-min"
 PHOTO_MAX_EDGE = 1920   # px, deutlich über der größten Fotodarstellung (1160px) für Retina
 LOGO_MAX_EDGE = 900     # px, für Logos/Icons (PNG), die nirgends höher als ~90px angezeigt werden
 JPEG_QUALITY = 82
-# Diagramm wird wie ein Foto in voller Breite gezeigt (ausbildung.html,
-# konto-weg.html), nicht wie die übrigen PNGs als kleines Logo.
+# Diagramm wird wie ein Foto in voller Breite gezeigt (ausbildung.html),
+# nicht wie die übrigen PNGs als kleines Logo.
 PNG_PHOTO_LIKE = {"ausbildungskonzept.png"}
 # Unter dieser Dateigröße lohnt sich ein erneutes Komprimieren kaum und wird
 # übersprungen, außer das Bild ist trotzdem größer als sein Max-Edge.

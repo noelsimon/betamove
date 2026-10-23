@@ -26,7 +26,7 @@ haben eine `background`-Fläche in `var(--color-surface)` bzw. eine feste `aspec
 | `ueber-2.jpg` | Startseite (Team-Sektion) und „Über uns" (Kachel „Erfahrung trifft Fachwissen"), Hochformat |
 | `ueber-3.jpg` | „Über uns" (Kachel „Lernen braucht Zeit") und Wissensartikel „Sperrzeiten verstehen", Hochformat |
 | `ueber-4.jpg` | „Über uns" (Kachel „Verantwortung am Fels"), Hochformat |
-| `ausbildungskonzept.png` | Diagramm des Ausbildungskonzepts, verwendet auf `ausbildung.html` und `konto-weg.html` (breites Format, Text lesbar) |
+| `ausbildungskonzept.png` | Diagramm des Ausbildungskonzepts, verwendet auf `ausbildung.html` (breites Format, Text lesbar) |
 | `kurs-halle.jpg` | Kurs „Von der Halle an den Fels" (Kursliste, Startseite, Bildungsurlaub-Wochenkurs „Sicher am Fels") |
 | `kurs-msl.jpg` | Kurs „Mehrseillängen für Fortgeschrittene" (Kursliste, Bildungsurlaub-Wochenkurs „Mehrseillängen-Woche", Wissensartikel „Standplatz") |
 | `kurs-mobil.jpg` | Kurs „Keile, Friends und Co. – Mobile Sicherung" (Kursliste) |
