@@ -4669,6 +4669,603 @@
     render();
   }
 
+  // --------------------------------------------------------------------
+  // Kletterpartner — Entdecken (Match), Anzeigen, Chat, Melden, Bewerten
+  // --------------------------------------------------------------------
+  const KP_DISZIPLINEN = ['Sportklettern', 'Bouldern', 'Alpinklettern', 'Plaisirklettern', 'Mehrseillängen'];
+  const KP_MELDE_GRUENDE = ['Unangemessenes Verhalten', 'Fake-Profil', 'Belästigung', 'Nicht erschienen', 'Sonstiges'];
+
+  // Mehrfachauswahl-Chips, die eine übergebene Liste direkt mutieren (list.push/splice) —
+  // schlank genug, um ohne separates State-Objekt an mehreren Stellen (Opt-in-Formular,
+  // neue Anzeige, Bewertung) wiederverwendet zu werden.
+  function wireMultiChips(container, options, list) {
+    function paint() {
+      container.innerHTML = options.map(o => `<button type="button" class="konto-nav-link${list.indexOf(o) !== -1 ? ' active' : ''}" data-val="${escapeHtml(o)}" style="padding:9px 16px;font-size:13px">${escapeHtml(o)}</button>`).join('');
+      container.querySelectorAll('[data-val]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = btn.dataset.val;
+          const i = list.indexOf(v);
+          if (i === -1) list.push(v); else list.splice(i, 1);
+          paint();
+        });
+      });
+    }
+    paint();
+  }
+
+  // Einfachauswahl-Chips mit Wert/Label getrennt (z.B. ort_typ "halle" vs. Anzeigetext).
+  function wireSingleChips(container, options, stateObj, key, onChange) {
+    function paint() {
+      container.innerHTML = options.map(o => `<button type="button" class="konto-nav-link${stateObj[key] === o.v ? ' active' : ''}" data-val="${escapeHtml(o.v)}" style="padding:9px 16px;font-size:13px">${escapeHtml(o.l)}</button>`).join('');
+      container.querySelectorAll('[data-val]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          stateObj[key] = btn.dataset.val;
+          paint();
+          if (onChange) onChange();
+        });
+      });
+    }
+    paint();
+  }
+
+  function kpMeldenWiren(client, userId, { btnId, boxId, titelId, gruendeId, bestaetigenId, abbrechenId, doneId, gemeldeteUserId, gemeldeterName, kontextTyp, kontextId }) {
+    const box = document.getElementById(boxId);
+    let reason = null;
+    document.getElementById(btnId).addEventListener('click', () => {
+      box.hidden = false;
+      document.getElementById(titelId).textContent = 'Warum möchtest du ' + gemeldeterName + ' melden?';
+      const gruendeEl = document.getElementById(gruendeId);
+      gruendeEl.innerHTML = KP_MELDE_GRUENDE.map(g => `<button type="button" class="konto-nav-link" data-val="${escapeHtml(g)}" style="padding:7px 13px;font-size:11.5px">${escapeHtml(g)}</button>`).join('');
+      gruendeEl.querySelectorAll('[data-val]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          reason = btn.dataset.val;
+          gruendeEl.querySelectorAll('[data-val]').forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
+    });
+    document.getElementById(abbrechenId).addEventListener('click', () => { box.hidden = true; });
+    document.getElementById(bestaetigenId).addEventListener('click', async () => {
+      if (!reason) return;
+      await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: gemeldeteUserId, grund: reason, kontext_typ: kontextTyp, kontext_id: kontextId });
+      box.hidden = true;
+      document.getElementById(doneId).hidden = false;
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner — Entdecken (Opt-in + Swipe/Match)
+  // --------------------------------------------------------------------
+  async function renderKletterpartner(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+
+    const { data: profilRow } = await client.from('kletterpartner_profile').select('*').eq('user_id', userId).maybeSingle();
+
+    if (!profilRow) {
+      document.getElementById('kpOptIn').hidden = false;
+      const state = { disziplinen: [], ort: 'halle' };
+      wireMultiChips(document.getElementById('kpOptInDisziplinen'), KP_DISZIPLINEN, state.disziplinen);
+      wireSingleChips(document.getElementById('kpOptInOrt'), [{ v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }, { v: 'beides', l: 'Beides' }], state, 'ort');
+      document.getElementById('kpOptInForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errBox = document.getElementById('kpOptInError');
+        errBox.hidden = true;
+        const level = document.getElementById('kpLevel').value;
+        if (!level) return;
+        const verfuegbarkeit = document.getElementById('kpVerfuegbarkeit').value.split(',').map(s => s.trim()).filter(Boolean);
+        try {
+          const { error } = await client.from('kletterpartner_profile').insert({
+            user_id: userId,
+            level,
+            disziplinen: state.disziplinen,
+            verfuegbarkeit,
+            ort_typ: state.ort,
+            bio: document.getElementById('kpBio').value.trim() || null
+          });
+          if (error) throw error;
+          location.reload();
+        } catch (err) {
+          errBox.hidden = false;
+          errBox.textContent = 'Profil konnte nicht gespeichert werden.';
+        }
+      });
+      return;
+    }
+
+    if (!profilRow.aktiv) {
+      document.getElementById('kpPausedBox').hidden = false;
+      document.getElementById('kpReaktivierenBtn').addEventListener('click', async () => {
+        await client.from('kletterpartner_profile').update({ aktiv: true }).eq('user_id', userId);
+        location.reload();
+      });
+      return;
+    }
+
+    document.getElementById('kpArea').hidden = false;
+    document.getElementById('kpPausierenBtn').addEventListener('click', async () => {
+      if (!confirm('Dein Profil wird für andere unsichtbar. Du kannst es jederzeit wieder aktivieren.')) return;
+      await client.from('kletterpartner_profile').update({ aktiv: false }).eq('user_id', userId);
+      location.reload();
+    });
+
+    let kandidaten = [];
+    let index = 0;
+    let ortFilter = 'alle';
+
+    const { data: liste } = await client.rpc('kletterpartner_entdecken_liste');
+    kandidaten = liste || [];
+
+    function kpOrtLabel(typ) {
+      return typ === 'halle' ? 'Kletterzentrum' : typ === 'draussen' ? 'Draußen / Fels' : 'Halle & Draußen';
+    }
+
+    function filtered() {
+      if (ortFilter === 'alle') return kandidaten;
+      return kandidaten.filter(k => k.ort_typ === ortFilter || k.ort_typ === 'beides');
+    }
+
+    function renderOrtFilter() {
+      const el = document.getElementById('kpOrtFilter');
+      const opts = [{ v: 'alle', l: 'Alle Orte' }, { v: 'halle', l: 'Nur Kletterzentrum' }];
+      el.innerHTML = opts.map(o => `<button type="button" class="konto-nav-link${ortFilter === o.v ? ' active' : ''}" data-val="${o.v}" style="padding:9px 16px;font-size:13px">${o.l}</button>`).join('');
+      el.querySelectorAll('[data-val]').forEach(btn => {
+        btn.addEventListener('click', () => { ortFilter = btn.dataset.val; index = 0; renderOrtFilter(); renderCard(); });
+      });
+    }
+
+    function renderCard() {
+      const list = filtered();
+      const cardEl = document.getElementById('kpCard');
+      const emptyEl = document.getElementById('kpEmptyDeck');
+      document.getElementById('kpMatchOverlay').hidden = true;
+      if (!list.length || index >= list.length) {
+        cardEl.innerHTML = '';
+        cardEl.hidden = true;
+        emptyEl.hidden = false;
+        return;
+      }
+      emptyEl.hidden = true;
+      cardEl.hidden = false;
+      const k = list[index];
+      const initials = (((k.vorname || '')[0] || '') + ((k.nachname || '')[0] || '')).toUpperCase() || '?';
+      cardEl.innerHTML = `
+        <div style="height:220px;background:var(--color-accent);position:relative;display:flex;align-items:center;justify-content:center">
+          <span style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px">${escapeHtml(k.level)}</span>
+          <span style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.18);color:#ffffff;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px">${escapeHtml(kpOrtLabel(k.ort_typ))}</span>
+          <div style="width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.14);border:3px solid rgba(255,255,255,0.45);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#ffffff">${escapeHtml(initials)}</div>
+          ${k.sicherungsschein_verifiziert ? `<span style="position:absolute;bottom:16px;left:16px;display:inline-flex;align-items:center;gap:6px;background:#dcebe0;color:#2f6b45;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px">Sicherungsschein ✓</span>` : ''}
+        </div>
+        <div style="padding:22px 24px 26px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-size:20px;font-weight:600">${escapeHtml(k.vorname)}</div>
+          ${k.gemeinsamer_kurs ? `<div class="tag tag-accent-2" style="width:fit-content">Gemeinsamer Kurs: „${escapeHtml(k.gemeinsamer_kurs)}"</div>` : ''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${(k.disziplinen || []).map(d => `<span class="tag">${escapeHtml(d)}</span>`).join('')}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${(k.verfuegbarkeit || []).map(v => `<span class="tag tag-neutral">${escapeHtml(v)}</span>`).join('')}</div>
+          ${k.bio ? `<p style="margin:0;font-size:14px;opacity:0.8;line-height:1.5">${escapeHtml(k.bio)}</p>` : ''}
+        </div>`;
+    }
+
+    async function likeOrPass(richtung) {
+      const list = filtered();
+      if (!list.length || index >= list.length) return;
+      const k = list[index];
+      const { error } = await client.from('kletterpartner_likes').insert({ liker_id: userId, liked_id: k.user_id, richtung });
+      if (error) { index++; renderCard(); return; }
+      if (richtung === 'like') {
+        const { data: match } = await client.from('kletterpartner_matches').select('id').or(`user_a.eq.${k.user_id},user_b.eq.${k.user_id}`).maybeSingle();
+        if (match) {
+          const { data: convId } = await client.rpc('kletterpartner_unterhaltung_oeffnen', { p_other_user_id: k.user_id });
+          document.getElementById('kpMatchText').textContent = 'Du und ' + k.vorname + ' wollt beide klettern gehen.';
+          document.getElementById('kpMatchChatLink').href = 'konto-kletterpartner-chat?id=' + encodeURIComponent(convId);
+          document.getElementById('kpMatchOverlay').hidden = false;
+          return;
+        }
+      }
+      index++;
+      renderCard();
+    }
+
+    document.getElementById('kpLikeBtn').addEventListener('click', () => likeOrPass('like'));
+    document.getElementById('kpPassBtn').addEventListener('click', () => likeOrPass('pass'));
+    document.getElementById('kpMatchCloseBtn').addEventListener('click', () => { document.getElementById('kpMatchOverlay').hidden = true; index++; renderCard(); });
+
+    renderOrtFilter();
+    renderCard();
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-anzeigen — Anzeigenboard
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerAnzeigen(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    let filter = 'Alle';
+    let ortFilter = 'alle';
+    let anzeigen = [];
+    let profilesById = {};
+    let bildUrls = {};
+    const reportState = {};
+
+    async function resolveBildUrls(rows) {
+      const withBild = rows.filter(r => r.bild_pfad);
+      const urls = {};
+      await Promise.all(withBild.map(async r => {
+        const { data } = await client.storage.from('kletterpartner-bilder').createSignedUrl(r.bild_pfad, 3600);
+        if (data) urls[r.id] = data.signedUrl;
+      }));
+      return urls;
+    }
+
+    async function loadAll() {
+      const { data } = await client.from('kletterpartner_anzeigen').select('*').eq('aktiv', true).order('created_at', { ascending: false });
+      anzeigen = data || [];
+      const userIds = Array.from(new Set(anzeigen.map(a => a.user_id)));
+      profilesById = {};
+      if (userIds.length) {
+        const { data: profs } = await client.from('profiles').select('id, vorname, nachname').in('id', userIds);
+        (profs || []).forEach(p => { profilesById[p.id] = p; });
+      }
+      bildUrls = await resolveBildUrls(anzeigen);
+    }
+
+    function renderFilters() {
+      const el = document.getElementById('kaFilter');
+      const opts = ['Alle'].concat(KP_DISZIPLINEN);
+      el.innerHTML = opts.map(f => `<button type="button" class="konto-nav-link${f === filter ? ' active' : ''}" data-val="${escapeHtml(f)}" style="padding:9px 16px;font-size:13px">${escapeHtml(f)}</button>`).join('');
+      el.querySelectorAll('[data-val]').forEach(btn => btn.addEventListener('click', () => { filter = btn.dataset.val; renderFilters(); renderList(); }));
+
+      const ortEl = document.getElementById('kaOrtFilter');
+      const ortOpts = [{ v: 'alle', l: 'Alle Orte' }, { v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }];
+      ortEl.innerHTML = ortOpts.map(o => `<button type="button" class="konto-nav-link${ortFilter === o.v ? ' active' : ''}" data-val="${o.v}" style="padding:7px 14px;font-size:12px">${o.l}</button>`).join('');
+      ortEl.querySelectorAll('[data-val]').forEach(btn => btn.addEventListener('click', () => { ortFilter = btn.dataset.val; renderFilters(); renderList(); }));
+    }
+
+    function renderList() {
+      const list = anzeigen.filter(a => (filter === 'Alle' || (a.disziplinen || []).indexOf(filter) !== -1) && (ortFilter === 'alle' || a.ort_typ === ortFilter));
+      const listEl = document.getElementById('kaList');
+      document.getElementById('kaEmpty').hidden = list.length > 0;
+      listEl.innerHTML = list.map(a => {
+        const autor = profilesById[a.user_id];
+        const autorName = autor ? (autor.vorname + ' ' + autor.nachname).trim() : 'Unbekannt';
+        const st = reportState[a.id] || {};
+        const bildUrl = bildUrls[a.id];
+        return `
+        <div class="card elev-sm" style="gap:14px" data-id="${a.id}">
+          <div style="display:flex;align-items:center;gap:10px">
+            ${initialsAvatar(autorName, 34)}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13.5px;font-weight:600">${escapeHtml(autorName)}</div>
+              <div style="font-size:12px;opacity:0.55">${psaFmtDate((a.created_at || '').slice(0, 10))}${a.typ === 'gruppe' ? ' · Gruppe' : ''}</div>
+            </div>
+            <button type="button" class="ka-melden" data-id="${a.id}" aria-label="${escapeHtml(autorName)} melden" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--color-warn);opacity:0.55;padding:4px;display:flex;align-items:center;flex:none">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3v18"></path><path d="M4 4h12l-2 4 2 4H4"></path></svg>
+            </button>
+          </div>
+          ${bildUrl ? `<img src="${bildUrl}" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:var(--radius-md)">` : ''}
+          <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" style="display:block;font-size:16.5px;font-weight:600;text-decoration:none;color:inherit">${escapeHtml(a.titel)}</a>
+          <p style="margin:0;font-size:14px;line-height:1.55;opacity:0.85">${escapeHtml(a.beschreibung || '')}</p>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">${(a.disziplinen || []).map(d => `<span class="tag tag-accent-2">${escapeHtml(d)}</span>`).join('')}</div>
+          ${a.typ === 'gruppe' && a.plaetze ? `<div style="font-size:12.5px;opacity:0.65">${a.plaetze} Plätze</div>` : ''}
+          <div class="ka-report-box" data-id="${a.id}" ${st.open ? '' : 'hidden'} style="background:var(--color-warn-bg);border-radius:var(--radius-md);padding:14px 16px">
+            <div style="font-size:12.5px;font-weight:600;color:var(--color-warn);margin-bottom:10px">Warum möchtest du ${escapeHtml(autorName)} melden?</div>
+            <div class="ka-report-gruende" data-id="${a.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${KP_MELDE_GRUENDE.map(g => `<button type="button" class="konto-nav-link${st.reason === g ? ' active' : ''}" data-reason="${escapeHtml(g)}" style="padding:7px 13px;font-size:11.5px">${escapeHtml(g)}</button>`).join('')}</div>
+            <div style="display:flex;gap:10px">
+              <button type="button" class="ka-report-confirm" data-id="${a.id}" style="padding:9px 16px;border-radius:999px;background:var(--color-warn);color:#ffffff;border:none;font-weight:600;font-size:12.5px;cursor:pointer">Melden bestätigen</button>
+              <button type="button" class="ka-report-cancel" data-id="${a.id}" style="padding:9px 16px;border-radius:999px;background:none;color:var(--color-warn);border:none;font-weight:600;font-size:12.5px;cursor:pointer">Abbrechen</button>
+            </div>
+          </div>
+          ${st.done ? '<div style="font-size:12.5px;font-weight:600;color:var(--color-warn)">Gemeldet — danke für den Hinweis</div>' : ''}
+          <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-secondary" style="font-size:13px;padding:9px 16px;align-self:flex-start;text-decoration:none">${a.typ === 'gruppe' ? 'Gruppe beitreten' : 'Antworten'}</a>
+        </div>`;
+      }).join('');
+
+      listEl.querySelectorAll('.ka-melden').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          reportState[id] = Object.assign({}, reportState[id], { open: true });
+          renderList();
+        });
+      });
+      listEl.querySelectorAll('.ka-report-gruende [data-reason]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.closest('[data-id]').dataset.id;
+          reportState[id] = Object.assign({}, reportState[id], { reason: btn.dataset.reason });
+          renderList();
+        });
+      });
+      listEl.querySelectorAll('.ka-report-cancel').forEach(btn => {
+        btn.addEventListener('click', () => {
+          reportState[btn.dataset.id] = { open: false };
+          renderList();
+        });
+      });
+      listEl.querySelectorAll('.ka-report-confirm').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const st = reportState[id] || {};
+          if (!st.reason) return;
+          const a = anzeigen.find(x => x.id === id);
+          await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: a.user_id, grund: st.reason, kontext_typ: 'anzeige', kontext_id: id });
+          reportState[id] = { open: false, done: true };
+          renderList();
+        });
+      });
+    }
+
+    await loadAll();
+    renderFilters();
+    renderList();
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-anzeige-neu — Neue Anzeige
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerAnzeigeNeu(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const state = { disziplinen: [], ort: 'halle', typ: 'einzel', file: null };
+
+    wireMultiChips(document.getElementById('knDisziplinen'), KP_DISZIPLINEN, state.disziplinen);
+    wireSingleChips(document.getElementById('knOrt'), [{ v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }], state, 'ort');
+    wireSingleChips(document.getElementById('knTyp'), [{ v: 'einzel', l: 'Einzelperson' }, { v: 'gruppe', l: 'Feste Gruppe' }], state, 'typ', () => {
+      document.getElementById('knPlaetzeField').hidden = state.typ !== 'gruppe';
+    });
+
+    const bildInput = document.getElementById('knBild');
+    bildInput.addEventListener('change', () => {
+      const file = bildInput.files && bildInput.files[0];
+      if (!file) return;
+      state.file = file;
+      document.getElementById('knBildVorschauImg').src = URL.createObjectURL(file);
+      document.getElementById('knBildVorschau').hidden = false;
+      document.getElementById('knBildLabel').hidden = true;
+    });
+    document.getElementById('knBildEntfernenBtn').addEventListener('click', () => {
+      state.file = null;
+      bildInput.value = '';
+      document.getElementById('knBildVorschau').hidden = true;
+      document.getElementById('knBildLabel').hidden = false;
+    });
+
+    document.getElementById('knForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('knFormError');
+      errBox.hidden = true;
+      const titel = document.getElementById('knTitel').value.trim();
+      if (!titel) return;
+      try {
+        let bildPfad = null;
+        if (state.file) {
+          const ext = (state.file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+          const path = userId + '/' + Date.now() + '.' + ext;
+          const { error: upErr } = await client.storage.from('kletterpartner-bilder').upload(path, state.file);
+          if (upErr) throw upErr;
+          bildPfad = path;
+        }
+        const { data, error } = await client.from('kletterpartner_anzeigen').insert({
+          user_id: userId,
+          titel,
+          beschreibung: document.getElementById('knBeschreibung').value.trim() || null,
+          wann: document.getElementById('knWann').value.trim() || null,
+          disziplinen: state.disziplinen,
+          ort_typ: state.ort,
+          typ: state.typ,
+          plaetze: state.typ === 'gruppe' ? (Number(document.getElementById('knPlaetze').value) || null) : null,
+          bild_pfad: bildPfad
+        }).select().single();
+        if (error) throw error;
+        location.href = 'konto-kletterpartner-anzeige-detail?id=' + encodeURIComponent(data.id);
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = 'Anzeige konnte nicht gespeichert werden.';
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-anzeige-detail — Anzeige ansehen (?id=)
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerAnzeigeDetail(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const params = new URLSearchParams(location.search);
+    const anzeigeId = params.get('id');
+    const gateEl = document.getElementById('kdGate');
+    const areaEl = document.getElementById('kdArea');
+
+    if (!anzeigeId) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const { data: a } = await client.from('kletterpartner_anzeigen').select('*').eq('id', anzeigeId).maybeSingle();
+    if (!a) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    const { data: autorProf } = await client.from('profiles').select('vorname, nachname').eq('id', a.user_id).maybeSingle();
+    const autorName = autorProf ? (autorProf.vorname + ' ' + autorProf.nachname).trim() : 'Unbekannt';
+
+    document.getElementById('kdAvatar').textContent = autorName.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    document.getElementById('kdAutor').textContent = autorName;
+    document.getElementById('kdZeit').textContent = psaFmtDate((a.created_at || '').slice(0, 10));
+    document.getElementById('kdTitel').textContent = a.titel;
+    document.getElementById('kdText').textContent = a.beschreibung || '';
+    const ortLabel = a.ort_typ === 'halle' ? 'Kletterzentrum Leipzig' : 'Draußen / Fels';
+    document.getElementById('kdTags').innerHTML = (a.disziplinen || []).concat([ortLabel]).map(t => `<span class="tag tag-accent-2">${escapeHtml(t)}</span>`).join('');
+
+    if (a.bild_pfad) {
+      const { data: signed } = await client.storage.from('kletterpartner-bilder').createSignedUrl(a.bild_pfad, 3600);
+      if (signed) {
+        const img = document.getElementById('kdBild');
+        img.src = signed.signedUrl;
+        img.hidden = false;
+      }
+    }
+
+    if (a.user_id !== userId) {
+      kpMeldenWiren(client, userId, {
+        btnId: 'kdMeldenBtn', boxId: 'kdMeldenBox', titelId: 'kdMeldenTitel', gruendeId: 'kdMeldenGruende',
+        bestaetigenId: 'kdMeldenBestaetigenBtn', abbrechenId: 'kdMeldenAbbrechenBtn', doneId: 'kdMeldenDone',
+        gemeldeteUserId: a.user_id, gemeldeterName: autorName, kontextTyp: 'anzeige', kontextId: a.id
+      });
+    } else {
+      document.getElementById('kdMeldenBtn').hidden = true;
+    }
+
+    async function loadAntworten() {
+      const { data } = await client.from('kletterpartner_anzeigen_antworten').select('*').eq('anzeige_id', anzeigeId).order('created_at', { ascending: true });
+      const antworten = data || [];
+      const ids = Array.from(new Set(antworten.map(r => r.user_id)));
+      const profs = {};
+      if (ids.length) {
+        const { data: profRows } = await client.from('profiles').select('id, vorname').in('id', ids);
+        (profRows || []).forEach(p => { profs[p.id] = p.vorname; });
+      }
+      document.getElementById('kdAntwortenCount').textContent = antworten.length;
+      document.getElementById('kdAntworten').innerHTML = antworten.map(r => `<div class="card elev-sm" style="padding:14px 16px;font-size:13.5px"><strong>${escapeHtml(r.user_id === userId ? 'Du' : (profs[r.user_id] || 'Jemand'))}:</strong> ${escapeHtml(r.text)}</div>`).join('');
+    }
+    await loadAntworten();
+
+    document.getElementById('kdAntwortSendenBtn').addEventListener('click', async () => {
+      const el = document.getElementById('kdAntwortText');
+      const txt = el.value.trim();
+      if (!txt) return;
+      await client.from('kletterpartner_anzeigen_antworten').insert({ anzeige_id: anzeigeId, user_id: userId, text: txt });
+      el.value = '';
+      await loadAntworten();
+    });
+
+    const oeffentlichBtn = document.getElementById('kdModusOeffentlichBtn');
+    const direktBtn = document.getElementById('kdModusDirektBtn');
+    const oeffentlichBox = document.getElementById('kdOeffentlichBox');
+    const direktBox = document.getElementById('kdDirektBox');
+    if (a.user_id === userId) {
+      direktBtn.hidden = true;
+    } else {
+      oeffentlichBtn.addEventListener('click', () => {
+        oeffentlichBtn.classList.add('active'); direktBtn.classList.remove('active');
+        oeffentlichBox.hidden = false; direktBox.hidden = true;
+      });
+      direktBtn.addEventListener('click', () => {
+        direktBtn.classList.add('active'); oeffentlichBtn.classList.remove('active');
+        direktBox.hidden = false; oeffentlichBox.hidden = true;
+        document.getElementById('kdDirektHinweis').textContent = 'Nur ' + autorName + ' sieht diese Nachricht.';
+      });
+      document.getElementById('kdDirektSendenBtn').addEventListener('click', async () => {
+        const el = document.getElementById('kdDirektText');
+        const txt = el.value.trim();
+        if (!txt) return;
+        try {
+          const { data: convId, error } = await client.rpc('kletterpartner_unterhaltung_oeffnen', { p_other_user_id: a.user_id, p_anzeige_id: a.id });
+          if (error) throw error;
+          await client.from('kletterpartner_nachrichten').insert({ unterhaltung_id: convId, sender_id: userId, text: txt });
+          el.value = '';
+          document.getElementById('kdDirektComposer').hidden = true;
+          document.getElementById('kdDirektGesendet').hidden = false;
+        } catch (err) { /* Composer bleibt offen, erneuter Versuch möglich */ }
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-chat — Unterhaltung (?id=)
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerChat(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const params = new URLSearchParams(location.search);
+    const convId = params.get('id');
+    const gateEl = document.getElementById('chGate');
+    const areaEl = document.getElementById('chArea');
+
+    if (!convId) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const { data: conv } = await client.from('kletterpartner_unterhaltungen').select('*').eq('id', convId).maybeSingle();
+    if (!conv) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    gateEl.hidden = true; areaEl.hidden = false;
+
+    const otherId = conv.user_a === userId ? conv.user_b : conv.user_a;
+    const { data: otherProf } = await client.from('profiles').select('vorname, nachname').eq('id', otherId).maybeSingle();
+    const otherName = otherProf ? otherProf.vorname : 'Jemand';
+    document.getElementById('chAvatar').textContent = otherName.slice(0, 2).toUpperCase();
+    document.getElementById('chName').textContent = otherName;
+    const bewertenLink = document.getElementById('chBewertenLink');
+    if (conv.match_id) {
+      bewertenLink.href = 'konto-kletterpartner-feedback?match=' + encodeURIComponent(conv.match_id);
+    } else {
+      bewertenLink.hidden = true;
+    }
+
+    async function loadMessages() {
+      const { data } = await client.from('kletterpartner_nachrichten').select('*').eq('unterhaltung_id', convId).order('created_at', { ascending: true });
+      const msgs = data || [];
+      const msgsEl = document.getElementById('chMessages');
+      msgsEl.innerHTML = msgs.map(m => {
+        const own = m.sender_id === userId;
+        return `<div style="display:flex;justify-content:${own ? 'flex-end' : 'flex-start'}">
+          <div style="max-width:72%;background:${own ? 'var(--color-accent)' : '#ffffff'};color:${own ? '#ffffff' : 'var(--color-text)'};padding:11px 16px;border-radius:16px;font-size:14.5px;line-height:1.45;${own ? '' : 'box-shadow:var(--shadow-sm)'}">${escapeHtml(m.text)}</div>
+        </div>`;
+      }).join('');
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      const hatUngelesene = msgs.some(m => m.sender_id !== userId && !m.gelesen);
+      if (hatUngelesene) {
+        await client.from('kletterpartner_nachrichten').update({ gelesen: true }).eq('unterhaltung_id', convId).neq('sender_id', userId);
+      }
+    }
+    await loadMessages();
+
+    async function send() {
+      const input = document.getElementById('chInput');
+      const txt = input.value.trim();
+      if (!txt) return;
+      input.value = '';
+      await client.from('kletterpartner_nachrichten').insert({ unterhaltung_id: convId, sender_id: userId, text: txt });
+      await loadMessages();
+    }
+    document.getElementById('chSendBtn').addEventListener('click', send);
+    document.getElementById('chInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+
+    kpMeldenWiren(client, userId, {
+      btnId: 'chMeldenBtn', boxId: 'chMeldenBox', titelId: 'chMeldenTitel', gruendeId: 'chMeldenGruende',
+      bestaetigenId: 'chMeldenBestaetigenBtn', abbrechenId: 'chMeldenAbbrechenBtn', doneId: 'chMeldenDone',
+      gemeldeteUserId: otherId, gemeldeterName: otherName, kontextTyp: 'chat', kontextId: convId
+    });
+  }
+
+  // --------------------------------------------------------------------
+  // Seite: konto-kletterpartner-feedback — Treffen bewerten (?match=)
+  // --------------------------------------------------------------------
+  async function renderKletterpartnerFeedback(ctx) {
+    const { client, session } = ctx;
+    const userId = session.user.id;
+    const params = new URLSearchParams(location.search);
+    const matchId = params.get('match');
+    const gateEl = document.getElementById('fbGate');
+    const areaEl = document.getElementById('fbArea');
+    const doneEl = document.getElementById('fbDone');
+
+    if (!matchId) { gateEl.hidden = false; areaEl.hidden = true; return; }
+    const { data: match } = await client.from('kletterpartner_matches').select('*').eq('id', matchId).maybeSingle();
+    if (!match) { gateEl.hidden = false; areaEl.hidden = true; return; }
+
+    const bewerteterId = match.user_a === userId ? match.user_b : match.user_a;
+    const { data: prof } = await client.from('profiles').select('vorname').eq('id', bewerteterId).maybeSingle();
+    const name = prof ? prof.vorname : 'dieser Person';
+    document.getElementById('fbTitel').textContent = 'Wie war dein Treffen mit ' + name + '?';
+
+    const state = { merkmale: [] };
+    wireMultiChips(document.getElementById('fbMerkmale'), ['Pünktlich', 'Freundlich', 'Gut vorbereitet', 'Würde ich wieder treffen'], state.merkmale);
+
+    document.getElementById('fbSendenBtn').addEventListener('click', async () => {
+      try {
+        const { error } = await client.from('kletterpartner_bewertungen').insert({
+          bewerter_id: userId,
+          bewerteter_id: bewerteterId,
+          match_id: matchId,
+          merkmale: state.merkmale,
+          kommentar: document.getElementById('fbKommentar').value.trim() || null
+        });
+        if (error) throw error;
+        areaEl.hidden = true;
+        doneEl.hidden = false;
+      } catch (err) { /* Button bleibt klickbar für erneuten Versuch */ }
+    });
+  }
+
   // Seiten ohne eigene Datenlogik (nur Links) — brauchen trotzdem guardAccountPage()
   // für Sidebar/Logout, deshalb hier als no-op in der Seiten-Zuordnung registriert.
   function noop() {}
@@ -4698,7 +5295,14 @@
       'konto-kunden-neu': renderKundenNeu,
       'konto-kunde': renderKundeDetail,
       'konto-kunde-neu-material': renderKundeNeuMaterial,
-      'konto-zertifikat': renderZertifikat
+      'konto-zertifikat': renderZertifikat,
+      'konto-kletterpartner': renderKletterpartner,
+      'konto-kletterpartner-anzeigen': renderKletterpartnerAnzeigen,
+      'konto-kletterpartner-anzeige-neu': renderKletterpartnerAnzeigeNeu,
+      'konto-kletterpartner-anzeige-detail': renderKletterpartnerAnzeigeDetail,
+      'konto-kletterpartner-chat': renderKletterpartnerChat,
+      'konto-kletterpartner-feedback': renderKletterpartnerFeedback,
+      'konto-kletterpartner-support': noop
     };
 
     if (accountPages[page]) {
