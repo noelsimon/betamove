@@ -4708,7 +4708,7 @@
     paint();
   }
 
-  function kpMeldenWiren(client, userId, { btnId, boxId, titelId, gruendeId, bestaetigenId, abbrechenId, doneId, gemeldeteUserId, gemeldeterName, kontextTyp, kontextId }) {
+  function kpMeldenWiren(client, userId, { btnId, boxId, titelId, gruendeId, notizId, bestaetigenId, abbrechenId, doneId, gemeldeteUserId, gemeldeterName, kontextTyp, kontextId }) {
     const box = document.getElementById(boxId);
     let reason = null;
     document.getElementById(btnId).addEventListener('click', () => {
@@ -4726,7 +4726,8 @@
     document.getElementById(abbrechenId).addEventListener('click', () => { box.hidden = true; });
     document.getElementById(bestaetigenId).addEventListener('click', async () => {
       if (!reason) return;
-      await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: gemeldeteUserId, grund: reason, kontext_typ: kontextTyp, kontext_id: kontextId });
+      const notiz = notizId ? document.getElementById(notizId).value.trim() : '';
+      await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: gemeldeteUserId, grund: reason, kontext_typ: kontextTyp, kontext_id: kontextId, notiz: notiz || null });
       box.hidden = true;
       document.getElementById(doneId).hidden = false;
     });
@@ -4775,7 +4776,7 @@
       el.querySelectorAll('[data-val]').forEach(btn => btn.addEventListener('click', () => { filter = btn.dataset.val; renderFilters(); renderList(); }));
 
       const ortEl = document.getElementById('kaOrtFilter');
-      const ortOpts = [{ v: 'alle', l: 'Alle Orte' }, { v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }];
+      const ortOpts = [{ v: 'alle', l: 'Alle Orte' }, { v: 'halle', l: 'Indoor' }, { v: 'draussen', l: 'Draußen / Fels' }];
       ortEl.innerHTML = ortOpts.map(o => `<button type="button" class="konto-nav-link${ortFilter === o.v ? ' active' : ''}" data-val="${o.v}" style="padding:7px 14px;font-size:12px">${o.l}</button>`).join('');
       ortEl.querySelectorAll('[data-val]').forEach(btn => btn.addEventListener('click', () => { ortFilter = btn.dataset.val; renderFilters(); renderList(); }));
     }
@@ -4810,6 +4811,7 @@
           <div class="ka-report-box" data-id="${a.id}" ${st.open ? '' : 'hidden'} style="background:var(--color-warn-bg);border-radius:var(--radius-md);padding:14px 16px">
             <div style="font-size:12.5px;font-weight:600;color:var(--color-warn);margin-bottom:10px">Warum möchtest du ${escapeHtml(autorName)} melden?</div>
             <div class="ka-report-gruende" data-id="${a.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${KP_MELDE_GRUENDE.map(g => `<button type="button" class="konto-nav-link${st.reason === g ? ' active' : ''}" data-reason="${escapeHtml(g)}" style="padding:7px 13px;font-size:11.5px">${escapeHtml(g)}</button>`).join('')}</div>
+            <textarea class="ka-report-notiz input" style="min-height:60px;resize:vertical;margin-bottom:12px" maxlength="500" placeholder="Weitere Infos (optional)"></textarea>
             <div style="display:flex;gap:10px">
               <button type="button" class="ka-report-confirm" data-id="${a.id}" style="padding:9px 16px;border-radius:999px;background:var(--color-warn);color:#ffffff;border:none;font-weight:600;font-size:12.5px;cursor:pointer">Melden bestätigen</button>
               <button type="button" class="ka-report-cancel" data-id="${a.id}" style="padding:9px 16px;border-radius:999px;background:none;color:var(--color-warn);border:none;font-weight:600;font-size:12.5px;cursor:pointer">Abbrechen</button>
@@ -4818,7 +4820,7 @@
           ${st.done ? '<div style="font-size:12.5px;font-weight:600;color:var(--color-warn)">Gemeldet — danke für den Hinweis</div>' : ''}
           <div style="display:flex;gap:10px">
             <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-primary" style="font-size:13px;padding:9px 16px;text-decoration:none">Anzeige ansehen</a>
-            <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-secondary" style="font-size:13px;padding:9px 16px;text-decoration:none">${a.typ === 'gruppe' ? 'Gruppe beitreten' : 'Antworten'}</a>
+            ${a.typ === 'gruppe' ? `<a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" class="btn btn-secondary" style="font-size:13px;padding:9px 16px;text-decoration:none">Gruppe beitreten</a>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -4848,8 +4850,10 @@
           const id = btn.dataset.id;
           const st = reportState[id] || {};
           if (!st.reason) return;
+          const notizEl = btn.closest('.ka-report-box').querySelector('.ka-report-notiz');
+          const notiz = notizEl ? notizEl.value.trim() : '';
           const a = anzeigen.find(x => x.id === id);
-          await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: a.user_id, grund: st.reason, kontext_typ: 'anzeige', kontext_id: id });
+          await client.from('kletterpartner_meldungen').insert({ melder_id: userId, gemeldete_user_id: a.user_id, grund: st.reason, kontext_typ: 'anzeige', kontext_id: id, notiz: notiz || null });
           reportState[id] = { open: false, done: true };
           renderList();
         });
@@ -4867,12 +4871,49 @@
   async function renderKletterpartnerAnzeigeNeu(ctx) {
     const { client, session } = ctx;
     const userId = session.user.id;
-    const state = { disziplinen: [], ort: 'halle', typ: 'einzel', file: null };
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('id');
+    const state = { disziplinen: [], ort: 'halle', typ: 'einzel', file: null, bildEntfernt: false, bestehenderBildPfad: null };
+
+    let bestehend = null;
+    if (editId) {
+      const { data } = await client.from('kletterpartner_anzeigen').select('*').eq('id', editId).maybeSingle();
+      if (!data || data.user_id !== userId) {
+        document.getElementById('knGate').hidden = false;
+        document.getElementById('knArea').hidden = true;
+        return;
+      }
+      bestehend = data;
+    }
 
     document.getElementById('knDatum').min = new Date().toISOString().slice(0, 10);
 
+    if (bestehend) {
+      document.getElementById('knHeading').textContent = 'Anzeige bearbeiten';
+      document.getElementById('knIntro').textContent = 'Änderungen werden sofort für alle sichtbar, die die Anzeige sehen können.';
+      document.getElementById('knSubmitBtn').textContent = 'Änderungen speichern';
+      document.getElementById('knTitel').value = bestehend.titel;
+      document.getElementById('knBeschreibung').value = bestehend.beschreibung || '';
+      document.getElementById('knDatum').value = bestehend.wann_datum;
+      document.getElementById('knWann').value = bestehend.wann || '';
+      document.getElementById('knPlaetze').value = bestehend.plaetze || '';
+      state.disziplinen = (bestehend.disziplinen || []).slice();
+      state.ort = bestehend.ort_typ;
+      state.typ = bestehend.typ;
+      state.bestehenderBildPfad = bestehend.bild_pfad;
+      document.getElementById('knPlaetzeField').hidden = bestehend.typ !== 'gruppe';
+      if (bestehend.bild_pfad) {
+        const { data: signed } = await client.storage.from('kletterpartner-bilder').createSignedUrl(bestehend.bild_pfad, 3600);
+        if (signed) {
+          document.getElementById('knBildVorschauImg').src = signed.signedUrl;
+          document.getElementById('knBildVorschau').hidden = false;
+          document.getElementById('knBildLabel').hidden = true;
+        }
+      }
+    }
+
     wireMultiChips(document.getElementById('knDisziplinen'), KP_DISZIPLINEN, state.disziplinen);
-    wireSingleChips(document.getElementById('knOrt'), [{ v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }], state, 'ort');
+    wireSingleChips(document.getElementById('knOrt'), [{ v: 'halle', l: 'Indoor' }, { v: 'draussen', l: 'Draußen / Fels' }], state, 'ort');
     wireSingleChips(document.getElementById('knTyp'), [{ v: 'einzel', l: 'Einzelperson' }, { v: 'gruppe', l: 'Feste Gruppe' }], state, 'typ', () => {
       document.getElementById('knPlaetzeField').hidden = state.typ !== 'gruppe';
     });
@@ -4888,6 +4929,7 @@
     });
     document.getElementById('knBildEntfernenBtn').addEventListener('click', () => {
       state.file = null;
+      state.bildEntfernt = true;
       bildInput.value = '';
       document.getElementById('knBildVorschau').hidden = true;
       document.getElementById('knBildLabel').hidden = false;
@@ -4900,16 +4942,17 @@
       const titel = document.getElementById('knTitel').value.trim();
       if (!titel) return;
       try {
-        let bildPfad = null;
+        let bildPfad = state.bestehenderBildPfad || null;
         if (state.file) {
           const ext = (state.file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
           const path = userId + '/' + Date.now() + '.' + ext;
           const { error: upErr } = await client.storage.from('kletterpartner-bilder').upload(path, state.file);
           if (upErr) throw upErr;
           bildPfad = path;
+        } else if (state.bildEntfernt) {
+          bildPfad = null;
         }
-        const { data, error } = await client.from('kletterpartner_anzeigen').insert({
-          user_id: userId,
+        const payload = {
           titel,
           beschreibung: document.getElementById('knBeschreibung').value.trim() || null,
           wann_datum: document.getElementById('knDatum').value,
@@ -4919,12 +4962,21 @@
           typ: state.typ,
           plaetze: state.typ === 'gruppe' ? (Number(document.getElementById('knPlaetze').value) || null) : null,
           bild_pfad: bildPfad
-        }).select().single();
-        if (error) throw error;
-        location.href = 'konto-kletterpartner-anzeige-detail?id=' + encodeURIComponent(data.id);
+        };
+        let zielId;
+        if (bestehend) {
+          const { error } = await client.from('kletterpartner_anzeigen').update(payload).eq('id', bestehend.id);
+          if (error) throw error;
+          zielId = bestehend.id;
+        } else {
+          const { data, error } = await client.from('kletterpartner_anzeigen').insert(Object.assign({ user_id: userId }, payload)).select().single();
+          if (error) throw error;
+          zielId = data.id;
+        }
+        location.href = 'konto-kletterpartner-anzeige-detail?id=' + encodeURIComponent(zielId);
       } catch (err) {
         errBox.hidden = false;
-        errBox.textContent = 'Anzeige konnte nicht gespeichert werden.';
+        errBox.textContent = bestehend ? 'Änderungen konnten nicht gespeichert werden.' : 'Anzeige konnte nicht gespeichert werden.';
       }
     });
   }
@@ -4954,7 +5006,7 @@
     document.getElementById('kdTitel').textContent = a.titel;
     document.getElementById('kdTermin').textContent = psaFmtDate(a.wann_datum) + (a.wann ? ' · ' + a.wann : '');
     document.getElementById('kdText').textContent = a.beschreibung || '';
-    const ortLabel = a.ort_typ === 'halle' ? 'Kletterzentrum Leipzig' : 'Draußen / Fels';
+    const ortLabel = a.ort_typ === 'halle' ? 'Indoor' : 'Draußen / Fels';
     document.getElementById('kdTags').innerHTML = (a.disziplinen || []).concat([ortLabel]).map(t => `<span class="tag tag-accent-2">${escapeHtml(t)}</span>`).join('');
 
     if (a.bild_pfad) {
@@ -4968,12 +5020,20 @@
 
     if (a.user_id !== userId) {
       kpMeldenWiren(client, userId, {
-        btnId: 'kdMeldenBtn', boxId: 'kdMeldenBox', titelId: 'kdMeldenTitel', gruendeId: 'kdMeldenGruende',
+        btnId: 'kdMeldenBtn', boxId: 'kdMeldenBox', titelId: 'kdMeldenTitel', gruendeId: 'kdMeldenGruende', notizId: 'kdMeldenNotiz',
         bestaetigenId: 'kdMeldenBestaetigenBtn', abbrechenId: 'kdMeldenAbbrechenBtn', doneId: 'kdMeldenDone',
         gemeldeteUserId: a.user_id, gemeldeterName: autorName, kontextTyp: 'anzeige', kontextId: a.id
       });
     } else {
       document.getElementById('kdMeldenBtn').hidden = true;
+      const actionsEl = document.getElementById('kdEigentuemerActions');
+      actionsEl.hidden = false;
+      document.getElementById('kdBearbeitenLink').href = 'konto-kletterpartner-anzeige-neu?id=' + encodeURIComponent(a.id);
+      document.getElementById('kdLoeschenBtn').addEventListener('click', async () => {
+        if (!confirm('Diese Anzeige wirklich löschen?')) return;
+        await client.from('kletterpartner_anzeigen').delete().eq('id', a.id);
+        location.href = 'konto-kletterpartner-anzeigen';
+      });
     }
 
     async function loadAntworten() {
@@ -5085,7 +5145,7 @@
     document.getElementById('chInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
 
     kpMeldenWiren(client, userId, {
-      btnId: 'chMeldenBtn', boxId: 'chMeldenBox', titelId: 'chMeldenTitel', gruendeId: 'chMeldenGruende',
+      btnId: 'chMeldenBtn', boxId: 'chMeldenBox', titelId: 'chMeldenTitel', gruendeId: 'chMeldenGruende', notizId: 'chMeldenNotiz',
       bestaetigenId: 'chMeldenBestaetigenBtn', abbrechenId: 'chMeldenAbbrechenBtn', doneId: 'chMeldenDone',
       gemeldeteUserId: otherId, gemeldeterName: otherName, kontextTyp: 'chat', kontextId: convId
     });

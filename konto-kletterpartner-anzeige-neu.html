@@ -46,9 +46,13 @@
           Zurück zu Anzeigen
         </a>
 
+        <div id="knGate" hidden style="background:var(--color-surface);border-radius:calc(var(--radius-lg) * 1.15);padding:26px 28px">
+          <p style="margin:0;font-size:15.5px">Diese Anzeige konnte nicht bearbeitet werden. <a href="konto-kletterpartner-anzeigen">Zurück zu Anzeigen</a></p>
+        </div>
+
         <div id="knArea">
-          <h2 style="margin:0 0 8px;font-size:30px">Neue Anzeige</h2>
-          <p style="margin:0 0 26px;font-size:16px;opacity:0.8">„Suche Sicherungspartner*in für Samstagmittag" — kurz und konkret kommt am besten an.</p>
+          <h2 id="knHeading" style="margin:0 0 8px;font-size:30px">Neue Anzeige</h2>
+          <p id="knIntro" style="margin:0 0 26px;font-size:16px;opacity:0.8">„Suche Sicherungspartner*in für Samstagmittag" — kurz und konkret kommt am besten an.</p>
 
           <form id="knForm" style="display:flex;flex-direction:column;gap:18px">
             <div class="field">
@@ -93,7 +97,7 @@
               <label for="knBild" id="knBildLabel" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;border:1px dashed var(--color-accent-300);font-size:13px;font-weight:600;cursor:pointer;width:fit-content">Bild auswählen</label>
             </div>
             <p id="knFormError" class="form-error" hidden></p>
-            <button type="submit" class="btn btn-primary" style="font-size:15px;padding:13px 22px">Anzeige veröffentlichen</button>
+            <button type="submit" id="knSubmitBtn" class="btn btn-primary" style="font-size:15px;padding:13px 22px">Anzeige veröffentlichen</button>
           </form>
         </div>
       </div>
@@ -131,6 +135,6 @@
 <script src="js/courses-data.js"></script>
 <script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
-<script src="js/account.js?v=20261102"></script>
+<script src="js/account.js?v=20261103"></script>
 </body>
 </html>
