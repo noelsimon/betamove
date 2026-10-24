@@ -4756,7 +4756,8 @@
     }
 
     async function loadAll() {
-      const { data } = await client.from('kletterpartner_anzeigen').select('*').eq('aktiv', true).order('created_at', { ascending: false });
+      const heute = new Date().toISOString().slice(0, 10);
+      const { data } = await client.from('kletterpartner_anzeigen').select('*').eq('aktiv', true).gte('laeuft_ab', heute).order('created_at', { ascending: false });
       anzeigen = data || [];
       const userIds = Array.from(new Set(anzeigen.map(a => a.user_id)));
       profilesById = {};
@@ -4802,6 +4803,7 @@
           </div>
           ${bildUrl ? `<img src="${bildUrl}" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:var(--radius-md)">` : ''}
           <a href="konto-kletterpartner-anzeige-detail?id=${encodeURIComponent(a.id)}" style="display:block;font-size:16.5px;font-weight:600;text-decoration:none;color:inherit">${escapeHtml(a.titel)}</a>
+          <div style="font-size:13px;font-weight:600;color:var(--color-accent-700)">${psaFmtDate(a.wann_datum)}${a.wann ? ' · ' + escapeHtml(a.wann) : ''}</div>
           <p style="margin:0;font-size:14px;line-height:1.55;opacity:0.85">${escapeHtml(a.beschreibung || '')}</p>
           <div style="display:flex;gap:7px;flex-wrap:wrap">${(a.disziplinen || []).map(d => `<span class="tag tag-accent-2">${escapeHtml(d)}</span>`).join('')}</div>
           ${a.typ === 'gruppe' && a.plaetze ? `<div style="font-size:12.5px;opacity:0.65">${a.plaetze} Plätze</div>` : ''}
@@ -4867,6 +4869,8 @@
     const userId = session.user.id;
     const state = { disziplinen: [], ort: 'halle', typ: 'einzel', file: null };
 
+    document.getElementById('knDatum').min = new Date().toISOString().slice(0, 10);
+
     wireMultiChips(document.getElementById('knDisziplinen'), KP_DISZIPLINEN, state.disziplinen);
     wireSingleChips(document.getElementById('knOrt'), [{ v: 'halle', l: 'Kletterzentrum Leipzig' }, { v: 'draussen', l: 'Draußen / Fels' }], state, 'ort');
     wireSingleChips(document.getElementById('knTyp'), [{ v: 'einzel', l: 'Einzelperson' }, { v: 'gruppe', l: 'Feste Gruppe' }], state, 'typ', () => {
@@ -4908,6 +4912,7 @@
           user_id: userId,
           titel,
           beschreibung: document.getElementById('knBeschreibung').value.trim() || null,
+          wann_datum: document.getElementById('knDatum').value,
           wann: document.getElementById('knWann').value.trim() || null,
           disziplinen: state.disziplinen,
           ort_typ: state.ort,
@@ -4947,6 +4952,7 @@
     document.getElementById('kdAutor').textContent = autorName;
     document.getElementById('kdZeit').textContent = psaFmtDate((a.created_at || '').slice(0, 10));
     document.getElementById('kdTitel').textContent = a.titel;
+    document.getElementById('kdTermin').textContent = psaFmtDate(a.wann_datum) + (a.wann ? ' · ' + a.wann : '');
     document.getElementById('kdText').textContent = a.beschreibung || '';
     const ortLabel = a.ort_typ === 'halle' ? 'Kletterzentrum Leipzig' : 'Draußen / Fels';
     document.getElementById('kdTags').innerHTML = (a.disziplinen || []).concat([ortLabel]).map(t => `<span class="tag tag-accent-2">${escapeHtml(t)}</span>`).join('');

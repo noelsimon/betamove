@@ -60,8 +60,12 @@
               <textarea id="knBeschreibung" class="input" style="min-height:100px;resize:vertical" maxlength="1000" placeholder="Was genau suchst du, wann, wo?"></textarea>
             </div>
             <div class="field">
-              <label for="knWann">Wann?</label>
-              <input id="knWann" class="input" maxlength="160" placeholder="z. B. Samstag ab 12 Uhr">
+              <label for="knDatum">Datum</label>
+              <input id="knDatum" type="date" class="input" required>
+            </div>
+            <div class="field">
+              <label for="knWann">Uhrzeit / Hinweis (optional)</label>
+              <input id="knWann" class="input" maxlength="160" placeholder="z. B. ab 12 Uhr">
             </div>
             <div class="field">
               <label>Disziplin (mehrere möglich)</label>
@@ -127,6 +131,6 @@
 <script src="js/courses-data.js"></script>
 <script src="js/qualifikationen-data.js"></script>
 <script src="js/main.js"></script>
-<script src="js/account.js?v=20261101"></script>
+<script src="js/account.js?v=20261102"></script>
 </body>
 </html>
