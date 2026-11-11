@@ -1,9 +1,11 @@
 // Tischtennis-Turnier (turnier.html) — Logik + Oberfläche, ohne Build-Schritt.
 //
-// Datenhaltung: Supabase-Tabelle `turnier` (siehe supabase/schema-turnier.sql).
-//   setup   = { title, teamSize, tables, bestOf, finals, players:[{id,name,skill,active}],
-//               teams:[{id,members:[playerId]}], schedule:[{id,round,a,b}], byes:{round:teamId} }
-//   results = { matchId: {a, b, at} }   (a/b = gewonnene Sätze von Team a/b)
+// Datenhaltung: Supabase (supabase/schema-turnier.sql + schema-turnier-v2.sql).
+//   turnier.setup     = { title, teamSize, tables, bestOf, finals,
+//                         teams:[{id,members:[playerId]}], schedule:[{id,round,a,b}], byes:{round:teamId} }
+//   turnier.results   = { matchId: {a, b, at} }   (a/b = gewonnene Sätze von Team a/b)
+//   turnier.teamnamen = { teamId: "Name" }        (setzt jedes Team selbst)
+//   turnier_spieler   = Selbst-Anmeldungen (Name öffentlich, Spielstärke nur für die Leitung)
 // Demo ohne Datenbank: turnier.html?demo=1 (speichert nur im Browser, PIN "demo").
 (function () {
   'use strict';
@@ -220,22 +222,61 @@
   function demoBackend() {
     const KEY = 'turnier-demo-' + TURNIER_ID;
     const read = () => {
-      try { return JSON.parse(localStorage.getItem(KEY)) || { setup: {}, results: {} }; }
-      catch (e) { return { setup: {}, results: {} }; }
+      let d;
+      try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) { d = null; }
+      d = d || {};
+      return { setup: d.setup || {}, results: d.results || {}, teamnamen: d.teamnamen || {}, players: d.players || [] };
     };
     const write = d => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { /* egal */ } };
+    const pinOk = pin => { if (pin !== 'demo') throw new Error('falsche PIN'); };
+    const clean = s => String(s || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+    const taken = (d, name, id) => d.players.some(p => p.id !== id && p.name.toLowerCase() === name.toLowerCase());
     return {
-      async load() { const d = read(); return { setup: d.setup || {}, results: d.results || {} }; },
+      async load() {
+        const d = read();
+        return { setup: d.setup, results: d.results, teamnamen: d.teamnamen,
+          players: d.players.map(p => ({ id: p.id, name: p.name, active: p.active })) };
+      },
+      async signup(name, skill) {
+        const d = read(); name = clean(name);
+        if ((d.setup.teams || []).length) throw new Error('Die Teams sind schon ausgelost – bitte bei der Turnierleitung melden');
+        if (!name) throw new Error('Bitte einen Namen eingeben');
+        if (taken(d, name)) throw new Error('Der Name „' + name + '“ ist schon angemeldet');
+        const p = { id: TT.uid(), name, skill: Math.min(10, Math.max(1, skill || 5)), active: true };
+        d.players.push(p); write(d); return p.id;
+      },
+      async setTeamName(team, name) {
+        const d = read(); name = clean(name);
+        if (!(d.setup.teams || []).some(t => t.id === team)) throw new Error('Team nicht gefunden');
+        if (name) d.teamnamen[team] = name; else delete d.teamnamen[team];
+        write(d);
+      },
       async setResult(id, a, b) {
         const d = read();
         if (a == null) delete d.results[id]; else d.results[id] = { a, b, at: new Date().toISOString() };
         write(d);
       },
       async adminSave(pin, setup, reset) {
-        if (pin !== 'demo') throw new Error('falsche PIN');
+        pinOk(pin);
         const d = read();
-        if (setup) { d.setup = setup; if (reset) d.results = {}; write(d); }
+        if (setup) { d.setup = setup; if (reset) { d.results = {}; d.teamnamen = {}; } write(d); }
         return true;
+      },
+      async adminPlayers(pin, action, player) {
+        pinOk(pin);
+        const d = read();
+        if (action === 'upsert') {
+          const name = clean(player.name);
+          if (!name) throw new Error('Name fehlt');
+          if (taken(d, name, player.id)) throw new Error('Der Name „' + name + '“ ist schon angemeldet');
+          const ex = d.players.find(p => p.id === player.id);
+          if (ex) Object.assign(ex, { name, skill: player.skill, active: player.active });
+          else d.players.push({ id: TT.uid(), name, skill: player.skill || 5, active: player.active !== false });
+        } else if (action === 'delete') {
+          d.players = d.players.filter(p => p.id !== player.id);
+        }
+        write(d);
+        return d.players.map(p => Object.assign({}, p));
       },
     };
   }
@@ -245,24 +286,32 @@
     if (!res.client) return null;
     const db = res.client;
     const err = e => new Error((e && (e.message || e.details)) || 'Verbindungsfehler');
+    const rpc = async (fn, args) => {
+      const { data, error } = await db.rpc(fn, args);
+      if (error) throw err(error);
+      return data;
+    };
     return {
       async load() {
-        const { data, error } = await db.from('turnier').select('setup,results,updated_at').eq('id', TURNIER_ID).maybeSingle();
-        if (error) throw err(error);
-        if (!data) throw new Error('not_found');
-        return { setup: data.setup || {}, results: data.results || {} };
+        const [t, s] = await Promise.all([
+          db.from('turnier').select('setup,results,teamnamen,updated_at').eq('id', TURNIER_ID).maybeSingle(),
+          db.from('turnier_spieler').select('id,name,active,created_at').eq('turnier_id', TURNIER_ID).order('created_at'),
+        ]);
+        if (t.error || s.error) {
+          const e = t.error || s.error;
+          if (/teamnamen|turnier_spieler/.test(e.message || '')) throw new Error('v2_missing');
+          throw err(e);
+        }
+        if (!t.data) throw new Error('not_found');
+        return { setup: t.data.setup || {}, results: t.data.results || {}, teamnamen: t.data.teamnamen || {}, players: s.data || [] };
       },
-      async setResult(id, a, b) {
-        const { error } = await db.rpc('turnier_ergebnis_setzen', { p_turnier: TURNIER_ID, p_match: id, p_a: a, p_b: b });
-        if (error) throw err(error);
-      },
-      async adminSave(pin, setup, reset) {
-        const { error } = await db.rpc('turnier_admin_speichern', {
-          p_turnier: TURNIER_ID, p_pin: pin, p_setup: setup, p_reset_results: !!reset,
-        });
-        if (error) throw err(error);
-        return true;
-      },
+      signup: (name, skill) => rpc('turnier_anmelden', { p_turnier: TURNIER_ID, p_name: name, p_skill: skill }),
+      setTeamName: (team, name) => rpc('turnier_teamname_setzen', { p_turnier: TURNIER_ID, p_team: team, p_name: name }),
+      setResult: (id, a, b) => rpc('turnier_ergebnis_setzen', { p_turnier: TURNIER_ID, p_match: id, p_a: a, p_b: b }),
+      adminSave: (pin, setup, reset) => rpc('turnier_admin_speichern', {
+        p_turnier: TURNIER_ID, p_pin: pin, p_setup: setup, p_reset_results: !!reset }),
+      adminPlayers: (pin, action, player) => rpc('turnier_admin_spieler', {
+        p_turnier: TURNIER_ID, p_pin: pin, p_action: action, p_player: player || null }),
     };
   }
 
@@ -279,70 +328,109 @@
       if (k === 'class') n.className = v;
       else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
       else if (k === 'text') n.textContent = v;
+      else if (k === 'value') n.value = v;
       else n.setAttribute(k, v === true ? '' : v);
     }
     kids.flat().forEach(c => { if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c))); });
     return n;
   };
 
+  function store(kind, k, v) {
+    const s = kind === 'local' ? 'localStorage' : 'sessionStorage';
+    try {
+      if (v === undefined) return window[s].getItem(k + TURNIER_ID);
+      if (v === null) window[s].removeItem(k + TURNIER_ID); else window[s].setItem(k + TURNIER_ID, v);
+    } catch (e) { return null; }
+    return null;
+  }
+
   const state = {
-    setup: {}, results: {}, loaded: false, error: null,
+    setup: {}, results: {}, teamnamen: {}, players: [], loaded: false, error: null,
     tab: 'spiele',
-    pin: sessionGet('turnier-pin'),
-    draft: null,        // Admin: bearbeitete Spielerliste + Einstellungen
-    preview: null,      // Admin: Vorschau neu gebildeter Teams
-    swapSel: null,      // Admin: ausgewählter Spieler zum Tauschen
+    me: store('local', 'turnier-ich-'),     // eigene Spieler-ID auf diesem Gerät
+    pin: store('session', 'turnier-pin-'),
+    adminPlayers: null,  // Leitung: Spielerliste inkl. Stärke
+    settings: null,      // Leitung: Einstellungs-Entwurf
+    preview: null,       // Leitung: Vorschau neu gebildeter Teams
+    swapSel: null,
     busy: false,
   };
-
-  function sessionGet(k) { try { return sessionStorage.getItem(k + TURNIER_ID); } catch (e) { return null; } }
-  function sessionSet(k, v) { try { v == null ? sessionStorage.removeItem(k + TURNIER_ID) : sessionStorage.setItem(k + TURNIER_ID, v); } catch (e) { /* egal */ } }
 
   const DEFAULTS = { title: 'Geburtstags-Turnier', teamSize: 2, tables: 2, bestOf: 3, finals: true };
   const S = () => Object.assign({}, DEFAULTS, state.setup);
 
-  function playerMap(setup) {
-    const m = {};
-    (setup.players || []).forEach(p => { m[p.id] = p; });
-    return m;
+  function playerName(id) {
+    const p = state.players.find(x => x.id === id) || (state.adminPlayers || []).find(x => x.id === id);
+    return p ? p.name : '?';
   }
-  function teamName(setup, teamId) {
-    const t = (setup.teams || []).find(x => x.id === teamId);
-    if (!t) return '?';
-    const pm = playerMap(setup);
-    return t.members.map(id => (pm[id] ? pm[id].name : '?')).join(' & ');
+  function team(id) { return (S().teams || []).find(t => t.id === id); }
+  function members(id) { const t = team(id); return t ? t.members.map(playerName).join(' & ') : '?'; }
+  function teamName(id) { return state.teamnamen[id] || members(id); }
+  function teamLabel(id) {
+    // Teamname groß, Mitglieder klein darunter (nur wenn ein eigener Name vergeben ist)
+    return state.teamnamen[id]
+      ? el('span', { class: 'tl' }, state.teamnamen[id], el('small', null, members(id)))
+      : el('span', { class: 'tl' }, members(id));
   }
-  function teamAvg(setup, members) {
-    const pm = playerMap(setup);
-    const s = members.map(id => (pm[id] ? pm[id].skill : 0));
-    return { sum: s.reduce((a, b) => a + b, 0), avg: s.length ? s.reduce((a, b) => a + b, 0) / s.length : 0 };
+  function myTeam() {
+    if (!state.me) return null;
+    return (S().teams || []).find(t => t.members.includes(state.me)) || null;
+  }
+  function signupUrl() {
+    const u = new URL(location.href);
+    u.hash = ''; u.search = '';
+    if (TURNIER_ID !== 'geburtstag') u.searchParams.set('t', TURNIER_ID);
+    if (DEMO) u.searchParams.set('demo', '1');
+    return u.toString().replace(/\.html(?=$|\?)/, '');
   }
 
   function toast(msg, bad) {
     const t = $('#toast');
     t.textContent = msg; t.className = 'toast show' + (bad ? ' bad' : '');
-    clearTimeout(toast._t); toast._t = setTimeout(() => { t.className = 'toast'; }, 2600);
+    clearTimeout(toast._t); toast._t = setTimeout(() => { t.className = 'toast'; }, 2800);
+  }
+  const niceErr = e => String(e && e.message || e).replace(/^.*?ERROR:\s*/, '');
+
+  function typing() {
+    const a = document.activeElement;
+    return $('#dlg').open || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.type !== 'checkbox');
   }
 
   async function refresh(silent) {
-    if (!backend) { state.error = 'Keine Datenbank-Verbindung konfiguriert.'; render(); return; }
+    if (!backend) { state.error = 'Keine Datenbank-Verbindung konfiguriert.'; state.loaded = true; render(); return; }
     try {
       const d = await backend.load();
-      const changed = JSON.stringify(d) !== JSON.stringify({ setup: state.setup, results: state.results });
-      state.setup = d.setup; state.results = d.results; state.error = null; state.loaded = true;
+      const before = JSON.stringify([state.setup, state.results, state.teamnamen, state.players]);
+      state.setup = d.setup; state.results = d.results; state.teamnamen = d.teamnamen; state.players = d.players;
+      let changed = before !== JSON.stringify([d.setup, d.results, d.teamnamen, d.players]) || !!state.error;
+      state.error = null; state.loaded = true;
+      if (state.me && !state.players.some(p => p.id === state.me)) { state.me = null; store('local', 'turnier-ich-', null); changed = true; }
+      if (state.pin && state.tab === 'leitung') {
+        const before2 = JSON.stringify(state.adminPlayers);
+        await loadAdminPlayers();
+        if (before2 !== JSON.stringify(state.adminPlayers)) changed = true;
+      }
       $('#live').textContent = 'Live · ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       $('#live').classList.remove('off');
-      if (changed || !silent) render();
+      if (!silent || (changed && !typing())) render();
     } catch (e) {
       state.loaded = true;
       state.error = e.message === 'not_found'
         ? 'Das Turnier „' + TURNIER_ID + '“ ist noch nicht angelegt (supabase/schema-turnier.sql ausführen).'
-        : 'Keine Verbindung zur Datenbank: ' + e.message;
+        : e.message === 'v2_missing'
+          ? 'Datenbank-Update fehlt: bitte supabase/schema-turnier-v2.sql im Supabase SQL-Editor ausführen.'
+          : 'Keine Verbindung zur Datenbank: ' + niceErr(e);
       $('#live').textContent = 'Offline';
       $('#live').classList.add('off');
-      if (!silent) render();
+      if (!silent || !typing()) render();
     }
   }
+
+  async function loadAdminPlayers() {
+    try { state.adminPlayers = await backend.adminPlayers(state.pin, 'list'); }
+    catch (e) { if (/pin/i.test(e.message)) logout(); else throw e; }
+  }
+  function logout() { state.pin = null; store('session', 'turnier-pin-', null); state.adminPlayers = null; state.settings = null; state.preview = null; }
 
   // ---------------------------------------------------------------- Rendern
   function render() {
@@ -358,31 +446,135 @@
     view(main);
   }
 
-  function noTeamsYet(main) {
-    main.append(el('div', { class: 'card center empty' },
-      el('div', { class: 'big' }, '🏓'),
-      el('h2', null, 'Die Teams werden am Tag ausgelost'),
-      el('p', { class: 'muted' }, 'Sobald die Turnierleitung die Teams gebildet hat, stehen hier Spielplan, nächste Spiele und Tabelle.')));
+  // ------------------------------------------------ Anmeldung (vor Auslosung)
+  const SKILL_HINT = ['', 'spiele so gut wie nie', '', 'ab und zu im Urlaub', '', 'ganz okay', '', 'spiele regelmäßig', '', 'sehr stark', 'Vereinsniveau'];
+  function skillHint(v) { for (let i = v; i >= 1; i--) if (SKILL_HINT[i]) return SKILL_HINT[i]; return ''; }
+
+  function renderSignup(main) {
+    const me = state.players.find(p => p.id === state.me);
+    if (me) {
+      main.append(el('section', { class: 'card ok' },
+        el('div', { class: 'big' }, '✅'),
+        el('h2', null, 'Du bist angemeldet, ' + me.name + '!'),
+        el('p', { class: 'muted' }, 'Sobald alle da sind, lost die Turnierleitung die Teams aus. Dann siehst du hier dein Team und kannst euch einen Namen geben.'),
+        el('button', { class: 'link small', onclick: () => {
+          if (!confirm('Dieses Handy nicht mehr ' + me.name + ' zuordnen?')) return;
+          state.me = null; store('local', 'turnier-ich-', null); render();
+        } }, 'Nicht ' + me.name + '?')));
+    } else {
+      const name = el('input', { class: 'in', placeholder: 'Dein Name', maxlength: 30, autocomplete: 'given-name', enterkeyhint: 'done' });
+      const out = el('b', null, '5');
+      const hint = el('span', { class: 'muted small' }, skillHint(5));
+      const range = el('input', { type: 'range', min: 1, max: 10, value: 5, 'aria-label': 'Wie gut spielst du?',
+        oninput: e => { out.textContent = e.target.value; hint.textContent = skillHint(+e.target.value); } });
+      const btn = el('button', { class: 'btn wide' }, 'Anmelden');
+      const go = async () => {
+        if (state.busy) return;
+        if (!name.value.trim()) { name.focus(); return; }
+        state.busy = true; btn.disabled = true;
+        try {
+          const id = await backend.signup(name.value, +range.value);
+          state.me = id; store('local', 'turnier-ich-', id);
+          toast('Angemeldet – viel Spaß! 🏓');
+          await refresh();
+        } catch (e) { toast(niceErr(e), true); btn.disabled = false; }
+        finally { state.busy = false; }
+      };
+      btn.addEventListener('click', go);
+      name.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+      main.append(el('section', { class: 'card hl' },
+        el('h2', null, '🏓 Zum Turnier anmelden'),
+        el('label', { class: 'fld' }, el('span', null, 'Name'), name),
+        el('div', { class: 'fld' }, el('span', null, 'Wie gut spielst du Tischtennis? ', out, ' / 10'), range, hint),
+        el('p', { class: 'muted small' }, 'Deine Einschätzung sieht nur die Turnierleitung – sie wird genutzt, um faire Teams zu mischen.'),
+        btn));
+    }
+    const active = state.players.filter(p => p.active);
+    main.append(el('h2', { class: 'sec' }, 'Angemeldet (' + active.length + ')'),
+      active.length
+        ? el('div', { class: 'chips' }, active.map(p => el('span', { class: 'nchip' + (p.id === state.me ? ' me' : '') }, p.name)))
+        : el('p', { class: 'muted' }, 'Noch niemand – sei die erste Person!'));
   }
 
-  function matchCard(setup, m, opts) {
+  // --------------------------------------------------------- Mein Team
+  function renderMyTeam(main) {
+    const setup = S();
+    const t = myTeam();
+    if (!t) {
+      const inTeams = setup.teams.flatMap(x => x.members);
+      const sel = el('select', { class: 'in', onchange: e => {
+        if (!e.target.value) return;
+        state.me = e.target.value; store('local', 'turnier-ich-', state.me); render();
+      } }, el('option', { value: '' }, 'Wer bist du? Bitte auswählen …'),
+        inTeams.map(id => ({ id, n: playerName(id) })).sort((a, b) => a.n.localeCompare(b.n, 'de'))
+          .map(p => el('option', { value: p.id }, p.n)));
+      main.append(el('section', { class: 'card' },
+        el('h2', null, '👋 Wer bist du?'),
+        el('p', { class: 'muted small' }, 'Wähle deinen Namen, dann siehst du dein Team und könnt euch einen Teamnamen geben.'),
+        sel));
+      return;
+    }
+    const others = t.members.filter(id => id !== state.me).map(playerName);
+    const input = el('input', { class: 'in', maxlength: 30, placeholder: 'z. B. Die Schmetterlinge', value: state.teamnamen[t.id] || '' });
+    const save = async () => {
+      if (state.busy) return;
+      state.busy = true;
+      try { await backend.setTeamName(t.id, input.value); input.blur(); toast(input.value.trim() ? 'Teamname gespeichert' : 'Teamname entfernt'); await refresh(); }
+      catch (e) { toast(niceErr(e), true); }
+      finally { state.busy = false; }
+    };
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+
+    const { now, later } = TT.nextMatches(setup, state.results);
+    const all = TT.allMatches(setup, state.results);
+    const mine = m => m.a === t.id || m.b === t.id;
+    const nowIdx = now.findIndex(mine);
+    const next = nowIdx >= 0 ? now[nowIdx] : later.find(mine);
+    let nextInfo;
+    if (next) {
+      const opp = next.a === t.id ? next.b : next.a;
+      nextInfo = el('div', { class: 'nextup' + (nowIdx >= 0 ? ' now' : '') },
+        nowIdx >= 0 ? el('b', null, '🔥 Ihr seid jetzt dran' + (now.length > 1 ? ' – Platte ' + (nowIdx + 1) : '') + '!') : el('b', null, 'Euer nächstes Spiel'),
+        el('div', null, 'gegen ', el('b', null, teamName(opp))),
+        el('button', { class: 'btn small', onclick: () => openScore(next) }, 'Ergebnis eintragen'));
+    } else if (all.some(mine)) {
+      nextInfo = el('div', { class: 'nextup' }, 'Alle eure Spiele sind gespielt 🎉');
+    }
+    const played = all.filter(m => mine(m) && state.results[m.id]);
+    const won = played.filter(m => { const r = state.results[m.id]; return (m.a === t.id) === (r.a > r.b); }).length;
+
+    main.append(el('section', { class: 'card myteam' },
+      el('div', { class: 'between' }, el('span', { class: 'tnum' }, 'Dein Team'),
+        el('span', { class: 'muted small' }, played.length ? won + ' von ' + played.length + ' Spielen gewonnen' : '')),
+      el('h2', { class: 'tname' }, state.teamnamen[t.id] || 'Team ohne Namen'),
+      el('div', { class: 'mates' }, '🏓 Du', others.length ? ' + ' + others.join(' + ') : ''),
+      el('div', { class: 'row tight' }, input, el('button', { class: 'btn ghost', onclick: save }, 'Speichern')),
+      nextInfo,
+      el('button', { class: 'link small', onclick: () => { state.me = null; store('local', 'turnier-ich-', null); render(); } }, 'Nicht ' + playerName(state.me) + '?')));
+  }
+
+  function matchCard(m, opts) {
     const r = state.results[m.id];
-    const nameA = teamName(setup, m.a), nameB = teamName(setup, m.b);
     const winA = r && r.a > r.b, winB = r && r.b > r.a;
-    return el('button', { class: 'match' + (r ? ' done' : '') + (opts && opts.hot ? ' hot' : ''), onclick: () => openScore(m) },
+    const t = myTeam();
+    const isMine = t && (m.a === t.id || m.b === t.id);
+    return el('div', { class: 'match' + (r ? ' done' : '') + (opts && opts.hot ? ' hot' : '') + (isMine ? ' mine' : '') },
       el('div', { class: 'mmeta' },
         opts && opts.table ? el('span', { class: 'pill' }, 'Platte ' + opts.table) : null,
-        el('span', null, m.label || ('Runde ' + m.round))),
+        el('span', null, m.label || ('Runde ' + m.round)),
+        isMine ? el('span', { class: 'pill soft' }, 'Dein Team') : null),
       el('div', { class: 'mrow' },
-        el('span', { class: 'mteam' + (winA ? ' win' : '') }, nameA),
+        el('span', { class: 'mteam' + (winA ? ' win' : '') }, teamLabel(m.a)),
         el('span', { class: 'mscore' }, r ? r.a + ' : ' + r.b : 'vs'),
-        el('span', { class: 'mteam right' + (winB ? ' win' : '') }, nameB)),
-      !r ? el('div', { class: 'mhint' }, 'Tippen, um das Ergebnis einzutragen') : null);
+        el('span', { class: 'mteam right' + (winB ? ' win' : '') }, teamLabel(m.b))),
+      el('button', { class: 'btn ' + (r ? 'ghost ' : '') + 'small wide', onclick: () => openScore(m) },
+        r ? 'Ergebnis ändern' : '✏️ Ergebnis eintragen'));
   }
 
   function renderGames(main) {
     const setup = S();
-    if (!(setup.teams || []).length) return noTeamsYet(main);
+    if (!(setup.teams || []).length) return renderSignup(main);
+    renderMyTeam(main);
     const { now, later } = TT.nextMatches(setup, state.results);
     const podium = TT.podium(setup, state.results);
 
@@ -390,31 +582,30 @@
       const medals = ['🥇', '🥈', '🥉'];
       main.append(el('section', { class: 'card podium' },
         el('h2', null, '🏆 Turnier beendet!'),
-        podium.slice(0, 3).map((t, i) => el('div', { class: 'prow p' + i }, el('span', { class: 'medal' }, medals[i]), teamName(setup, t)))));
+        podium.slice(0, 3).map((t, i) => el('div', { class: 'prow p' + i }, el('span', { class: 'medal' }, medals[i]), teamName(t)))));
     }
-
     if (now.length) {
       main.append(el('h2', { class: 'sec' }, 'Jetzt spielen'));
-      now.forEach((m, i) => main.append(matchCard(setup, m, { hot: true, table: setup.tables > 1 || now.length > 1 ? i + 1 : null })));
+      now.forEach((m, i) => main.append(matchCard(m, { hot: true, table: now.length > 1 || setup.tables > 1 ? i + 1 : null })));
     }
     if (later.length) {
       main.append(el('h2', { class: 'sec' }, 'Als Nächstes'));
-      later.slice(0, 4).forEach(m => main.append(matchCard(setup, m)));
-      if (later.length > 4) main.append(el('p', { class: 'muted small' }, '… und ' + (later.length - 4) + ' weitere Spiele.'));
+      later.slice(0, 4).forEach(m => main.append(matchCard(m)));
+      if (later.length > 4) main.append(el('p', { class: 'muted small' }, '… und ' + (later.length - 4) + ' weitere Spiele (siehe Spielplan unten).'));
     }
     if (!TT.groupDone(setup, state.results) && setup.finals && setup.teams.length >= 3) {
       main.append(el('p', { class: 'muted small' },
         'Nach der Gruppenphase: ' + (setup.teams.length >= 4 ? 'Spiel um Platz 3 (3. gegen 4.) und ' : '') + 'Finale (1. gegen 2.).'));
     }
-
+    const all = TT.allMatches(setup, state.results);
     const byRound = {};
-    TT.allMatches(setup, state.results).forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
-    const played = TT.allMatches(setup, state.results).filter(m => state.results[m.id]);
-    const det = el('details', { class: 'plan' }, el('summary', null, 'Kompletter Spielplan (' + played.length + '/' + TT.allMatches(setup, state.results).length + ' gespielt)'));
+    all.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+    const det = el('details', { class: 'plan' }, el('summary', null,
+      'Kompletter Spielplan (' + all.filter(m => state.results[m.id]).length + '/' + all.length + ' gespielt)'));
     Object.keys(byRound).forEach(r => {
       det.append(el('h3', null, r === 'F' ? 'Finalspiele' : 'Runde ' + r,
-        setup.byes && setup.byes[r] ? el('span', { class: 'muted small' }, ' · Pause: ' + teamName(setup, setup.byes[r])) : null));
-      byRound[r].forEach(m => det.append(matchCard(setup, m)));
+        setup.byes && setup.byes[r] ? el('span', { class: 'muted small' }, ' · Pause: ' + teamName(setup.byes[r])) : null));
+      byRound[r].forEach(m => det.append(matchCard(m)));
     });
     main.append(det);
   }
@@ -424,12 +615,13 @@
     if (!(setup.teams || []).length) return noTeamsYet(main);
     const st = TT.standings(setup, state.results);
     const podium = TT.podium(setup, state.results);
+    const t = myTeam();
     const tbl = el('table', { class: 'tbl' },
       el('thead', null, el('tr', null,
         el('th', null, '#'), el('th', { class: 'l' }, 'Team'), el('th', null, 'Sp'),
         el('th', null, 'S'), el('th', null, 'N'), el('th', null, 'Sätze'), el('th', null, '+/−'))),
-      el('tbody', null, st.map((r, i) => el('tr', { class: i < 2 && setup.finals ? 'top' : null },
-        el('td', null, i + 1), el('td', { class: 'l' }, teamName(setup, r.team)), el('td', null, r.played),
+      el('tbody', null, st.map((r, i) => el('tr', { class: [i < 2 && setup.finals ? 'top' : '', t && t.id === r.team ? 'mine' : ''].join(' ').trim() || null },
+        el('td', null, i + 1), el('td', { class: 'l' }, teamLabel(r.team)), el('td', null, r.played),
         el('td', null, el('b', null, r.won)), el('td', null, r.lost),
         el('td', null, r.setsFor + ':' + r.setsAgainst),
         el('td', null, (r.setsFor - r.setsAgainst > 0 ? '+' : '') + (r.setsFor - r.setsAgainst))))));
@@ -438,24 +630,28 @@
         (setup.finals && setup.teams.length >= 3 ? ' Die ersten zwei spielen das Finale.' : '')));
     if (podium) {
       main.append(el('h2', { class: 'sec' }, 'Endstand'),
-        el('ol', { class: 'card final' }, podium.map(t => el('li', null, teamName(setup, t)))));
+        el('ol', { class: 'card final' }, podium.map(id => el('li', null, teamName(id)))));
     }
+  }
+
+  function noTeamsYet(main) {
+    main.append(el('div', { class: 'card center empty' },
+      el('div', { class: 'big' }, '🏓'),
+      el('h2', null, 'Die Teams werden am Tag ausgelost'),
+      el('p', { class: 'muted' }, 'Bis dahin kannst du dich im Tab „Spiele“ anmelden.')));
   }
 
   function renderTeams(main) {
     const setup = S();
     if (!(setup.teams || []).length) return noTeamsYet(main);
-    const pm = playerMap(setup);
-    const admin = !!state.pin;
+    const mine = myTeam();
     main.append(el('h2', { class: 'sec' }, 'Teams'));
     const grid = el('div', { class: 'grid' });
     setup.teams.forEach((t, i) => {
-      const a = teamAvg(setup, t.members);
-      grid.append(el('div', { class: 'card team' },
-        el('div', { class: 'tnum' }, 'Team ' + (i + 1)),
-        t.members.map(id => el('div', { class: 'tplayer' }, pm[id] ? pm[id].name : '?',
-          admin && pm[id] ? el('span', { class: 'skill' }, pm[id].skill) : null)),
-        admin ? el('div', { class: 'muted small' }, 'Ø Stärke ' + a.avg.toFixed(1)) : null));
+      grid.append(el('div', { class: 'card team' + (mine && mine.id === t.id ? ' mine' : '') },
+        el('div', { class: 'tnum' }, 'Team ' + (i + 1) + (mine && mine.id === t.id ? ' · deins' : '')),
+        state.teamnamen[t.id] ? el('div', { class: 'tname2' }, state.teamnamen[t.id]) : null,
+        t.members.map(id => el('div', { class: 'tplayer' }, playerName(id)))));
     });
     main.append(grid);
     if (setup.teamSize > 1 && setup.teams.some(t => t.members.length > setup.teamSize)) {
@@ -467,150 +663,250 @@
   function openScore(m) {
     const setup = S();
     const r = state.results[m.id];
+    const w = TT.winSets(setup.bestOf);
     const dlg = $('#dlg');
-    const nameA = teamName(setup, m.a), nameB = teamName(setup, m.b);
+    const sc = { a: r ? r.a : 0, b: r ? r.b : 0 };
+    const valA = el('span', { class: 'sv' }), valB = el('span', { class: 'sv' });
+    const info = el('div', { class: 'sinfo' });
+    const ok = el('button', { type: 'button', class: 'btn wide big' });
+    const valid = () => Math.max(sc.a, sc.b) === w && Math.min(sc.a, sc.b) < w;
+    const upd = () => {
+      valA.textContent = sc.a; valB.textContent = sc.b;
+      if (valid()) {
+        info.textContent = '🏆 ' + teamName(sc.a > sc.b ? m.a : m.b) + ' gewinnt ' + Math.max(sc.a, sc.b) + ':' + Math.min(sc.a, sc.b);
+        info.className = 'sinfo good';
+        ok.disabled = false; ok.textContent = '✓ Ergebnis bestätigen';
+      } else {
+        info.textContent = 'Gewonnen hat, wer zuerst ' + w + (w === 1 ? ' Satz' : ' Sätze') + ' hat.';
+        info.className = 'sinfo';
+        ok.disabled = true; ok.textContent = 'Ergebnis bestätigen';
+      }
+    };
+    const stepper = (key, label, val) => el('div', { class: 'step' },
+      el('div', { class: 'slabel' }, label),
+      el('div', { class: 'sctl' },
+        el('button', { type: 'button', class: 'sb', 'aria-label': 'weniger', onclick: () => { sc[key] = Math.max(0, sc[key] - 1); upd(); } }, '−'),
+        val,
+        el('button', { type: 'button', class: 'sb', 'aria-label': 'mehr', onclick: () => { sc[key] = Math.min(w, sc[key] + 1); upd(); } }, '+')));
     const save = async (a, b) => {
       if (state.busy) return;
-      if (r && a != null && !confirm('Für dieses Spiel steht schon ' + r.a + ':' + r.b + '. Überschreiben?')) return;
-      if (a == null && !confirm('Ergebnis wirklich löschen?')) return;
-      state.busy = true;
+      state.busy = true; ok.disabled = true;
       try {
         await backend.setResult(m.id, a, b);
         dlg.close();
-        toast(a == null ? 'Ergebnis gelöscht' : 'Gespeichert: ' + a + ':' + b);
+        toast(a == null ? 'Ergebnis gelöscht' : 'Gespeichert: ' + a + ':' + b + ' ✓');
         await refresh();
-      } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message, true); }
+      } catch (e) { toast('Speichern fehlgeschlagen: ' + niceErr(e), true); ok.disabled = false; }
       finally { state.busy = false; }
     };
-    const scores = TT.validScores(setup.bestOf);
-    dlg.replaceChildren(el('form', { method: 'dialog', class: 'dlgin' },
-      el('div', { class: 'muted small' }, (m.label || 'Runde ' + m.round) + ' · gewonnene Sätze (Best of ' + setup.bestOf + ')'),
-      el('div', { class: 'dteams' }, el('b', null, nameA), el('span', { class: 'muted' }, 'gegen'), el('b', null, nameB)),
-      el('div', { class: 'scores' }, scores.map(([a, b]) =>
-        el('button', { type: 'button', class: 'sbtn' + (r && r.a === a && r.b === b ? ' cur' : ''), onclick: () => save(a, b) },
-          el('span', { class: 'sn' }, a + ' : ' + b),
-          el('span', { class: 'sw' }, (a > b ? nameA : nameB) + ' gewinnt')))),
-      el('div', { class: 'drow' },
-        r ? el('button', { type: 'button', class: 'link bad', onclick: () => save(null, null) }, 'Ergebnis löschen') : el('span'),
-        el('button', { class: 'btn ghost', value: 'cancel' }, 'Abbrechen'))));
+    ok.addEventListener('click', () => save(sc.a, sc.b));
+    dlg.replaceChildren(el('div', { class: 'dlgin' },
+      el('div', { class: 'between' },
+        el('span', { class: 'muted small' }, (m.label || 'Runde ' + m.round) + ' · gewonnene Sätze'),
+        el('button', { type: 'button', class: 'x', 'aria-label': 'schließen', onclick: () => dlg.close() }, '×')),
+      el('div', { class: 'steps' },
+        stepper('a', teamName(m.a), valA),
+        el('div', { class: 'colon' }, ':'),
+        stepper('b', teamName(m.b), valB)),
+      info, ok,
+      r ? el('button', { type: 'button', class: 'link bad small', onclick: () => { if (confirm('Ergebnis wirklich löschen?')) save(null, null); } }, 'Ergebnis löschen') : null));
+    upd();
     dlg.showModal();
+    ok.blur();
   }
 
   // ------------------------------------------------------- Turnierleitung
-  function ensureDraft() {
-    if (state.draft) return;
-    const s = S();
-    state.draft = {
-      title: s.title, teamSize: s.teamSize, tables: s.tables, bestOf: s.bestOf, finals: s.finals,
-      players: (s.players || []).map(p => Object.assign({ active: true }, p)),
-    };
-  }
-
   function renderAdmin(main) {
     if (!state.pin) {
-      const inp = el('input', { type: 'password', inputmode: 'text', autocomplete: 'current-password', placeholder: 'PIN', class: 'in' });
+      const inp = el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'PIN', class: 'in' });
       const login = async () => {
         const pin = inp.value.trim();
         if (!pin) return;
         try {
           await backend.adminSave(pin, null, false);
-          state.pin = pin; sessionSet('turnier-pin', pin); state.draft = null; render();
-        } catch (e) { toast(/pin/i.test(e.message) ? 'Falsche PIN' : 'Fehler: ' + e.message, true); }
+          state.pin = pin; store('session', 'turnier-pin-', pin);
+          await loadAdminPlayers(); render();
+        } catch (e) { toast(/pin/i.test(e.message) ? 'Falsche PIN' : 'Fehler: ' + niceErr(e), true); }
       };
       main.append(el('div', { class: 'card' },
         el('h2', null, 'Turnierleitung'),
-        el('p', { class: 'muted' }, 'Spieler, Spielstärken und Teams kann nur die Turnierleitung ändern. Ergebnisse eintragen darf jeder – dafür einfach im Tab „Spiele“ auf ein Spiel tippen.'),
+        el('p', { class: 'muted' }, 'Hier gibt es den QR-Code zur Anmeldung, die Spielstärken und die Team-Auslosung. Ergebnisse und Teamnamen können alle selbst eintragen.'),
         el('div', { class: 'row' }, inp, el('button', { class: 'btn', onclick: login }, 'Anmelden'))));
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
       return;
     }
-    ensureDraft();
-    const d = state.draft;
-    const active = d.players.filter(p => p.active && p.name.trim());
+    if (!state.adminPlayers) { main.append(el('p', { class: 'muted center' }, 'Lade Spieler …')); loadAdminPlayers().then(render); return; }
 
-    // Einstellungen
-    const sel = (label, key, options) => el('label', { class: 'fld' }, el('span', null, label),
-      el('select', { class: 'in', onchange: e => { d[key] = isNaN(+e.target.value) ? e.target.value : +e.target.value; render(); } },
-        options.map(([v, t]) => el('option', { value: v, selected: d[key] === v }, t))));
-    main.append(el('section', { class: 'card' },
-      el('div', { class: 'between' }, el('h2', null, 'Einstellungen'),
-        el('button', { class: 'link', onclick: () => { state.pin = null; sessionSet('turnier-pin', null); render(); } }, 'Abmelden')),
-      el('label', { class: 'fld' }, el('span', null, 'Turniername'),
-        el('input', { class: 'in', value: d.title, oninput: e => { d.title = e.target.value; } })),
-      el('div', { class: 'grid2' },
-        sel('Spieler pro Team', 'teamSize', [[1, 'Einzel (1)'], [2, 'Doppel (2)'], [3, '3er-Teams']]),
-        sel('Platten', 'tables', [[1, '1 Platte'], [2, '2 Platten'], [3, '3 Platten'], [4, '4 Platten']]),
-        sel('Spiellänge', 'bestOf', [[1, '1 Gewinnsatz'], [3, 'Best of 3'], [5, 'Best of 5']]),
-        el('label', { class: 'fld check' }, el('input', { type: 'checkbox', checked: d.finals, onchange: e => { d.finals = e.target.checked; } }),
-          el('span', null, 'Finale + Spiel um Platz 3')))));
+    renderQrCard(main);
+    renderPlayersAdmin(main);
+    renderPreview(main);
+    renderSettings(main);
 
-    // Spieler
-    const list = el('div', { class: 'plist' });
-    d.players.forEach((p, i) => {
-      const out = el('output', { class: 'sval' }, p.skill);
-      list.append(el('div', { class: 'prow2' + (p.active ? '' : ' off') },
-        el('input', { type: 'checkbox', title: 'ist da', checked: p.active, onchange: e => { p.active = e.target.checked; render(); } }),
-        el('input', { class: 'in name', value: p.name, placeholder: 'Name', oninput: e => { p.name = e.target.value; } }),
-        el('input', { type: 'range', min: 1, max: 10, step: 1, value: p.skill, 'aria-label': 'Spielstärke',
-          oninput: e => { p.skill = +e.target.value; out.textContent = p.skill; } }),
-        out,
-        el('button', { class: 'x', title: 'entfernen', onclick: () => { d.players.splice(i, 1); render(); } }, '×')));
-    });
-    const newName = el('input', { class: 'in', placeholder: 'Neuer Spieler …' });
-    const add = () => {
-      const names = newName.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-      names.forEach(n => d.players.push({ id: TT.uid(), name: n.slice(0, 30), skill: 5, active: true }));
-      render();
-      setTimeout(() => { const f = $('#main .addrow input'); if (f) f.focus(); }, 0);
-    };
-    newName.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-    main.append(el('section', { class: 'card' },
-      el('h2', null, 'Spieler (' + active.length + ' dabei)'),
-      el('p', { class: 'muted small' }, 'Häkchen = ist heute da. Regler = Spielstärke 1 (Anfänger) bis 10 (Profi). Die Stärken sieht nur die Turnierleitung.'),
-      list,
-      el('div', { class: 'row addrow' }, newName, el('button', { class: 'btn ghost', onclick: add }, 'Hinzufügen')),
-      el('div', { class: 'row' },
-        el('button', { class: 'btn ghost', onclick: () => saveSetup(false) }, 'Nur speichern'),
-        el('button', { class: 'btn', disabled: active.length < 2, onclick: () => { state.preview = TT.buildTeams(active, d.teamSize); state.swapSel = null; render(); } },
-          '⚖️ Ausgeglichene Teams bilden'))));
-
-    // Vorschau
-    if (state.preview) {
-      const fake = { players: d.players };
-      const pm = playerMap(fake);
-      const avgs = state.preview.map(t => teamAvg(fake, t.members).avg);
-      const spread = Math.max(...avgs) - Math.min(...avgs);
-      const grid = el('div', { class: 'grid' });
-      state.preview.forEach((t, ti) => {
-        const a = teamAvg(fake, t.members);
-        grid.append(el('div', { class: 'card team' },
-          el('div', { class: 'tnum' }, 'Team ' + (ti + 1)),
-          t.members.map((id, mi) => el('button', {
-            class: 'tplayer chip' + (state.swapSel && state.swapSel[0] === ti && state.swapSel[1] === mi ? ' sel' : ''),
-            onclick: () => swapClick(ti, mi),
-          }, pm[id] ? pm[id].name : '?', el('span', { class: 'skill' }, pm[id] ? pm[id].skill : ''))),
-          el('div', { class: 'muted small' }, 'Summe ' + a.sum + ' · Ø ' + a.avg.toFixed(1))));
-      });
-      main.append(el('section', { class: 'card hl' },
-        el('h2', null, 'Vorschau: ' + state.preview.length + ' Teams'),
-        el('p', { class: 'muted small' }, 'Unterschied stärkstes/schwächstes Team: ' + spread.toFixed(1) +
-          ' Punkte im Schnitt. Zum Tauschen zwei Spieler aus verschiedenen Teams antippen.'),
-        grid,
-        el('div', { class: 'row' },
-          el('button', { class: 'btn ghost', onclick: () => { state.preview = TT.buildTeams(active, d.teamSize); state.swapSel = null; render(); } }, '🔀 Nochmal mischen'),
-          el('button', { class: 'btn', onclick: startTournament }, '✅ Übernehmen & Spielplan erstellen'))));
-    }
-
-    // Ergebnisse zurücksetzen
     if ((S().teams || []).length) {
       main.append(el('section', { class: 'card' },
         el('h2', null, 'Gefahrenzone'),
         el('div', { class: 'row' },
           el('button', { class: 'btn danger', onclick: async () => {
             if (!confirm('Alle Ergebnisse löschen? Teams und Spielplan bleiben.')) return;
-            await adminSave(S(), true, 'Ergebnisse gelöscht');
-          } }, 'Alle Ergebnisse löschen'))));
+            await adminSave(S(), false, 'Ergebnisse gelöscht', true);
+          } }, 'Alle Ergebnisse löschen'),
+          el('button', { class: 'btn danger', onclick: async () => {
+            if (!confirm('Teams auflösen? Spielplan, Ergebnisse und Teamnamen werden gelöscht, die Anmeldung ist wieder offen.')) return;
+            const s = S(); delete s.teams; delete s.schedule; delete s.byes;
+            await adminSave(s, true, 'Teams aufgelöst – Anmeldung wieder offen');
+          } }, 'Teams auflösen'))));
     }
+    main.append(el('div', { class: 'center' }, el('button', { class: 'link', onclick: () => { logout(); render(); } }, 'Leitung abmelden')));
+  }
+
+  function qrSvg(text, cell) {
+    if (typeof window.qrcode !== 'function') return null;
+    const q = window.qrcode(0, 'M');
+    q.addData(text); q.make();
+    // GIF als data:-URL (bleibt komplett lokal im Browser)
+    return el('div', { class: 'qr' }, el('img', { src: q.createDataURL(cell || 6, 2), alt: 'QR-Code: ' + text }));
+  }
+
+  function renderQrCard(main) {
+    const url = signupUrl();
+    const teamsDone = (S().teams || []).length > 0;
+    main.append(el('section', { class: 'card' },
+      el('h2', null, '📱 QR-Code zur Anmeldung'),
+      el('p', { class: 'muted small' }, teamsDone
+        ? 'Die Teams sind ausgelost – Anmeldung ist geschlossen. Über den Code kommen alle trotzdem auf die Turnierseite.'
+        : 'Gäste scannen den Code, tragen ihren Namen ein und schätzen sich selbst ein. Du kannst die Stärke unten anpassen.'),
+      el('div', { class: 'qrbox' }, qrSvg(url, 5) || el('p', null, url)),
+      el('div', { class: 'center small' }, el('a', { href: url }, url)),
+      el('div', { class: 'row' },
+        el('button', { class: 'btn', onclick: () => showQrFull(url) }, 'Groß anzeigen'),
+        navigator.share ? el('button', { class: 'btn ghost', onclick: () => navigator.share({ title: S().title, url }).catch(() => {}) }, 'Link teilen') : null)));
+  }
+
+  function showQrFull(url) {
+    const dlg = $('#dlg');
+    dlg.replaceChildren(el('div', { class: 'dlgin center qrfull' },
+      el('h2', null, '🏓 ' + S().title),
+      el('p', null, 'Scannen & anmelden!'),
+      qrSvg(url, 10),
+      el('p', { class: 'muted small' }, url),
+      el('button', { class: 'btn ghost', onclick: () => dlg.close() }, 'Schließen')));
+    dlg.showModal();
+  }
+
+  async function adminPlayer(action, player) {
+    try {
+      state.adminPlayers = await backend.adminPlayers(state.pin, action, player);
+      await refresh(true);
+      return true;
+    } catch (e) {
+      if (/pin/i.test(e.message)) logout();
+      toast(niceErr(e), true); render();
+      return false;
+    }
+  }
+
+  function renderPlayersAdmin(main) {
+    const list = el('div', { class: 'plist' });
+    const ap = state.adminPlayers;
+    const inTeam = new Set((S().teams || []).flatMap(t => t.members));
+    ap.forEach(p => {
+      const out = el('output', { class: 'sval' }, p.skill);
+      const name = el('input', { class: 'in name', value: p.name, maxlength: 30,
+        onchange: e => { if (e.target.value.trim() && e.target.value !== p.name) adminPlayer('upsert', Object.assign({}, p, { name: e.target.value })); } });
+      list.append(el('div', { class: 'prow2' + (p.active ? '' : ' off') },
+        el('input', { type: 'checkbox', title: 'ist da / spielt mit', checked: p.active,
+          onchange: e => adminPlayer('upsert', Object.assign({}, p, { active: e.target.checked })).then(render) }),
+        name,
+        el('input', { type: 'range', min: 1, max: 10, step: 1, value: p.skill, 'aria-label': 'Spielstärke ' + p.name,
+          oninput: e => { out.textContent = e.target.value; },
+          onchange: e => adminPlayer('upsert', Object.assign({}, p, { skill: +e.target.value })) }),
+        out,
+        el('button', { class: 'x', title: 'entfernen', onclick: () => {
+          if (inTeam.has(p.id) && !confirm(p.name + ' ist schon in einem Team. Trotzdem entfernen?')) return;
+          if (!inTeam.has(p.id) && !confirm(p.name + ' entfernen?')) return;
+          adminPlayer('delete', { id: p.id }).then(render);
+        } }, '×')));
+    });
+    const newName = el('input', { class: 'in', placeholder: 'Spieler ohne Handy hinzufügen …' });
+    const add = async () => {
+      const names = newName.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+      for (const n of names) if (!(await adminPlayer('upsert', { name: n, skill: 5, active: true }))) break;
+      render();
+      setTimeout(() => { const f = $('#main .addrow input'); if (f) f.focus(); }, 0);
+    };
+    newName.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+    const active = ap.filter(p => p.active);
+    const d = settingsDraft();
+    main.append(el('section', { class: 'card' },
+      el('h2', null, 'Spieler (' + active.length + ' spielen mit)'),
+      el('p', { class: 'muted small' }, 'Häkchen = spielt mit. Regler = Spielstärke 1–10 (Selbsteinschätzung, von dir anpassbar; sieht nur die Leitung). Neue Anmeldungen erscheinen automatisch.'),
+      ap.length ? list : el('p', { class: 'muted' }, 'Noch niemand angemeldet.'),
+      el('div', { class: 'row addrow' }, newName, el('button', { class: 'btn ghost', onclick: add }, 'Hinzufügen')),
+      el('div', { class: 'row' },
+        el('button', { class: 'btn wide', disabled: active.length < 2, onclick: () => {
+          state.preview = TT.buildTeams(active, d.teamSize); state.swapSel = null; render();
+          setTimeout(() => { const p = $('#preview'); if (p) p.scrollIntoView({ behavior: 'smooth' }); }, 0);
+        } }, '⚖️ Ausgeglichene Teams bilden (' + TT.teamSizes(active.length, d.teamSize).length + ' Teams)'))));
+  }
+
+  function renderPreview(main) {
+    if (!state.preview) return;
+    const sk = id => { const p = state.adminPlayers.find(x => x.id === id); return p ? p.skill : 0; };
+    const avg = t => t.members.reduce((s, id) => s + sk(id), 0) / t.members.length;
+    const avgs = state.preview.map(avg);
+    const grid = el('div', { class: 'grid' });
+    state.preview.forEach((t, ti) => {
+      grid.append(el('div', { class: 'card team' },
+        el('div', { class: 'tnum' }, 'Team ' + (ti + 1)),
+        t.members.map((id, mi) => el('button', {
+          class: 'tplayer chip' + (state.swapSel && state.swapSel[0] === ti && state.swapSel[1] === mi ? ' sel' : ''),
+          onclick: () => swapClick(ti, mi),
+        }, playerName(id), el('span', { class: 'skill' }, sk(id)))),
+        el('div', { class: 'muted small' }, 'Summe ' + t.members.reduce((s, id) => s + sk(id), 0) + ' · Ø ' + avg(t).toFixed(1))));
+    });
+    const d = settingsDraft();
+    main.append(el('section', { class: 'card hl', id: 'preview' },
+      el('h2', null, 'Vorschau: ' + state.preview.length + ' Teams'),
+      el('p', { class: 'muted small' }, 'Unterschied stärkstes/schwächstes Team: ' + (Math.max(...avgs) - Math.min(...avgs)).toFixed(1) +
+        ' Punkte im Schnitt. Zum Tauschen zwei Spieler aus verschiedenen Teams antippen.'),
+      grid,
+      el('div', { class: 'row' },
+        el('button', { class: 'btn ghost', onclick: () => {
+          state.preview = TT.buildTeams(state.adminPlayers.filter(p => p.active), d.teamSize); state.swapSel = null; render();
+        } }, '🔀 Nochmal mischen'),
+        el('button', { class: 'btn ghost', onclick: () => { state.preview = null; render(); } }, 'Verwerfen'),
+        el('button', { class: 'btn', onclick: startTournament }, '✅ Übernehmen & Spielplan erstellen'))));
+  }
+
+  function settingsDraft() {
+    if (!state.settings) {
+      const s = S();
+      state.settings = { title: s.title, teamSize: s.teamSize, tables: s.tables, bestOf: s.bestOf, finals: s.finals };
+    }
+    return state.settings;
+  }
+
+  function renderSettings(main) {
+    const d = settingsDraft();
+    const sel = (label, key, options) => el('label', { class: 'fld' }, el('span', null, label),
+      el('select', { class: 'in', onchange: e => { d[key] = +e.target.value; render(); } },
+        options.map(([v, t]) => el('option', { value: v, selected: d[key] === v }, t))));
+    const started = (S().teams || []).length > 0;
+    main.append(el('section', { class: 'card' },
+      el('h2', null, 'Einstellungen'),
+      el('label', { class: 'fld' }, el('span', null, 'Turniername'),
+        el('input', { class: 'in', value: d.title, maxlength: 60, oninput: e => { d.title = e.target.value; } })),
+      el('div', { class: 'grid2' },
+        sel('Spieler pro Team', 'teamSize', [[1, 'Einzel (1)'], [2, 'Doppel (2)'], [3, '3er-Teams']]),
+        sel('Platten', 'tables', [[1, '1 Platte'], [2, '2 Platten'], [3, '3 Platten'], [4, '4 Platten']]),
+        sel('Spiellänge', 'bestOf', [[1, '1 Gewinnsatz'], [3, 'Best of 3 (2 Gewinnsätze)'], [5, 'Best of 5 (3 Gewinnsätze)']]),
+        el('label', { class: 'fld check' }, el('input', { type: 'checkbox', checked: d.finals, onchange: e => { d.finals = e.target.checked; } }),
+          el('span', null, 'Finale + Spiel um Platz 3'))),
+      started ? el('p', { class: 'muted small' }, '„Spieler pro Team“ wirkt erst bei der nächsten Auslosung.') : null,
+      el('button', { class: 'btn ghost', onclick: () => {
+        const s = Object.assign(S(), d, { title: (d.title || DEFAULTS.title).trim().slice(0, 60) });
+        adminSave(s, false, 'Einstellungen gespeichert');
+      } }, 'Einstellungen speichern')));
   }
 
   function swapClick(ti, mi) {
@@ -622,54 +918,45 @@
     state.swapSel = null; render();
   }
 
-  function setupFromDraft() {
-    const d = state.draft, s = S();
-    return Object.assign({}, s, {
-      title: (d.title || DEFAULTS.title).slice(0, 60), teamSize: d.teamSize, tables: d.tables, bestOf: d.bestOf, finals: d.finals,
-      players: d.players.filter(p => p.name.trim()).map(p => ({ id: p.id, name: p.name.trim().slice(0, 30), skill: p.skill, active: p.active })),
-    });
-  }
-
-  async function adminSave(setup, reset, msg) {
+  async function adminSave(setup, reset, msg, onlyResults) {
     try {
-      await backend.adminSave(state.pin, setup, reset);
+      if (onlyResults) {
+        // Ergebnisse löschen, Teamnamen behalten
+        for (const id of Object.keys(state.results)) await backend.setResult(id, null, null);
+      } else {
+        await backend.adminSave(state.pin, setup, reset);
+      }
       toast(msg);
+      state.settings = null;
       await refresh();
       return true;
     } catch (e) {
-      if (/pin/i.test(e.message)) { state.pin = null; sessionSet('turnier-pin', null); render(); }
-      toast('Fehler: ' + e.message, true);
+      if (/pin/i.test(e.message)) { logout(); render(); }
+      toast('Fehler: ' + niceErr(e), true);
       return false;
     }
   }
 
-  async function saveSetup() {
-    const ok = await adminSave(setupFromDraft(), false, 'Gespeichert');
-    if (ok) { state.draft = null; render(); }
-  }
-
   async function startTournament() {
     const hasResults = Object.keys(state.results).length > 0;
-    if (hasResults && !confirm('Es gibt schon Ergebnisse. Neue Teams löschen alle bisherigen Ergebnisse. Fortfahren?')) return;
-    const setup = setupFromDraft();
+    if (hasResults && !confirm('Es gibt schon Ergebnisse. Neue Teams löschen alle bisherigen Ergebnisse und Teamnamen. Fortfahren?')) return;
+    const d = settingsDraft();
+    const setup = Object.assign(S(), d, { title: (d.title || DEFAULTS.title).trim().slice(0, 60) });
+    delete setup.players;
     setup.teams = state.preview;
     const rr = TT.roundRobin(setup.teams.map(t => t.id));
     setup.schedule = rr.schedule; setup.byes = rr.byes;
     const ok = await adminSave(setup, true, 'Turnier gestartet – viel Spaß!');
-    if (ok) { state.preview = null; state.draft = null; state.tab = 'spiele'; render(); }
+    if (ok) { state.preview = null; state.tab = 'spiele'; render(); window.scrollTo(0, 0); }
   }
 
   // ------------------------------------------------------------ Start
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
     state.tab = b.dataset.tab; render(); window.scrollTo(0, 0);
+    if (state.tab === 'leitung' && state.pin) refresh(true);
   }));
   render();
   refresh();
-  setInterval(() => {
-    // Nicht neu zeichnen, während jemand in der Turnierleitung tippt oder der Dialog offen ist
-    if (document.hidden || $('#dlg').open) return;
-    if (state.tab === 'leitung' && state.pin) return;
-    refresh(true);
-  }, 5000);
+  setInterval(() => { if (!document.hidden) refresh(true); }, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(true); });
 })();
