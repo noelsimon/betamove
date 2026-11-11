@@ -148,3 +148,16 @@ Konto-Andocken (Nachweise dauerhaft & geräteübergreifend speichern) fehlt noch
 Für Kursbuchung/Bezahlung und die Kursverwaltung selbst (nicht Teil dieses Repos) bleibt
 zusätzlich ein weiterer Baustein offen, z. B. eine externe Buchungslösung oder ein eigenes
 kleines Backend — je nachdem, was die Betreiberin bevorzugt.
+
+## Tischtennis-Turnier (privat): `turnier.html`
+
+Unverlinkte, öffentliche Seite (`noindex`) für ein privates Turnier: `https://betamove.de/turnier`.
+Jeder mit dem Link sieht Spiele, Tabelle und Teams und kann Ergebnisse eintragen. Spieler,
+Spielstärken (1–10) und Team-Auslosung nur mit PIN der Turnierleitung (Tab „Leitung“).
+
+- Einrichtung: `supabase/schema-turnier.sql` im Supabase SQL-Editor ausführen — vorher dort die
+  PIN (`HIER-PIN-EINTRAGEN`) ersetzen.
+- Ausprobieren ohne Datenbank: `turnier.html?demo=1` (nur im Browser gespeichert, PIN `demo`).
+- Teams: viele Zufallsstarts + Tauschoptimierung, minimiert die Unterschiede der Team-Durchschnitte
+  (stark + schwach zusammen). Danach jeder gegen jeden, optional Spiel um Platz 3 und Finale.
+- Logik + Oberfläche: `js/turnier.js`. Aufräumen nach dem Turnier: siehe Ende der SQL-Datei.
