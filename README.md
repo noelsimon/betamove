@@ -156,7 +156,13 @@ Jeder mit dem Link sieht Spiele, Tabelle und Teams und kann Ergebnisse eintragen
 Spielstärken (1–10) und Team-Auslosung nur mit PIN der Turnierleitung (Tab „Leitung“).
 
 - Einrichtung: `supabase/schema-turnier.sql` im Supabase SQL-Editor ausführen — vorher dort die
-  PIN (`HIER-PIN-EINTRAGEN`) ersetzen.
+  PIN (`HIER-PIN-EINTRAGEN`) ersetzen. Danach `supabase/schema-turnier-v2.sql` ausführen
+  (Selbst-Anmeldung, Teamnamen; Spielstärke ist dann per Spaltenrecht für Gäste unsichtbar).
+- Ablauf: Leitung zeigt den QR-Code (Tab „Leitung“) → Gäste melden sich mit Namen + Selbst-
+  einschätzung an → Leitung passt Stärken an und lost aus → jeder sieht „Dein Team“, vergibt
+  einen Teamnamen und trägt Ergebnisse über +/− und „Ergebnis bestätigen“ ein.
+- QR-Code wird lokal erzeugt (`js/vendor/qrcode-generator-1.4.4`, MIT). Das Handy merkt sich die
+  eigene Spieler-ID im Local Storage (`turnier-ich-…`).
 - Ausprobieren ohne Datenbank: `turnier.html?demo=1` (nur im Browser gespeichert, PIN `demo`).
 - Teams: viele Zufallsstarts + Tauschoptimierung, minimiert die Unterschiede der Team-Durchschnitte
   (stark + schwach zusammen). Danach jeder gegen jeden, optional Spiel um Platz 3 und Finale.
